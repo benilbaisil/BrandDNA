@@ -35,6 +35,9 @@ export const BrandSummaryPage = () => {
 
   useEffect(() => {
     fetchData();
+    const handleGlobalSync = () => fetchData();
+    window.addEventListener('brand_dna_updated', handleGlobalSync);
+    return () => window.removeEventListener('brand_dna_updated', handleGlobalSync);
   }, []);
 
   const fetchData = async () => {

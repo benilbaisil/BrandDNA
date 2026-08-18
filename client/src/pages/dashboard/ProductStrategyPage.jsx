@@ -116,6 +116,9 @@ export const ProductStrategyPage = () => {
   // Load Initial Strategy & Context Data
   useEffect(() => {
     fetchStrategyData();
+    const handleGlobalSync = () => fetchStrategyData();
+    window.addEventListener('brand_dna_updated', handleGlobalSync);
+    return () => window.removeEventListener('brand_dna_updated', handleGlobalSync);
   }, []);
 
   const fetchStrategyData = async () => {
@@ -288,6 +291,7 @@ export const ProductStrategyPage = () => {
     try {
       const res = await productStrategyService.saveStrategy(strategy);
       if (res.success) {
+        window.dispatchEvent(new CustomEvent('brand_dna_updated'));
         showToast(`${formatSectionTitle(sectionKey)} saved to MongoDB!`, 'success');
         setSaveSuccess((prev) => ({ ...prev, [sectionKey]: true }));
         setTimeout(() => {
@@ -308,6 +312,7 @@ export const ProductStrategyPage = () => {
     try {
       const res = await productStrategyService.saveStrategy(strategy);
       if (res.success) {
+        window.dispatchEvent(new CustomEvent('brand_dna_updated'));
         showToast('Product Strategy saved! Proceeding to Brand Summary...', 'success');
         navigate('/brand-summary');
       }

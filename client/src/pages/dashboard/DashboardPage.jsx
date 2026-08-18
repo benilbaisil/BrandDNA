@@ -196,6 +196,10 @@ export const DashboardPage = () => {
       }
     };
     load();
+
+    const handleGlobalSync = () => load();
+    window.addEventListener('brand_dna_updated', handleGlobalSync);
+    return () => window.removeEventListener('brand_dna_updated', handleGlobalSync);
   }, []);
 
   // ── Submit ──────────────────────────────────────────────────────────────────
@@ -220,9 +224,11 @@ export const DashboardPage = () => {
     try {
       if (hasProfile) {
         await startupService.updateProfile(payload);
+        window.dispatchEvent(new CustomEvent('brand_dna_updated'));
         addToast('Business details updated successfully!', 'success');
       } else {
         await startupService.createProfile(payload);
+        window.dispatchEvent(new CustomEvent('brand_dna_updated'));
         setHasProfile(true);
         addToast('Business details saved! BrandDNA AI is ready.', 'success');
       }

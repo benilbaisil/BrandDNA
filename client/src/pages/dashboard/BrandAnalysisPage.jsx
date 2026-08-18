@@ -221,6 +221,9 @@ export const BrandAnalysisPage = () => {
 
   useEffect(() => {
     fetchData();
+    const handleGlobalSync = () => fetchData();
+    window.addEventListener('brand_dna_updated', handleGlobalSync);
+    return () => window.removeEventListener('brand_dna_updated', handleGlobalSync);
   }, []);
 
   // Handler for Regenerating a specific section via Gemini API
@@ -355,6 +358,7 @@ export const BrandAnalysisPage = () => {
 
       const res = await brandService.saveBrandIdentity(payload);
       if (res?.success) {
+        window.dispatchEvent(new CustomEvent('brand_dna_updated'));
         showToast(`${formatSectionTitle(sectionKey)} saved successfully!`, 'success');
         setSaveSuccess((prev) => ({ ...prev, [sectionKey]: true }));
         setTimeout(() => {
@@ -416,6 +420,7 @@ export const BrandAnalysisPage = () => {
 
       const res = await brandService.saveBrandIdentity(payload);
       if (res?.success || res?.brand) {
+        window.dispatchEvent(new CustomEvent('brand_dna_updated'));
         setSavedValues({
           brandName: payload.brandName,
           tagline: payload.tagline,

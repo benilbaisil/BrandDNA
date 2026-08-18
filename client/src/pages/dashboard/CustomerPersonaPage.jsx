@@ -77,6 +77,9 @@ export const CustomerPersonaPage = () => {
   // Fetch initial persona and context data
   useEffect(() => {
     fetchPersonaData();
+    const handleGlobalSync = () => fetchPersonaData();
+    window.addEventListener('brand_dna_updated', handleGlobalSync);
+    return () => window.removeEventListener('brand_dna_updated', handleGlobalSync);
   }, []);
 
   const fetchPersonaData = async () => {
@@ -127,6 +130,7 @@ export const CustomerPersonaPage = () => {
     try {
       const res = await personaService.savePersonas(personas);
       if (res && res.success) {
+        window.dispatchEvent(new CustomEvent('brand_dna_updated'));
         showToast('Customer Personas saved to MongoDB!', 'success');
         navigate('/marketing-planner');
       }
