@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+@import "tailwindcss";
+
+:root {
+  --bg-canvas: #EAF4F7;
+  --bg-surface: #FFFFFF;
+  --bg-surface-subtle: #F4FAFC;
+  --accent-dark: #0F172A;
+  --accent-navy: #1E293B;
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --border-light: #D6E6EC;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-canvas);
+  color: var(--text-main);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Serif Display Heading Class */
+.font-display, .font-serif {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-sans {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+/* Custom Minimal Pastel Blue Aesthetic Utility Classes */
+.bg-canvas {
+  background-color: #EAF4F7;
+}
+
+.card-minimal {
+  background-color: #FFFFFF;
+  border: 1px solid #D6E6EC;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.03);
+}
+
+.btn-dark-pill {
+  background-color: #0F172A;
+  color: #FFFFFF;
+  border-radius: 9999px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.btn-dark-pill:hover {
+  background-color: #1E293B;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #EAF4F7;
+}
+::-webkit-scrollbar-thumb {
+  background: #B8D4DE;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94BCCB;
+}
