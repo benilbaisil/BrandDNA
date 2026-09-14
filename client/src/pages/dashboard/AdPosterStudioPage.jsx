@@ -859,8 +859,9 @@ export const AdPosterStudioPage = () => {
     const desc = brandContext.shortDescription || brandContext.tagline || brandContext.detailedDescription || '';
     const pers = brandContext.brandPersonality || 'Sleek, Premium';
     const uspsStr = brandContext.usps && brandContext.usps.length > 0 ? brandContext.usps.map((u) => u.title).join(', ') : '';
+    const pos = brandContext.positioningStatement || '';
 
-    let fullVisualPrompt = `photorealistic commercial advertisement product photo for "${pName}" by brand "${bName}". Category: ${ind}. Product description and features: ${desc}. Key highlights: ${uspsStr}. Brand aesthetic: ${pers}. Photography style: ${post.promptKeyword}, studio lighting, 8k resolution, professional advertising photography`;
+    let fullVisualPrompt = `photorealistic commercial advertisement product photo for "${pName}" by brand "${bName}". Category: ${ind}. ${pos ? `Product strategy & positioning: ${pos}. ` : ''}Product description and features: ${desc}. Key highlights: ${uspsStr}. Brand aesthetic: ${pers}. Photography style: ${post.promptKeyword}, studio lighting, 8k resolution, professional advertising photography`;
 
     if (customVisualPrompt && customVisualPrompt.trim()) {
       fullVisualPrompt += `. Custom product visual detail: ${customVisualPrompt.trim()}`;
