@@ -17,7 +17,7 @@ export const StartupOwnerRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-  const userRole = user?.role || JSON.parse(localStorage.getItem('branddna_user') || '{}')?.role;
+  const userRole = user?.role || (function(){try{var u=localStorage.getItem('branddna_user');return u&&u!=='undefined'?JSON.parse(u)?.role:undefined}catch(e){return undefined}})();
 
   // Administrators should be kept in their dedicated admin workspace (/admin)
   if (userRole === 'admin') {

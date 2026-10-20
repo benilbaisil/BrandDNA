@@ -47,7 +47,7 @@ export const AdminNotificationsPage = () => {
           <span className="text-xs font-mono font-bold text-amber-600 uppercase tracking-wider">
             System Events & Alerts Log
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F291E] tracking-tight mt-1">
             Admin System Notifications
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -58,7 +58,7 @@ export const AdminNotificationsPage = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={handleMarkAllRead}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 shadow-2xs"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl glass-panel border border-[#E5E0D8] text-slate-700 text-xs font-bold hover:bg-[#FAF8F5] shadow-2xs"
           >
             <CheckCheck className="w-4 h-4 text-emerald-600" />
             <span>Mark All as Read</span>
@@ -67,23 +67,23 @@ export const AdminNotificationsPage = () => {
       </div>
 
       {/* Notifications List */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+      <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-3">
         {notificationsList.map((n) => {
           const Icon = n.icon;
           return (
             <div
               key={n.id}
               className={`p-4 rounded-xl border transition-colors flex items-start justify-between gap-4 ${
-                n.unread ? 'bg-amber-50/30 border-amber-200' : 'bg-slate-50 border-slate-200'
+                n.unread ? 'bg-amber-50/30 border-amber-200' : 'bg-[#FAF8F5] border-[#E5E0D8]'
               }`}
             >
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                <div className="w-9 h-9 rounded-xl glass-panel border border-[#E5E0D8] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                   <Icon className={`w-4 h-4 ${n.color}`} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-xs font-bold text-slate-900">{n.title}</h4>
+                    <h4 className="text-xs font-bold text-[#0F291E]">{n.title}</h4>
                     {n.unread && (
                       <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                     )}
@@ -97,7 +97,7 @@ export const AdminNotificationsPage = () => {
                 {n.unread && (
                   <button
                     onClick={() => handleMarkRead(n.id)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-white"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-[#0F291E] hover:glass-panel"
                     title="Mark as Read"
                   >
                     <Check className="w-4 h-4" />
@@ -105,7 +105,7 @@ export const AdminNotificationsPage = () => {
                 )}
                 <button
                   onClick={() => handleDeleteNotification(n.id)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:glass-panel"
                   title="Delete Notification"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -119,3 +119,4 @@ export const AdminNotificationsPage = () => {
     </div>
   );
 };
+

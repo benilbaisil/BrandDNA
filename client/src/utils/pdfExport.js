@@ -12,8 +12,9 @@ export const exportReportToPDF = (report) => {
   }
 
   const compName = report.companyName || report.company || 'BrandDNA Startup';
-  const reportTitle = report.title || `${compName} Executive Strategy Blueprint`;
-  const owner = report.ownerName || report.owner || 'Startup Founder';
+  const owner = report.ownerName || report.owner || 'Account Owner';
+  const isEcommerceUser = !report.brandIdentity?.brandName || report.brandIdentity?.brandName === 'Not Configured';
+  const reportTitle = isEcommerceUser ? `${owner} Account & Order History` : (report.title || `${compName} Executive Strategy Blueprint`);
   const ownerEmail = report.ownerEmail || 'founder@branddna.ai';
   const dateStr = report.date || new Date().toISOString().split('T')[0];
   const industry = report.industry || 'Business Services & Technology';
@@ -227,7 +228,7 @@ export const exportReportToPDF = (report) => {
 
       <div class="report-title-card">
         <h1>${reportTitle}</h1>
-        <p style="font-size: 13px; color: #475569;">Official Brand Analysis & Product Strategy Deliverable compiled by BrandDNA Platform Admin Control Center.</p>
+        <p style="font-size: 13px; color: #475569;">${isEcommerceUser ? 'Official Customer Account & E-Commerce Order Details compiled by Platform Admin.' : 'Official Brand Analysis & Product Strategy Deliverable compiled by BrandDNA Platform Admin Control Center.'}</p>
         
         <div class="report-meta-grid">
           <div class="meta-item">
@@ -239,7 +240,7 @@ export const exportReportToPDF = (report) => {
             <p>${industry}</p>
           </div>
           <div class="meta-item">
-            <label>Startup Owner</label>
+            <label>Account Owner</label>
             <p>${owner}</p>
           </div>
           <div class="meta-item">
@@ -250,6 +251,7 @@ export const exportReportToPDF = (report) => {
       </div>
 
       <!-- SECTION 1: BRAND ANALYSIS IDENTITY -->
+      ${brand.brandName && brand.brandName !== 'Not Configured' ? `
       <div class="section-title">01. Brand Identity & Analysis</div>
       
       <div class="card-grid">
@@ -262,6 +264,7 @@ export const exportReportToPDF = (report) => {
           <div class="card-value">${brand.tagline || 'N/A'}</div>
         </div>
       </div>
+      ` : ''}
 
       ${brand.missionStatement ? `
         <div class="card">
@@ -285,6 +288,7 @@ export const exportReportToPDF = (report) => {
       ` : ''}
 
       <!-- SECTION 2: PRODUCT STRATEGY -->
+      ${strategy.productName && strategy.productName !== 'Not Configured' ? `
       <div class="section-title">02. Product Strategy & Positioning</div>
       
       <div class="card-grid">
@@ -297,6 +301,7 @@ export const exportReportToPDF = (report) => {
           <div class="card-value">${strategy.targetSegment || report.targetAudience || 'Modern Consumers & Enterprises'}</div>
         </div>
       </div>
+      ` : ''}
 
       ${strategy.shortDescription ? `
         <div class="card">
@@ -338,6 +343,42 @@ export const exportReportToPDF = (report) => {
           </div>
         `).join('')}
       ` : ''}
+
+      <!-- SECTION 4: ORDER HISTORY -->
+      <div class="section-title">${isEcommerceUser ? '01' : '04'}. User Order History</div>
+      ${report.orders && report.orders.length > 0 ? `
+        ${report.orders.map((o) => `
+          <div class="card" style="margin-bottom: 12px; border-left: 4px solid #2563eb; padding: 12px 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+              <div style="font-weight: 800; color: #1e3a8a; font-size: 13px;">Order #${o.orderNumber}</div>
+              <div style="background: ${o.status === 'Delivered' ? '#10b981' : (o.status === 'Cancelled' ? '#ef4444' : '#f59e0b')}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase;">${o.status}</div>
+            </div>
+            <div style="font-size: 11px; color: #475569; margin-bottom: 12px; font-family: 'JetBrains Mono', monospace;">Placed on: ${o.date} &nbsp;|&nbsp; Total Amount: ₹${o.totalAmount}</div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+              <thead>
+                <tr style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                  <th style="padding: 8px; text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 9px;">ITEM</th>
+                  <th style="padding: 8px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 9px;">QTY</th>
+                  <th style="padding: 8px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 9px;">PRICE</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${o.items.map(i => `
+                  <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 8px; font-weight: 600;">${i.productName}</td>
+                    <td style="padding: 8px; text-align: right;">${i.quantity}</td>
+                    <td style="padding: 8px; text-align: right; font-weight: 700;">₹${i.totalPrice}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `).join('')}
+      ` : `
+        <div class="card">
+          <div class="card-value" style="color: #64748b; font-style: italic;">No order history found for this user.</div>
+        </div>
+      `}
 
       <div class="footer">
         <span>BrandDNA AI Intelligence System</span>
@@ -418,3 +459,128 @@ export const exportAllReportsToPDF = (reportsList = []) => {
   printWindow.document.write(htmlContent);
   printWindow.document.close();
 };
+
+/**
+ * Business Intelligence PDF Exporter for Admin Reports
+ */
+export const exportBusinessReportToPDF = ({ title, category, metrics, tableHeaders, tableData, summaryNotes }) => {
+  const printWindow = window.open('', '_blank', 'width=950,height=1000');
+  if (!printWindow) {
+    alert('Pop-up blocker prevented opening PDF export window. Please allow pop-ups for this site.');
+    return;
+  }
+
+  const dateStr = new Date().toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>BrandDNA AI Platform - ${title} (PDF)</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700&family=JetBrains+Mono:wght@500;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; padding: 40px; color: #0f172a; max-width: 900px; margin: 0 auto; line-height: 1.5; }
+        @media print { .no-print { display: none !important; } body { padding: 0; } }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
+        .logo { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #0f172a; }
+        .badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; background: #0f172a; color: #fff; padding: 4px 10px; border-radius: 4px; text-transform: uppercase; }
+        .title-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+        .title-card h1 { font-family: 'Playfair Display', serif; font-size: 24px; color: #0f172a; margin-bottom: 6px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+        .metric-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; }
+        .metric-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+        .metric-val { font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 11px; }
+        th { background: #f1f5f9; border-bottom: 2px solid #cbd5e1; text-align: left; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; font-size: 9px; color: #475569; }
+        td { border-bottom: 1px solid #e2e8f0; padding: 10px 12px; }
+        .btn-print { background: #0f172a; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; margin-bottom: 20px; }
+        .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; font-family: 'JetBrains Mono', monospace; }
+      </style>
+    </head>
+    <body>
+      <button class="btn-print no-print" onclick="window.print()">📥 Save / Print Official PDF Report</button>
+      
+      <div class="header">
+        <div class="logo">BrandDNA AI Platform</div>
+        <div class="badge">SYSTEM ADMIN EXECUTIVE REPORT</div>
+      </div>
+
+      <div class="title-card">
+        <h1>${title}</h1>
+        <p style="font-size: 12px; color: #475569;">Official ${category} Business Intelligence & Analytics Report generated by Platform Admin Control Center.</p>
+        <p style="font-size: 10px; font-family: 'JetBrains Mono', monospace; color: #64748b; margin-top: 8px;">GENERATED TIMESTAMP: ${dateStr}</p>
+      </div>
+
+      ${metrics && metrics.length > 0 ? `
+        <div class="metrics-grid">
+          ${metrics.map(m => `
+            <div class="metric-box">
+              <div class="metric-label">${m.label}</div>
+              <div class="metric-val">${m.value}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      ${summaryNotes ? `
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; font-size: 12px; color: #1e3a8a;">
+          <strong>Executive Summary & Context:</strong> ${summaryNotes}
+        </div>
+      ` : ''}
+
+      ${tableHeaders && tableData ? `
+        <table border="0">
+          <thead>
+            <tr>
+              ${tableHeaders.map(h => `<th>${h}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${tableData.map(row => `
+              <tr>
+                ${row.map(cell => `<td>${cell}</td>`).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : ''}
+
+      <div class="footer">
+        <span>BrandDNA Executive Intelligence Engine</span>
+        <span>Verified Admin Report Hash: BDNA-ADM-${Date.now().toString().slice(-6)}</span>
+        <span>Confidential Internal Report</span>
+      </div>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.open();
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+};
+
+/**
+ * CSV Data Exporter for Spreadsheet Analysis
+ */
+export const exportBusinessDataToCSV = (filename, headers, rows) => {
+  let csvContent = "data:text/csv;charset=utf-8," 
+    + headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(",") + "\n"
+    + rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+

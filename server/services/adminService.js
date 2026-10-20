@@ -7,6 +7,7 @@ import { SystemSetting } from '../models/SystemSetting.js';
 import { BrandIdentity } from '../models/BrandIdentity.js';
 import { ProductStrategy } from '../models/ProductStrategy.js';
 import { CustomerPersona } from '../models/CustomerPersona.js';
+import { Order } from '../models/Order.js';
 
 export const getAdminStatsService = async () => {
   const startOfMonth = new Date();
@@ -60,7 +61,7 @@ export const createAdminUserService = async (userData) => {
     fullName,
     email,
     password,
-    role: role || 'startup_owner',
+    role: role || 'customer',
   });
   return newUser;
 };
@@ -301,16 +302,16 @@ export const generateAdminReportsService = async () => {
       fileUrl: `/uploads/reports/${cleanCompName.replace(/\s+/g, '_')}_Report.pdf`,
       summary: `Complete Brand Identity, Product Strategy, and Customer Demographics Report for ${companyName}.`,
       brandIdentity: {
-        brandName: b.brandName || companyName,
-        tagline: b.tagline || 'Artisanal & High Performance',
+        brandName: b.brandName || (Object.keys(b).length > 0 ? companyName : 'Not Configured'),
+        tagline: b.tagline || (Object.keys(b).length > 0 ? 'Artisanal & High Performance' : 'Not Configured'),
         missionStatement: b.missionStatement || '',
         visionStatement: b.visionStatement || '',
         brandStory: b.brandStory || '',
         brandPersonality: b.brandPersonality || '',
       },
       productStrategy: {
-        productName: ps.productName || companyName,
-        shortDescription: ps.shortDescription || s.companyDescription || '',
+        productName: ps.productName || (Object.keys(ps).length > 0 ? companyName : 'Not Configured'),
+        shortDescription: ps.shortDescription || s.companyDescription || (Object.keys(ps).length > 0 ? '' : 'No product details found.'),
         usps: ps.usps || [],
         positioningStatement: ps.positioningStatement || '',
         targetSegment: ps.targetSegment || s.targetAudience || '',
@@ -352,12 +353,13 @@ export const generateAdminReportsService = async () => {
 };
 
 export const getAdminUserReportService = async (userId) => {
-  const [user, profile, brand, strategy, personas] = await Promise.all([
+  const [user, profile, brand, strategy, personas, orders] = await Promise.all([
     User.findById(userId).select('fullName email role createdAt'),
     StartupProfile.findOne({ owner: userId }),
     BrandIdentity.findOne({ user: userId }),
     ProductStrategy.findOne({ user: userId }),
     CustomerPersona.find({ user: userId }),
+    Order.find({ customer: userId }).sort({ createdAt: -1 })
   ]);
 
   if (!user) {
@@ -378,18 +380,18 @@ export const getAdminUserReportService = async (userId) => {
     ownerEmail: user.email || 'N/A',
     user: user._id,
     fileUrl: `/uploads/reports/${cleanCompName.replace(/\s+/g, '_')}_Report.pdf`,
-    summary: `Separate Brand Identity, Product Strategy, and Customer Demographics Report for ${user.fullName} (${companyName}).`,
+    summary: `Customer Details and Order History Report for ${user.fullName} (${companyName}).`,
     brandIdentity: {
-      brandName: brand?.brandName || companyName,
-      tagline: brand?.tagline || 'Artisanal & High Performance',
+      brandName: brand?.brandName || (brand ? companyName : 'Not Configured'),
+      tagline: brand?.tagline || (brand ? 'Artisanal & High Performance' : 'Not Configured'),
       missionStatement: brand?.missionStatement || '',
       visionStatement: brand?.visionStatement || '',
       brandStory: brand?.brandStory || '',
       brandPersonality: brand?.brandPersonality || '',
     },
     productStrategy: {
-      productName: strategy?.productName || companyName,
-      shortDescription: strategy?.shortDescription || profile?.companyDescription || '',
+      productName: strategy?.productName || (strategy ? companyName : 'Not Configured'),
+      shortDescription: strategy?.shortDescription || profile?.companyDescription || (strategy ? '' : 'No product details found.'),
       usps: strategy?.usps || [],
       positioningStatement: strategy?.positioningStatement || '',
       targetSegment: strategy?.targetSegment || profile?.targetAudience || '',
@@ -400,6 +402,13 @@ export const getAdminUserReportService = async (userId) => {
       painPoints: p.painPoints,
       interests: p.interests,
       buyingBehaviour: p.buyingBehaviour,
+    })),
+    orders: (orders || []).map(o => ({
+      orderNumber: o.orderNumber,
+      totalAmount: o.totalAmount,
+      status: o.status,
+      date: o.createdAt ? o.createdAt.toISOString().split('T')[0] : '',
+      items: o.items.map(i => ({ productName: i.productName, quantity: i.quantity, totalPrice: i.totalPrice }))
     })),
   };
 
@@ -421,6 +430,7 @@ export const getAdminUserReportService = async (userId) => {
     brandIdentity: report.brandIdentity || {},
     productStrategy: report.productStrategy || {},
     personas: report.personas || [],
+    orders: report.orders || [],
     ownerName: report.ownerName || user.fullName,
     ownerEmail: report.ownerEmail || user.email,
     date: report.createdAt ? report.createdAt.toISOString().split('T')[0] : '',

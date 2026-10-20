@@ -100,10 +100,10 @@ const businessSchema = z
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 const inputCls = (error) =>
-  `w-full bg-white text-slate-900 placeholder:text-slate-400 text-sm rounded-xl border px-3.5 py-2.5 transition-all duration-150 outline-none ${
+  `w-full glass-panel text-[#0F291E] placeholder:text-slate-400 text-sm rounded-xl border px-3.5 py-2.5 transition-all duration-150 outline-none ${
     error
       ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10'
-      : 'border-slate-200 hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10'
+      : 'border-[#E5E0D8] hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10'
   }`;
 
 const FieldError = ({ message }) =>
@@ -258,7 +258,7 @@ export const DashboardPage = () => {
 
       {/* Page Header */}
       <div>
-        <h1 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight">
+        <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#0F291E] tracking-tight">
           Tell us about your business
         </h1>
         <p className="text-sm text-slate-500 mt-1.5 max-w-xl">
@@ -275,8 +275,8 @@ export const DashboardPage = () => {
         className="space-y-6"
       >
         {/* Section 1: Business Overview */}
-        <div className="bg-white rounded-3xl border border-[#D6E6EC] shadow-2xs p-6 sm:p-8 space-y-5">
-          <h3 className="font-serif text-lg font-bold text-slate-900 pb-3 border-b border-[#D6E6EC]/60">
+        <div className="glass-panel rounded-3xl border border-[#D6E6EC] shadow-2xs p-6 sm:p-8 space-y-5">
+          <h3 className="font-serif text-lg font-bold text-[#0F291E] pb-3 border-b border-[#D6E6EC]/60">
             Business Overview
           </h3>
 
@@ -335,7 +335,7 @@ export const DashboardPage = () => {
                       className={`px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                         field.value === stage
                           ? 'bg-blue-600 border-blue-600 text-white shadow-sm shadow-blue-500/20'
-                          : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50'
+                          : 'glass-panel border-[#E5E0D8] text-slate-700 hover:border-blue-300 hover:bg-blue-50'
                       }`}
                     >
                       {stage}
@@ -349,8 +349,8 @@ export const DashboardPage = () => {
         </div>
 
         {/* Section 2: Location */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 pb-3 border-b border-slate-100">
+        <div className="glass-panel rounded-2xl border border-[#E5E0D8] shadow-sm p-6 space-y-4">
+          <h3 className="text-sm font-bold text-[#0F291E] pb-3 border-b border-slate-100">
             Business Location / Market
           </h3>
           <p className="text-xs text-slate-500 -mt-1">Where will your business operate?</p>
@@ -377,8 +377,8 @@ export const DashboardPage = () => {
         </div>
 
         {/* Section 3: Business Idea */}
-        <div className="bg-white rounded-3xl border border-[#D6E6EC] shadow-2xs p-6 sm:p-8 space-y-5">
-          <h3 className="font-serif text-lg font-bold text-slate-900 pb-3 border-b border-[#D6E6EC]/60">
+        <div className="glass-panel rounded-3xl border border-[#D6E6EC] shadow-2xs p-6 sm:p-8 space-y-5">
+          <h3 className="font-serif text-lg font-bold text-[#0F291E] pb-3 border-b border-[#D6E6EC]/60">
             Business Idea
           </h3>
 
@@ -411,8 +411,8 @@ export const DashboardPage = () => {
         </div>
 
         {/* Section 4: Business Goals */}
-        <div className="bg-white rounded-3xl border border-[#D6E6EC] shadow-2xs p-6 sm:p-8 space-y-4">
-          <h3 className="font-serif text-lg font-bold text-slate-900 pb-3 border-b border-[#D6E6EC]/60">
+        <div className="glass-panel rounded-3xl border border-[#D6E6EC] shadow-2xs p-6 sm:p-8 space-y-4">
+          <h3 className="font-serif text-lg font-bold text-[#0F291E] pb-3 border-b border-[#D6E6EC]/60">
             Business Goals
           </h3>
           <FieldLabel required>What is your main business goal?</FieldLabel>
@@ -437,14 +437,14 @@ export const DashboardPage = () => {
                       }
                       className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-xs font-semibold text-left transition-all cursor-pointer ${
                         selected
-                          ? 'bg-slate-900 border-slate-900 text-white shadow-2xs'
-                          : 'bg-[#EAF4F7]/40 border-[#D6E6EC] text-slate-700 hover:bg-[#EAF4F7]'
+                          ? 'bg-[#0F291E] border-slate-900 text-white shadow-2xs'
+                          : 'bg-[#FAF8F5]/40 border-[#D6E6EC] text-slate-700 hover:bg-[#FAF8F5]'
                       }`}
                     >
                       <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                        selected ? 'bg-white border-white' : 'border-slate-300'
+                        selected ? 'glass-panel border-white' : 'border-slate-300'
                       }`}>
-                        {selected && <Check className="w-2.5 h-2.5 text-slate-900" />}
+                        {selected && <Check className="w-2.5 h-2.5 text-[#0F291E]" />}
                       </div>
                       {goal}
                     </button>
@@ -477,8 +477,8 @@ export const DashboardPage = () => {
         </div>
 
         {/* Section 5: Website */}
-        <div className="bg-white rounded-3xl border border-[#D6E6EC] shadow-2xs p-6 sm:p-8 space-y-4">
-          <h3 className="font-serif text-lg font-bold text-slate-900 pb-3 border-b border-[#D6E6EC]/60">
+        <div className="glass-panel rounded-3xl border border-[#D6E6EC] shadow-2xs p-6 sm:p-8 space-y-4">
+          <h3 className="font-serif text-lg font-bold text-[#0F291E] pb-3 border-b border-[#D6E6EC]/60">
             Existing Website <span className="text-slate-400 font-normal text-xs font-sans">(optional)</span>
           </h3>
           <div>
@@ -506,17 +506,17 @@ export const DashboardPage = () => {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.25 }}
-              className="bg-white rounded-3xl border border-[#D6E6EC] p-6 sm:p-8 space-y-4 shadow-2xs"
+              className="glass-panel rounded-3xl border border-[#D6E6EC] p-6 sm:p-8 space-y-4 shadow-2xs"
             >
               <div className="pb-3 border-b border-[#D6E6EC]/60">
-                <h3 className="font-serif text-lg font-bold text-slate-900">Current Business Information</h3>
+                <h3 className="font-serif text-lg font-bold text-[#0F291E]">Current Business Information</h3>
                 <p className="text-xs text-slate-500 mt-0.5">All fields in this section are optional.</p>
               </div>
 
               <div className="space-y-3">
                 {SOCIAL_PLATFORMS.map(({ key, label, icon: Icon, placeholder }) => (
                   <div key={key} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#EAF4F7] border border-[#D6E6EC] flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-[#FAF8F5] border border-[#D6E6EC] flex items-center justify-center shrink-0">
                       <Icon className="w-3.5 h-3.5 text-slate-600" />
                     </div>
                     <div className="flex-1">
@@ -539,7 +539,7 @@ export const DashboardPage = () => {
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-md cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-md cursor-pointer disabled:opacity-50"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
             {saving ? 'Saving...' : 'Continue to Brand Analysis'}
@@ -551,3 +551,4 @@ export const DashboardPage = () => {
     </div>
   );
 };
+

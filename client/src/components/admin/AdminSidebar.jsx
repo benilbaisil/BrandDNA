@@ -11,7 +11,9 @@ import {
   User,
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Truck,
+  Package
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -25,13 +27,14 @@ export const AdminSidebar = ({ isCollapsed, toggleSidebar, mobileOpen, closeMobi
   };
 
   const navItems = [
-    { name: 'Overview', path: '/admin', icon: LayoutDashboard, exact: true },
-    { name: 'Users', path: '/admin/users', icon: Users },
-    { name: 'Startups', path: '/admin/startups', icon: Building2 },
-    { name: 'Projects', path: '/admin/projects', icon: Sparkles },
-    { name: 'Reports', path: '/admin/reports', icon: FileText },
-    { name: 'Settings', path: '/admin/settings', icon: Settings },
-    { name: 'Profile', path: '/admin/profile', icon: User },
+    { name: 'Dashboard Overview', path: '/admin/dashboard', icon: LayoutDashboard, exact: true },
+    { name: 'Delivery Management', path: '/admin/delivery', icon: Truck },
+    { name: 'Orders & Tracking', path: '/admin/orders', icon: Package },
+    { name: 'Products & Stock', path: '/admin/products', icon: Package },
+    { name: 'Users & Staff Access', path: '/admin/users', icon: Users },
+    { name: 'Reports Generator', path: '/admin/reports', icon: FileText },
+    { name: 'Admin Settings', path: '/admin/settings', icon: Settings },
+    { name: 'Admin Profile', path: '/admin/profile', icon: User },
   ];
 
   return (

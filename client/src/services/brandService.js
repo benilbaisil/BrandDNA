@@ -1,74 +1,45 @@
 import api from './api';
 
 export const brandService = {
-  getIdentity: async () => {
-    const response = await api.get('/brand/identity');
-    return response.data;
+  // Get all user brands
+  getBrands: async () => {
+    const res = await api.get('/brands');
+    return res.data;
   },
 
-  generateInsights: async () => {
-    const response = await api.post('/brand/generate-insights');
-    return response.data;
+  // Get brand by ID (including products under this brand)
+  getBrandById: async (id) => {
+    const res = await api.get(`/brands/${id}`);
+    return res.data;
   },
 
-  generateBrand: async (data) => {
-    const response = await api.post('/brand/generate', data);
-    return response.data;
+  // Create new brand
+  createBrand: async (data) => {
+    const res = await api.post('/brands', data);
+    return res.data;
   },
 
-  saveBrandIdentity: async (data) => {
-    const response = await api.post('/brand/generate', data);
-    return response.data;
+  // Update existing brand
+  updateBrand: async (id, data) => {
+    const res = await api.put(`/brands/${id}`, data);
+    return res.data;
   },
 
-  // 6 Section-specific AI Generation APIs
-  generateBrandName: async () => {
-    const response = await api.post('/ai/brand-name');
-    return response.data;
+  // Delete brand
+  deleteBrand: async (id) => {
+    const res = await api.delete(`/brands/${id}`);
+    return res.data;
   },
 
-  generateTagline: async (context) => {
-    const response = await api.post('/ai/tagline', context);
-    return response.data;
+  // Generate full Brand Identity using Gemini AI
+  generateBrandAI: async (data) => {
+    const res = await api.post('/brands/ai/generate', data);
+    return res.data;
   },
 
-  generateMission: async (context) => {
-    const response = await api.post('/ai/mission', context);
-    return response.data;
-  },
-
-  generateVision: async (context) => {
-    const response = await api.post('/ai/vision', context);
-    return response.data;
-  },
-
-  generateBrandStory: async (context) => {
-    const response = await api.post('/ai/brand-story', context);
-    return response.data;
-  },
-
-  generateBrandPersonality: async (context) => {
-    const response = await api.post('/ai/brand-personality', context);
-    return response.data;
-  },
-
-  getProjects: async () => {
-    const response = await api.get('/brand/projects');
-    return response.data;
-  },
-
-  createProject: async (projectData) => {
-    const response = await api.post('/brand/projects', projectData);
-    return response.data;
-  },
-
-  deleteProject: async (id) => {
-    const response = await api.delete(`/brand/projects/${id}`);
-    return response.data;
-  },
-
-  getReports: async () => {
-    const response = await api.get('/brand/reports');
-    return response.data;
+  // Generate specific brand section AI
+  generateBrandSectionAI: async (sectionKey, data) => {
+    const res = await api.post(`/brands/ai/generate/${sectionKey}`, data);
+    return res.data;
   },
 };

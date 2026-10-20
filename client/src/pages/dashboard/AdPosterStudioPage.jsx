@@ -1,1532 +1,1092 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Image as ImageIcon,
   Sparkles,
-  RefreshCw,
-  Copy,
-  Check,
-  Tag,
-  Palette,
-  Type,
-  Layout,
-  Building2,
-  Target,
-  ArrowRight,
-  Eye,
-  Sliders,
-  Zap,
-  Users,
-  ShieldCheck,
-  CheckCircle2,
-  BookmarkCheck,
-  Download,
-  FileText,
-  Wand2,
-  Layers,
-  Globe,
-  Award,
-  Save,
-  QrCode,
-  Star,
-  Compass,
+  Rocket,
   Package,
-  BookOpen,
-  Share2,
-  Maximize2,
-  X,
-  MessageSquare
+  RefreshCw,
+  Download,
+  Save,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle2,
+  Palette,
+  ChevronDown,
+  Image as ImageIcon,
+  ShieldCheck,
+  Zap,
+  Check,
+  Layers,
+  Cloud,
+  Eye,
+  Tag,
+  Boxes
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
-import { startupService } from '../../services/startupService';
-import { brandService } from '../../services/brandService';
-import { productStrategyService } from '../../services/productStrategyService';
-import { personaService } from '../../services/personaService';
+import { marketingProductService } from '../../services/marketingProductService';
+import { businessService } from '../../services/businessService';
 import { useToast } from '../../context/ToastContext';
 
-const descSummary = (desc, fallback) => {
-  if (!desc) return fallback || '';
-  return desc.length > 100 ? desc.substring(0, 97) + '...' : desc;
+// ── Themes ─────────────────────────────────────────────────────────────────
+const themes = {
+  indigo_slate: {
+    primary: '#0F172A',
+    accent: '#4F46E5',
+    bg: '#F8FAFC',
+    text: '#FFFFFF',
+    badgeBg: '#EEF2FF',
+    badgeText: '#4338CA',
+    label: 'Indigo Night',
+    overlay: 'linear-gradient(180deg, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.4) 40%, rgba(15,23,42,0.92) 100%)'
+  },
+  emerald_luxury: {
+    primary: '#064E3B',
+    accent: '#10B981',
+    bg: '#F0FDF4',
+    text: '#FFFFFF',
+    badgeBg: '#ECFDF5',
+    badgeText: '#047857',
+    label: 'Emerald Lux',
+    overlay: 'linear-gradient(180deg, rgba(6,78,59,0.85) 0%, rgba(6,78,59,0.4) 40%, rgba(6,78,59,0.92) 100%)'
+  },
+  amber_warm: {
+    primary: '#78350F',
+    accent: '#F59E0B',
+    bg: '#FFFBEB',
+    text: '#FFFFFF',
+    badgeBg: '#FEF3C7',
+    badgeText: '#B45309',
+    label: 'Amber Glow',
+    overlay: 'linear-gradient(180deg, rgba(120,53,15,0.85) 0%, rgba(120,53,15,0.4) 40%, rgba(120,53,15,0.92) 100%)'
+  },
+  rose_chic: {
+    primary: '#881337',
+    accent: '#F43F5E',
+    bg: '#FFF1F2',
+    text: '#FFFFFF',
+    badgeBg: '#FFE4E6',
+    badgeText: '#BE123C',
+    label: 'Rose Chic',
+    overlay: 'linear-gradient(180deg, rgba(136,19,55,0.85) 0%, rgba(136,19,55,0.4) 40%, rgba(136,19,55,0.92) 100%)'
+  },
+  dark_obsidian: {
+    primary: '#090D16',
+    accent: '#38BDF8',
+    bg: '#0F172A',
+    text: '#FFFFFF',
+    badgeBg: '#1E293B',
+    badgeText: '#38BDF8',
+    label: 'Dark Sky',
+    overlay: 'linear-gradient(180deg, rgba(9,13,22,0.88) 0%, rgba(9,13,22,0.4) 40%, rgba(9,13,22,0.95) 100%)'
+  },
 };
 
-const getIndustryFallbackImage = (industry = '') => {
-  const ind = (industry || '').toLowerCase();
-
-  if (ind.includes('tech') || ind.includes('saas') || ind.includes('ai') || ind.includes('software')) {
-    return 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1200&auto=format&fit=crop';
-  }
-  if (ind.includes('food') || ind.includes('beverage') || ind.includes('choco') || ind.includes('coffee') || ind.includes('bakery') || ind.includes('restaurant')) {
-    return 'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?q=80&w=1200&auto=format&fit=crop';
-  }
-  if (ind.includes('beauty') || ind.includes('cosmetic') || ind.includes('wellness') || ind.includes('skincare') || ind.includes('health') || ind.includes('fitness')) {
-    return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=1200&auto=format&fit=crop';
-  }
-  if (ind.includes('fashion') || ind.includes('apparel') || ind.includes('luxury') || ind.includes('clothing') || ind.includes('jewel')) {
-    return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1200&auto=format&fit=crop';
-  }
-  if (ind.includes('estate') || ind.includes('property') || ind.includes('home') || ind.includes('decor') || ind.includes('interior')) {
-    return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop';
-  }
-
-  return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1200&auto=format&fit=crop';
-};
-
-export const AdPosterStudioPage = () => {
-  const { addToast } = useToast();
-  const showToast = (msg, type = 'success') => addToast(msg, type);
-
-  // Data Loading & Operation States
-  const [loading, setLoading] = useState(true);
-  const [generatingAll, setGeneratingAll] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [copiedIndex, setCopiedIndex] = useState(null);
-
-  // Deep Studio Modal & Poster Seeds State
-  const [activeModalPost, setActiveModalPost] = useState(null);
-  const [activePosterSeed, setActivePosterSeed] = useState(42);
-  const [customVisualPrompt, setCustomVisualPrompt] = useState('');
-  const [downloadedFilePreview, setDownloadedFilePreview] = useState(null);
-
-  // Consolidated Brand DNA & Product Context loaded from Database
-  const [brandContext, setBrandContext] = useState({
-    brandName: 'Pulari',
-    companyName: 'Pulari',
-    industry: 'E-commerce / Artisanal Confectionery',
-    targetAudience: 'Modern Consumers & Connoisseurs',
-    tagline: 'Artisanal Luxury Chocolates Handcrafted with Pure Cocoa',
-    missionStatement: 'Delivering uncompromised artisanal chocolates made with direct-trade single-origin cacao.',
-    visionStatement: 'To redefine luxury confectionery through sustainable ethical cacao sourcing.',
-    brandStory: 'Founded with a passion for uncompromised purity, Pulari crafts single-origin cocoa drops.',
-    brandPersonality: 'Visionary, Sophisticated, Authentic, Premium',
-    productName: 'Pulari ChocoDrop',
-    productTagline: 'Pure Cacao, Zero Sugar',
-    shortDescription: 'Velvety smooth 100% organic cacao drops handcrafted with zero refined sugars.',
-    detailedDescription: 'Handcrafted single-origin organic dark chocolate drops tempered to perfection.',
-    usps: [
-      { title: '100% Organic Cacao', description: 'Zero refined sugars or artificial additives.' },
-      { title: 'Single-Origin Direct Trade', description: 'Sourced directly from sustainable cocoa farms.' },
-      { title: 'Velvety Melt-in-Mouth Texture', description: 'Slow-tempered artisanal chocolate drops.' }
-    ],
-    positioningStatement: 'For chocolate lovers who demand pure quality, Pulari ChocoDrop offers uncompromised artisanal taste with zero refined sugars.',
-    personas: [
-      {
-        personaName: 'Sarah, the Busy Founder',
-        demographics: { age: '28-35', occupation: 'Tech Founder' },
-        painPoints: { primaryChallenge: 'Needs healthy, premium snacks during long strategy sessions.' }
-      }
-    ],
-    website: 'www.pulari.com'
-  });
-
-  // Featured USP Index
-  const [selectedUspIndex, setSelectedUspIndex] = useState(0);
-
-  // Global Theme & Typography Preset
-  const [globalTheme, setGlobalTheme] = useState('choco_cream');
-  const [globalFont, setGlobalFont] = useState('serif');
-
-  // Multi-Ad Posts Suite Data State (6 Posts)
-  const [adPosts, setAdPosts] = useState([]);
-
-  // Load initial data from Brand Analysis & Product Strategy Pages
-  useEffect(() => {
-    fetchBrandAndStrategyContext();
-
-    const handleGlobalSync = () => {
-      fetchBrandAndStrategyContext();
-    };
-    window.addEventListener('brand_dna_updated', handleGlobalSync);
-    return () => window.removeEventListener('brand_dna_updated', handleGlobalSync);
-  }, []);
-
-  const fetchBrandAndStrategyContext = async () => {
-    setLoading(true);
-    try {
-      const [profileRes, brandRes, strategyRes, personaRes] = await Promise.allSettled([
-        startupService.getProfile(),
-        brandService.getIdentity(),
-        productStrategyService.getStrategy(),
-        personaService.getPersonas(),
-      ]);
-
-      let company = 'Master Brand';
-      let ind = 'Business Category';
-      let target = 'Modern Consumers';
-      let web = 'www.branddna.ai';
-
-      if (profileRes.status === 'fulfilled' && profileRes.value?.data) {
-        const p = profileRes.value.data;
-        company = p.companyName || company;
-        ind = p.industry || ind;
-        target = p.targetAudience || target;
-        web = p.website ? p.website.replace(/^https?:\/\//, '') : web;
-      }
-
-      let bName = company;
-      let tag = '';
-      let miss = '';
-      let vis = '';
-      let story = '';
-      let pers = '';
-
-      if (brandRes.status === 'fulfilled' && brandRes.value?.data) {
-        const b = brandRes.value.data.brand || brandRes.value.data;
-        bName = b.brandName || bName;
-        tag = b.tagline || tag;
-        miss = b.missionStatement || miss;
-        vis = b.visionStatement || vis;
-        story = b.brandStory || story;
-        pers = b.brandPersonality || pers;
-      }
-
-      let pName = bName;
-      let pTag = tag;
-      let desc = tag || 'High-performance solution tailored for your market needs.';
-      let detailedDesc = '';
-      let uspsList = [];
-      let posStmt = '';
-
-      if (strategyRes.status === 'fulfilled' && strategyRes.value?.data) {
-        const s = strategyRes.value.data.strategy || strategyRes.value.data;
-        pName = s.productName || pName;
-        pTag = s.productTagline || pTag;
-        desc = s.shortDescription || desc;
-        detailedDesc = s.detailedDescription || detailedDesc;
-        if (s.usps && Array.isArray(s.usps) && s.usps.length > 0) {
-          uspsList = s.usps;
-        }
-        posStmt = s.positioningStatement || posStmt;
-      }
-
-      let personaList = [];
-      if (personaRes.status === 'fulfilled' && personaRes.value?.data) {
-        const pData = personaRes.value.data;
-        personaList = pData.personas || (Array.isArray(pData) ? pData : []);
-      }
-
-      if (uspsList.length === 0) {
-        uspsList = [
-          { title: 'Institutional Quality', description: desc || 'Built for high performance' },
-          { title: 'Signature Advantage', description: posStmt || 'Tailored to market needs' }
-        ];
-      }
-
-      const mergedContext = {
-        brandName: bName,
-        companyName: company,
-        industry: ind,
-        targetAudience: target,
-        tagline: tag || desc,
-        missionStatement: miss,
-        visionStatement: vis,
-        brandStory: story,
-        brandPersonality: pers || 'Visionary, Sophisticated, Premium',
-        productName: pName,
-        productTagline: pTag,
-        shortDescription: desc,
-        detailedDescription: detailedDesc,
-        usps: uspsList,
-        positioningStatement: posStmt,
-        personas: personaList,
-        website: web,
-      };
-
-      setBrandContext(mergedContext);
-
-      // Only generate default adPosts suite if adPosts is currently empty
-      setAdPosts((prevPosts) => {
-        if (!prevPosts || prevPosts.length === 0) {
-          return generatePostsSuiteArray(mergedContext, selectedUspIndex, 42);
-        }
-        return prevPosts.map((p) => ({
-          ...p,
-          websiteUrl: web || p.websiteUrl,
-        }));
-      });
-    } catch (err) {
-      console.error('Error fetching brand context:', err);
-      showToast('Loaded saved brand context.', 'info');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Generate 6 distinct Commercial Advertisement Posts array
-  const generatePostsSuiteArray = (ctx = brandContext, uspIdx = selectedUspIndex, seedBase = 42) => {
-    const bName = ctx.brandName || ctx.companyName || 'Master Brand';
-    const pName = ctx.productName || bName;
-    const ind = ctx.industry || 'Market Category';
-    const tag = ctx.tagline || ctx.shortDescription || `Elevating your ${ind}`;
-    const activeUsp = ctx.usps && ctx.usps[uspIdx] ? ctx.usps[uspIdx] : ctx.usps[0] || { title: 'Signature Advantage', description: 'Built for high quality' };
-    const firstPersona = ctx.personas && ctx.personas[0] ? ctx.personas[0] : null;
-    const personaTarget = firstPersona ? firstPersona.personaName.split(',')[0] : ctx.targetAudience || 'Connoisseurs';
-    const personaChallenge = firstPersona?.painPoints?.primaryChallenge || 'Finding uncompromised quality in the market';
-    const pos = ctx.positioningStatement || `${pName} sets the new gold standard in ${ind}.`;
-
-    const sanitizedTag = ind.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-    return [
-      {
-        id: 'post-1',
-        title: 'Hero Product Showcase Ad',
-        type: 'Social Feed Post (1:1)',
-        aspectRatio: '1:1',
-        seed: seedBase + 10,
-        badgeText: 'SIGNATURE LAUNCH',
-        headlineText: `Experience ${pName}`,
-        subtitleText: tag,
-        ctaText: 'Explore Collection',
-        websiteUrl: ctx.website || 'www.branddna.ai',
-        sloganText: `Crafted by ${bName}`,
-        theme: 'choco_cream',
-        promptKeyword: `professional hero studio showcase photo of ${pName} by ${bName}, ${ind} category, centered pedestal display, cinematic soft key lighting, 8k commercial photography`,
-        captionText: `✨ Elevate your everyday experience with ${pName} by ${bName}.\n\n${descSummary(ctx.shortDescription, tag)}\n\n👉 Discover the collection: ${ctx.website || 'www.branddna.ai'}\n\n#${bName.replace(/\s+/g, '')} #${pName.replace(/\s+/g, '')} #${sanitizedTag} #CommercialAd #ProductLaunch`
-      },
-      {
-        id: 'post-2',
-        title: 'USP Feature Spotlight Ad',
-        type: 'Portrait Feed Post (4:5)',
-        aspectRatio: '4:5',
-        seed: seedBase + 20,
-        badgeText: 'CORE ADVANTAGE',
-        headlineText: activeUsp.title,
-        subtitleText: `${activeUsp.description} • Powered by ${bName}`,
-        ctaText: 'Learn More',
-        websiteUrl: ctx.website || 'www.branddna.ai',
-        sloganText: `${activeUsp.title} Guarantee`,
-        theme: 'emerald_gold',
-        promptKeyword: `emerald and gold luxury macro feature detail shot of ${pName}, ${activeUsp.title}, dark studio atmosphere, premium lighting reflections, 8k photo`,
-        captionText: `💡 Why connoisseurs choose ${pName}:\n\n- ${activeUsp.title}: ${activeUsp.description}\n\nEngineered by ${bName} for uncompromised standards.\n\n🔗 Read the strategy: ${ctx.website || 'www.branddna.ai'}\n\n#${activeUsp.title.replace(/\s+/g, '')} #${pName.replace(/\s+/g, '')} #USP #BrandQuality`
-      },
-      {
-        id: 'post-3',
-        title: 'Promotional Launch & Offer Banner',
-        type: 'Square Feed Post (1:1)',
-        aspectRatio: '1:1',
-        seed: seedBase + 30,
-        badgeText: 'LIMITED EDITION',
-        headlineText: `Introducing ${pName}`,
-        subtitleText: `${ctx.productTagline || tag} — Official Release Available Now.`,
-        ctaText: 'Get Exclusive Access',
-        websiteUrl: ctx.website || 'www.branddna.ai',
-        sloganText: 'Official Commercial Launch',
-        theme: 'sunset_gold',
-        promptKeyword: `dramatic promotional hero launch shot of ${pName} by ${bName}, golden hour sunlight flare, commercial release aesthetic, 8k photo`,
-        captionText: `🎉 THE WAIT IS OVER!\n\nIntroducing ${pName} by ${bName}. ${ctx.productTagline || tag}.\n\nLimited initial release batch. Secure yours today!\n\n🛒 Order now: ${ctx.website || 'www.branddna.ai'}\n\n#OfficialRelease #NewLaunch #${pName.replace(/\s+/g, '')} #ExclusiveOffer`
-      },
-      {
-        id: 'post-4',
-        title: 'Target Persona Solution Ad',
-        type: 'Contextual Feed Post (4:5)',
-        aspectRatio: '4:5',
-        seed: seedBase + 40,
-        badgeText: 'ICP TARGETED',
-        headlineText: `Designed for ${personaTarget}`,
-        subtitleText: personaChallenge,
-        ctaText: 'View Solution',
-        websiteUrl: ctx.website || 'www.branddna.ai',
-        sloganText: `Built for ${personaTarget}`,
-        theme: 'royal_indigo',
-        promptKeyword: `authentic lifestyle contextual advertisement photo of ${pName} for ${personaTarget}, warm ambient light, editorial quality studio shot`,
-        captionText: `🎯 Built specifically for ${personaTarget}.\n\nSay goodbye to ${personaChallenge.toLowerCase()}. ${pName} provides the exact solution you've been searching for.\n\nLearn how it works: ${ctx.website || 'www.branddna.ai'}\n\n#${personaTarget.replace(/\s+/g, '')} #ProductSolution #${bName.replace(/\s+/g, '')}`
-      },
-      {
-        id: 'post-5',
-        title: 'Editorial Brand Positioning Post',
-        type: 'Editorial Quote Card (1:1)',
-        aspectRatio: '1:1',
-        seed: seedBase + 50,
-        badgeText: 'BRAND STATEMENT',
-        headlineText: `Redefining ${ind.split('/')[0]}`,
-        subtitleText: pos.length > 120 ? pos.substring(0, 117) + '...' : pos,
-        ctaText: 'Read Our Story',
-        websiteUrl: ctx.website || 'www.branddna.ai',
-        sloganText: `${bName} Brand Promise`,
-        theme: 'velvet_crimson',
-        promptKeyword: `editorial brand positioning magazine photo for ${bName} ${pName}, architectural backdrop, soft key shadows, corporate luxury aesthetic`,
-        captionText: `💬 "${pos}"\n\nAt ${bName}, we believe in pushing the boundaries of ${ind}.\n\nRead our complete brand story: ${ctx.website || 'www.branddna.ai'}\n\n#BrandPositioning #Leadership #${bName.replace(/\s+/g, '')} #Vision`
-      },
-      {
-        id: 'post-6',
-        title: 'Mobile Story / Reel Cover Banner',
-        type: 'Vertical Story Ad (9:16)',
-        aspectRatio: '9:16',
-        seed: seedBase + 60,
-        badgeText: 'SWIPE UP TO SHOP',
-        headlineText: `${pName} is Here`,
-        subtitleText: `${tag} • Tap to view product.`,
-        ctaText: 'Swipe Up / Click Link',
-        websiteUrl: ctx.website || 'www.branddna.ai',
-        sloganText: `Official ${bName} Story`,
-        theme: 'cyber_neon',
-        promptKeyword: `vertical mobile story product showcase photo of ${pName}, cyber cyan and blue neon rim light, sleek futuristic vertical composition, 8k photo`,
-        captionText: `📲 ${pName} is now live!\n\nTap the link to explore the collection: ${ctx.website || 'www.branddna.ai'}\n\n#StoryAd #MobileLaunch #${pName.replace(/\s+/g, '')}`
-      }
-    ];
-  };
-
-  const generateAdPostsSuite = (ctx = brandContext, uspIdx = selectedUspIndex, seedBase = 42) => {
-    const postsSuite = generatePostsSuiteArray(ctx, uspIdx, seedBase);
-    setAdPosts(postsSuite);
-  };
-
-  // Helper to fetch external image as base64 DataURL for CORS-safe canvas export
-  const getBase64FromUrl = (url) => {
-    return new Promise((resolve) => {
-      if (!url || url.startsWith('data:')) {
-        resolve(url);
-        return;
-      }
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth || img.width || 800;
-          canvas.height = img.naturalHeight || img.height || 800;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          const dataUrl = canvas.toDataURL('image/png');
-          resolve(dataUrl);
-        } catch (e) {
-          console.warn('Canvas toDataURL security error fallback:', e);
-          resolve(url);
-        }
-      };
-      img.onerror = () => {
-        resolve(url);
-      };
-      img.src = url;
-    });
-  };
-
-  // Native 2D Canvas Direct Commercial Ad Poster Exporter (100% CORS & DOM-error proof)
-  const exportAdPostDirectCanvas = (post, format = 'png') => {
-    return new Promise((resolve) => {
-      try {
-        const width = post.aspectRatio === '9:16' ? 1080 : 1200;
-        const height = post.aspectRatio === '1:1' ? 1200 : post.aspectRatio === '9:16' ? 1920 : 1500;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-
-        // Fill background slate
-        ctx.fillStyle = '#0F172A';
-        ctx.fillRect(0, 0, width, height);
-
-        const bName = brandContext.brandName || 'Brand';
-        const pName = brandContext.productName || 'Product';
-        const title = post.headlineText || `Experience ${pName}`;
-        const subtitle = post.subtitleText || brandContext.tagline || '';
-        const badge = post.badgeText || 'COMMERCIAL RELEASE';
-        const cta = post.ctaText || 'Explore Product';
-        const website = post.websiteUrl || brandContext.website || 'www.branddna.ai';
-
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-
-        const renderCanvasAndDownload = () => {
-          try {
-            if (img.complete && img.naturalWidth !== 0) {
-              ctx.drawImage(img, 0, 0, width, height);
-            }
-          } catch (e) {}
-
-          // Gradient overlay
-          const grad = ctx.createLinearGradient(0, 0, 0, height);
-          grad.addColorStop(0, 'rgba(15, 23, 42, 0.88)');
-          grad.addColorStop(0.5, 'rgba(15, 23, 42, 0.55)');
-          grad.addColorStop(1, 'rgba(15, 23, 42, 0.95)');
-          ctx.fillStyle = grad;
-          ctx.fillRect(0, 0, width, height);
-
-          // Top Header: Brand Name & Badge
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 32px sans-serif';
-          ctx.fillText(bName.toUpperCase(), 60, 90);
-
-          if (badge) {
-            ctx.fillStyle = '#F59E0B';
-            ctx.beginPath();
-            ctx.roundRect(width - 340, 55, 280, 48, 24);
-            ctx.fill();
-
-            ctx.fillStyle = '#0F172A';
-            ctx.font = 'bold 18px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(badge.toUpperCase(), width - 200, 86);
-            ctx.textAlign = 'left';
-          }
-
-          // Center Product Tag
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-          ctx.beginPath();
-          ctx.roundRect(60, height / 2 - 40, width - 120, 70, 35);
-          ctx.fill();
-
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = '600 24px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(`✨ ${pName}`, width / 2, height / 2 + 6);
-          ctx.textAlign = 'left';
-
-          // Bottom Headline & Subtitle
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 54px sans-serif';
-
-          const words = title.split(' ');
-          let line = '';
-          let y = height - 280;
-          for (let n = 0; n < words.length; n++) {
-            const testLine = line + words[n] + ' ';
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > width - 120 && n > 0) {
-              ctx.fillText(line, 60, y);
-              line = words[n] + ' ';
-              y += 64;
-            } else {
-              line = testLine;
-            }
-          }
-          ctx.fillText(line, 60, y);
-
-          // Subtitle
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-          ctx.font = '500 24px sans-serif';
-          ctx.fillText(subtitle.length > 90 ? subtitle.substring(0, 87) + '...' : subtitle, 60, y + 55);
-
-          // CTA Button
-          ctx.fillStyle = '#F59E0B';
-          ctx.beginPath();
-          ctx.roundRect(60, height - 110, 260, 60, 30);
-          ctx.fill();
-
-          ctx.fillStyle = '#0F172A';
-          ctx.font = 'bold 22px sans-serif';
-          ctx.fillText(cta, 95, height - 73);
-
-          // Website handle
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-          ctx.font = 'bold 20px monospace';
-          ctx.textAlign = 'right';
-          ctx.fillText(website.toUpperCase(), width - 60, height - 73);
-          ctx.textAlign = 'left';
-
-          // Data URL & File Trigger
-          const imageUri = canvas.toDataURL('image/png');
-          const sanitized = `${pName}_${post.title || 'Poster'}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-          const fileName = `${sanitized}_${Date.now()}.${format}`;
-
-          if (format === 'png') {
-            const link = document.createElement('a');
-            link.download = fileName;
-            link.href = imageUri;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          } else if (format === 'pdf') {
-            const pdf = new jsPDF({
-              orientation: 'portrait',
-              unit: 'mm',
-              format: [210, 262.5],
-            });
-            pdf.addImage(imageUri, 'PNG', 0, 0, 210, 262.5);
-            pdf.save(fileName);
-          }
-
-          setDownloadedFilePreview({
-            title: post.title || 'Ad Poster',
-            format: format.toUpperCase(),
-            fileName: fileName,
-            imageUri: imageUri,
-            dimensions: `${width} x ${height} px (300 DPI High Res)`,
-          });
-
-          showToast(`Downloaded ${post.title || 'Ad Poster'} as ${format.toUpperCase()} file!`, 'success');
-          resolve(true);
-        };
-
-        img.onload = renderCanvasAndDownload;
-        img.onerror = renderCanvasAndDownload;
-        img.src = getImageUrlForPost(post);
-      } catch (err) {
-        console.error('Direct canvas render error:', err);
-        resolve(false);
-      }
-    });
-  };
-
-  // Download a single ad post card as PNG or PDF with fail-safe CORS fallback
-  const handleDownloadSinglePost = async (postId, format = 'png', title = 'Ad_Post') => {
-    const targetPost = adPosts.find((p) => p.id === postId) || activeModalPost;
-    const canvasEl = document.getElementById(`canvas-${postId}`) || document.getElementById(`modal-canvas-${postId}`);
-
-    setDownloading(true);
-    showToast(`Preparing high-res ${title} (${format.toUpperCase()})...`, 'info');
-
-    try {
-      if (!canvasEl) {
-        if (targetPost) {
-          await exportAdPostDirectCanvas(targetPost, format);
-        }
-        return;
-      }
-
-      const imgEl = canvasEl.querySelector('img');
-      let originalSrc = '';
-      let dataUrl = '';
-
-      if (imgEl && imgEl.src) {
-        originalSrc = imgEl.src;
-        dataUrl = await getBase64FromUrl(originalSrc);
-        if (dataUrl && dataUrl.startsWith('data:')) {
-          imgEl.src = dataUrl;
-        }
-      }
-
-      await new Promise((r) => setTimeout(r, 200));
-
-      let canvas;
-      try {
-        canvas = await html2canvas(canvasEl, {
-          useCORS: true,
-          allowTaint: false,
-          scale: 3,
-          logging: false,
-          backgroundColor: null,
-        });
-      } catch (canvasErr) {
-        console.warn('Primary html2canvas render failed, running fallback export:', canvasErr);
-        if (imgEl) imgEl.style.display = 'none';
-        canvas = await html2canvas(canvasEl, {
-          useCORS: true,
-          allowTaint: false,
-          scale: 3,
-          logging: false,
-        });
-        if (imgEl) imgEl.style.display = '';
-      }
-
-      if (imgEl && originalSrc && dataUrl !== originalSrc) {
-        imgEl.src = originalSrc;
-      }
-
-      const pName = brandContext.productName || brandContext.brandName || 'Ad_Post';
-      const sanitizedName = `${pName}_${title}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const timeStamp = Date.now();
-      const imageUri = canvas.toDataURL('image/png');
-      const fileName = `${sanitizedName}_${timeStamp}.${format}`;
-
-      if (format === 'png') {
-        const link = document.createElement('a');
-        link.download = fileName;
-        link.href = imageUri;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else if (format === 'pdf') {
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: [210, 210],
-        });
-        pdf.addImage(imageUri, 'PNG', 0, 0, 210, 210);
-        pdf.save(fileName);
-      }
-
-      setDownloadedFilePreview({
-        title: title,
-        format: format.toUpperCase(),
-        fileName: fileName,
-        imageUri: imageUri,
-        dimensions: '2400 x 3000 px (300 DPI High Res)',
-      });
-
-      showToast(`Downloaded ${title} as ${format.toUpperCase()} file!`, 'success');
-    } catch (err) {
-      console.error('Single post export error, using native 2D canvas generator:', err);
-      if (targetPost) {
-        await exportAdPostDirectCanvas(targetPost, format);
-      } else {
-        showToast('Could not download post.', 'error');
-      }
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  // Download entire campaign as a multi-page PDF document with fail-safe CORS fallback
-  const handleDownloadFullCampaignPdf = async () => {
-    setDownloading(true);
-    showToast('Generating full multi-page commercial ad campaign PDF...', 'info');
-
-    try {
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [210, 262.5],
-      });
-
-      for (let i = 0; i < adPosts.length; i++) {
-        const post = adPosts[i];
-        const canvasEl = document.getElementById(`canvas-${post.id}`);
-        if (canvasEl) {
-          const imgEl = canvasEl.querySelector('img');
-          let originalSrc = '';
-          let dataUrl = '';
-          if (imgEl && imgEl.src) {
-            originalSrc = imgEl.src;
-            dataUrl = await getBase64FromUrl(originalSrc);
-            if (dataUrl && dataUrl.startsWith('data:')) imgEl.src = dataUrl;
-          }
-
-          await new Promise((r) => setTimeout(r, 200));
-
-          let canvas;
-          try {
-            canvas = await html2canvas(canvasEl, {
-              useCORS: true,
-              allowTaint: false,
-              scale: 2.5,
-              logging: false,
-            });
-          } catch (cErr) {
-            if (imgEl) imgEl.style.display = 'none';
-            canvas = await html2canvas(canvasEl, {
-              useCORS: true,
-              allowTaint: false,
-              scale: 2.5,
-              logging: false,
-            });
-            if (imgEl) imgEl.style.display = '';
-          }
-
-          if (imgEl && originalSrc && dataUrl !== originalSrc) imgEl.src = originalSrc;
-
-          const imageUri = canvas.toDataURL('image/png');
-          if (i > 0) pdf.addPage([210, 262.5], 'portrait');
-          pdf.addImage(imageUri, 'PNG', 0, 0, 210, 262.5);
-        }
-      }
-
-      const pName = (brandContext.productName || 'Brand').replace(/[^a-zA-Z0-9_-]/g, '_');
-      pdf.save(`${pName}_Full_Ad_Campaign_${Date.now()}.pdf`);
-      showToast('Downloaded complete 6-Post Commercial Campaign PDF!', 'success');
-    } catch (err) {
-      console.error('Full PDF export error:', err);
-      showToast('Could not generate campaign PDF. Try downloading posts individually.', 'error');
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  // Regenerate entire ad posts suite with fresh seeds
-  const handleRegenerateAllPosts = () => {
-    setGeneratingAll(true);
-    const newBaseSeed = Math.floor(Math.random() * 90000) + 1000;
-    setTimeout(() => {
-      generateAdPostsSuite(brandContext, selectedUspIndex, newBaseSeed);
-      setGeneratingAll(false);
-      showToast('Synthesized fresh AI ad post artwork suite!', 'success');
-    }, 600);
-  };
-
-  // Save changes made in Ad Poster Studio back to MongoDB & sync across all pages
-  const handleSaveAndSyncToBrandDNA = async () => {
-    setSyncing(true);
-    try {
-      showToast('Saving & synchronizing across all brand pages...', 'info');
-
-      let currentBrandName = brandContext.brandName;
-      let currentProductName = brandContext.productName;
-      let currentTagline = brandContext.tagline;
-      let currentShortDesc = brandContext.shortDescription;
-      let currentWebsite = brandContext.website;
-
-      if (activeModalPost) {
-        setAdPosts((prev) =>
-          prev.map((p) => (p.id === activeModalPost.id ? activeModalPost : p))
-        );
-        if (activeModalPost.subtitleText) {
-          currentTagline = activeModalPost.subtitleText;
-          currentShortDesc = activeModalPost.subtitleText;
-        }
-      }
-
-      await Promise.allSettled([
-        brandService.saveBrandIdentity({
-          brandName: currentBrandName,
-          tagline: currentTagline,
-        }),
-        productStrategyService.saveStrategy({
-          productName: currentProductName,
-          shortDescription: currentShortDesc,
-          productTagline: currentTagline,
-        }),
-        startupService.updateProfile({
-          companyName: currentBrandName,
-          website: currentWebsite,
-        }),
-      ]);
-
-      setBrandContext((prev) => ({
-        ...prev,
-        brandName: currentBrandName,
-        companyName: currentBrandName,
-        productName: currentProductName,
-        tagline: currentTagline,
-        shortDescription: currentShortDesc,
-        website: currentWebsite,
-      }));
-
-      window.dispatchEvent(new CustomEvent('brand_dna_updated'));
-      showToast('Successfully saved & synchronized across all BrandDNA modules!', 'success');
-    } catch (err) {
-      console.error('Error syncing brand DNA:', err);
-      showToast('Saved changes locally.', 'info');
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const copyCaptionText = (text, idx) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIndex(idx);
-    showToast('Ad caption & hashtags copied to clipboard!', 'info');
-    setTimeout(() => setCopiedIndex(null), 2500);
-  };
-
-  // Preset Color Palettes
-  const themeStyles = {
-    choco_cream: {
-      bg: 'from-[#2C1810]/95 via-[#3D2317]/85 to-transparent',
-      text: 'text-amber-100',
-      accent: 'bg-amber-400 text-slate-950',
-      btn: 'bg-amber-400 text-slate-950 hover:bg-amber-300',
-    },
-    emerald_gold: {
-      bg: 'from-[#062C22]/95 via-[#0A4737]/85 to-transparent',
-      text: 'text-emerald-100',
-      accent: 'bg-emerald-400 text-slate-950',
-      btn: 'bg-emerald-400 text-slate-950 hover:bg-emerald-300',
-    },
-    dark_luxury: {
-      bg: 'from-slate-950/95 via-slate-900/85 to-transparent',
-      text: 'text-white',
-      accent: 'bg-white text-slate-950',
-      btn: 'bg-white text-slate-950 hover:bg-slate-100',
-    },
-    velvet_crimson: {
-      bg: 'from-[#3B0712]/95 via-[#580A1C]/85 to-transparent',
-      text: 'text-rose-100',
-      accent: 'bg-rose-400 text-slate-950',
-      btn: 'bg-rose-400 text-slate-950 hover:bg-rose-300',
-    },
-    cyber_neon: {
-      bg: 'from-[#090D16]/95 via-[#0F172A]/85 to-transparent',
-      text: 'text-cyan-100',
-      accent: 'bg-cyan-400 text-slate-950',
-      btn: 'bg-cyan-400 text-slate-950 hover:bg-cyan-300',
-    },
-    sunset_gold: {
-      bg: 'from-[#431407]/95 via-[#7C2D12]/85 to-transparent',
-      text: 'text-orange-100',
-      accent: 'bg-orange-400 text-slate-950',
-      btn: 'bg-orange-400 text-slate-950 hover:bg-orange-300',
-    },
-    royal_indigo: {
-      bg: 'from-[#1E1B4B]/95 via-[#312E81]/85 to-transparent',
-      text: 'text-indigo-100',
-      accent: 'bg-indigo-400 text-slate-950',
-      btn: 'bg-indigo-400 text-slate-950 hover:bg-indigo-300',
-    },
-    minimalist_pearl: {
-      bg: 'from-[#18181B]/95 via-[#27272A]/85 to-transparent',
-      text: 'text-zinc-100',
-      accent: 'bg-zinc-100 text-slate-950',
-      btn: 'bg-zinc-100 text-slate-950 hover:bg-white',
-    },
-  };
-
-  const getImageUrlForPost = (post) => {
-    const pName = brandContext.productName || brandContext.brandName || 'Product Showcase';
-    const bName = brandContext.brandName || 'Master Brand';
-    const ind = brandContext.industry || 'Commercial Product';
-    const desc = brandContext.shortDescription || brandContext.tagline || brandContext.detailedDescription || '';
-    const pers = brandContext.brandPersonality || 'Sleek, Premium';
-    const uspsStr = brandContext.usps && brandContext.usps.length > 0 ? brandContext.usps.map((u) => u.title).join(', ') : '';
-    const pos = brandContext.positioningStatement || '';
-
-    let fullVisualPrompt = `photorealistic commercial advertisement product photo for "${pName}" by brand "${bName}". Category: ${ind}. ${pos ? `Product strategy & positioning: ${pos}. ` : ''}Product description and features: ${desc}. Key highlights: ${uspsStr}. Brand aesthetic: ${pers}. Photography style: ${post.promptKeyword}, studio lighting, 8k resolution, professional advertising photography`;
-
-    if (customVisualPrompt && customVisualPrompt.trim()) {
-      fullVisualPrompt += `. Custom product visual detail: ${customVisualPrompt.trim()}`;
-    }
-
-    let width = 800;
-    let height = 800;
-    if (post.aspectRatio === '4:5') height = 1000;
-    if (post.aspectRatio === '9:16') {
-      width = 720;
-      height = 1280;
-    }
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(fullVisualPrompt)}?width=${width}&height=${height}&nologo=true&seed=${post.seed}`;
-  };
-
-  if (loading) {
+// ── Poster Canvas Component ─────────────────────────────────────────────────
+const PosterCanvas = ({
+  posterRef,
+  adData,
+  theme,
+  selectedProduct,
+  previewView,
+  setPreviewView,
+}) => {
+  const t = themes[theme] || themes.indigo_slate;
+
+  if (!adData) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-semibold text-slate-500 font-mono">
-          Generating Commercial Ad Campaign Suite from Brand DNA & Strategy...
-        </span>
+      <div className="w-full max-w-md aspect-[4/5] rounded-3xl border-2 border-dashed border-[#E5E0D8] bg-[#FAF8F5]/70 flex flex-col items-center justify-center p-8 text-center space-y-4 mx-auto">
+        <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center shadow-inner">
+          <Sparkles className="w-8 h-8 text-indigo-500 animate-pulse" />
+        </div>
+        <div className="space-y-1">
+          <h4 className="text-sm font-bold text-[#0F291E]/90">Live Ad Poster Stage Ready</h4>
+          <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+            Select an inventory product and click <span className="font-semibold text-indigo-600">"Generate Cloud Ad Poster"</span> to render the exact product ad.
+          </p>
+        </div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-[11px] font-mono text-slate-600 font-medium border border-slate-200">
+          <Cloud className="w-3.5 h-3.5 text-sky-500" />
+          <span>Powered by Cloudflare AI + Gemini</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Exact product image URL from data or inventory product
+  const exactImage =
+    adData.productImageUrl ||
+    (selectedProduct?.images && selectedProduct.images.length > 0 ? selectedProduct.images[0] : null) ||
+    selectedProduct?.image ||
+    '';
+
+  const cloudBgImage =
+    adData.cloudImageUrl ||
+    (adData.cloudImageBase64 ? `data:image/jpeg;base64,${adData.cloudImageBase64}` : null);
+
+  // If viewing pure cloud generation
+  if (previewView === 'cloud_only' && cloudBgImage) {
+    return (
+      <div className="w-full max-w-md shadow-2xl rounded-3xl overflow-hidden border border-[#E5E0D8]/80 mx-auto bg-slate-900">
+        <div className="relative aspect-[4/5] flex items-center justify-center overflow-hidden">
+          <img
+            src={cloudBgImage}
+            alt="Cloudflare Generated Studio Ad"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+            <span className="px-3 py-1 bg-black/60 backdrop-blur-md text-sky-300 font-mono text-[10px] font-bold rounded-full border border-sky-400/30 flex items-center gap-1.5">
+              <Cloud className="w-3 h-3 text-sky-400" /> Cloudflare Flux-1-Schnell Studio Render
+            </span>
+          </div>
+          <div className="absolute bottom-4 left-4 right-4 p-3 bg-black/75 backdrop-blur-md rounded-2xl border border-white/10 text-white space-y-1">
+            <p className="text-xs font-bold truncate">{adData.headline}</p>
+            <p className="text-[10px] text-slate-300 line-clamp-2 italic">"{adData.imagePrompt}"</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 text-left pb-24 font-sans">
-      {/* ─────────────────────────────────────────────────────────────
-          PAGE HEADER WITH CAMPAIGN ACTIONS & DOWNLOAD BUNDLE
-         ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-[10px] font-sans font-bold uppercase tracking-wider">
-                Module 06: Marketing & Ad Studio
+    <div className="w-full max-w-md shadow-2xl rounded-3xl overflow-hidden border border-[#E5E0D8]/80 mx-auto group">
+      <div
+        ref={posterRef}
+        className="aspect-[4/5] p-7 sm:p-9 flex flex-col justify-between relative text-white overflow-hidden"
+        style={{
+          backgroundColor: t.primary,
+        }}
+      >
+        {/* Background Layer: Cloud AI Background Visual or Thematic Radial */}
+        {cloudBgImage ? (
+          <>
+            <img
+              src={cloudBgImage}
+              alt="Cloud Backdrop"
+              className="absolute inset-0 w-full h-full object-cover scale-105 filter blur-[0.5px] transition-transform duration-700 pointer-events-none"
+            />
+            {/* Elegant overlay for text legibility & contrast */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: t.overlay }}
+            />
+          </>
+        ) : (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `radial-gradient(circle at top right, ${t.accent}40, transparent 65%), radial-gradient(circle at bottom left, ${t.primary}, transparent 70%)`,
+            }}
+          />
+        )}
+
+        {/* Ambient Top Glow */}
+        <div
+          className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-40 pointer-events-none"
+          style={{ backgroundColor: t.accent }}
+        />
+
+        {/* TOP BAR: Brand Identity, Category & SKU */}
+        <div className="flex items-center justify-between z-10">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-8 h-8 rounded-xl border border-white/20 flex items-center justify-center font-bold text-white text-xs shadow-md backdrop-blur-md"
+              style={{ background: 'rgba(255,255,255,0.12)' }}
+            >
+              {adData.brandNameText?.charAt(0) || 'B'}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-extrabold tracking-tight text-sm text-white uppercase font-serif drop-shadow-sm">
+                {adData.brandNameText || 'BrandDNA'}
               </span>
-              <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Synced with Saved Brand Identity & Product Strategy
+              <span className="text-[9px] font-mono tracking-widest text-slate-300 uppercase font-semibold">
+                Official Collection
               </span>
             </div>
-            <h1 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight">
-              AI Commercial Advertisement Post Creation Studio
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-3xl">
-              Creating high-impact social & commercial ad posts tailored specifically to your Brand Identity (
-              <strong className="text-slate-800">{brandContext.brandName}</strong>) and Product Strategy (
-              <strong className="text-slate-800">{brandContext.productName}</strong>). Download posts individually or export full campaign bundles.
-            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <button
-              onClick={handleSaveAndSyncToBrandDNA}
-              disabled={syncing}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-all shadow-md cursor-pointer disabled:opacity-50"
-            >
-              <Save className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-              <span>{syncing ? 'Syncing...' : 'Save & Sync All Pages'}</span>
-            </button>
-
-            <button
-              onClick={handleDownloadFullCampaignPdf}
-              disabled={downloading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-md cursor-pointer disabled:opacity-50"
-            >
-              <FileText className="w-4 h-4 text-blue-400" />
-              <span>Download Campaign PDF</span>
-            </button>
-
-            <button
-              onClick={handleRegenerateAllPosts}
-              disabled={generatingAll}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 transition-all shadow-md cursor-pointer disabled:opacity-50"
-            >
-              <Sparkles className={`w-4 h-4 ${generatingAll ? 'animate-spin' : ''}`} />
-              <span>{generatingAll ? 'Synthesizing...' : 'Regenerate Campaign AI'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────
-          BRAND IDENTITY & PRODUCT STRATEGY CONTEXT BAR
-         ───────────────────────────────────────────────────────────── */}
-      <div className="p-5 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-[#D6E6EC]/60 pb-3">
-          <div className="flex items-center gap-2">
-            <BookmarkCheck className="w-4 h-4 text-emerald-600" />
-            <span className="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
-              Synced Brand DNA & Strategy Attributes (Database Verified)
-            </span>
-          </div>
-          <button
-            onClick={handleSaveAndSyncToBrandDNA}
-            disabled={syncing}
-            className="text-[10px] font-mono text-blue-600 hover:text-blue-800 underline font-bold cursor-pointer"
-          >
-            Force Sync All Pages
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          {/* Master Brand */}
-          <div className="p-3.5 rounded-2xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase flex items-center gap-1">
-              <Building2 className="w-3 h-3 text-blue-600" /> Master Brand (Editable)
-            </span>
-            <input
-              type="text"
-              value={brandContext.brandName}
-              onChange={(e) => {
-                const val = e.target.value;
-                setBrandContext((prev) => ({ ...prev, brandName: val, companyName: val }));
-              }}
-              className="w-full bg-white border border-slate-300 rounded-md px-2 py-0.5 font-extrabold text-slate-900 text-xs outline-none"
-              placeholder="Brand Name"
-            />
-            <input
-              type="text"
-              value={brandContext.tagline}
-              onChange={(e) => {
-                const val = e.target.value;
-                setBrandContext((prev) => ({ ...prev, tagline: val }));
-              }}
-              className="w-full bg-white/70 border border-slate-200 rounded-md px-2 py-0.5 font-medium text-slate-600 text-[10px] outline-none"
-              placeholder="Brand Tagline"
-            />
-          </div>
-
-          {/* Active Product Strategy */}
-          <div className="p-3.5 rounded-2xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase flex items-center gap-1">
-              <Package className="w-3 h-3 text-emerald-600" /> Active Product Strategy (Editable)
-            </span>
-            <input
-              type="text"
-              value={brandContext.productName}
-              onChange={(e) => {
-                const val = e.target.value;
-                setBrandContext((prev) => ({ ...prev, productName: val }));
-              }}
-              className="w-full bg-white border border-slate-300 rounded-md px-2 py-0.5 font-extrabold text-slate-900 text-xs outline-none"
-              placeholder="Product Name"
-            />
-            <input
-              type="text"
-              value={brandContext.shortDescription}
-              onChange={(e) => {
-                const val = e.target.value;
-                setBrandContext((prev) => ({ ...prev, shortDescription: val }));
-              }}
-              className="w-full bg-white/70 border border-slate-200 rounded-md px-2 py-0.5 font-medium text-slate-600 text-[10px] outline-none"
-              placeholder="Product Pitch / Description"
-            />
-          </div>
-
-          {/* USP Selection Dropdown */}
-          <div className="p-3.5 rounded-2xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase flex items-center justify-between">
-              <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-amber-500" /> Featured USP</span>
-              <span className="text-[9px] text-blue-600 font-bold font-sans">Select USP</span>
-            </span>
-            <select
-              value={selectedUspIndex}
-              onChange={(e) => {
-                const idx = Number(e.target.value);
-                setSelectedUspIndex(idx);
-                generateAdPostsSuite(brandContext, idx, activePosterSeed);
-              }}
-              className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 outline-none cursor-pointer"
-            >
-              {brandContext.usps.map((u, i) => (
-                <option key={i} value={i}>
-                  USP {i + 1}: {u.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Target ICP Persona */}
-          <div className="p-3.5 rounded-2xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase flex items-center gap-1">
-              <Users className="w-3 h-3 text-purple-600" /> ICP Target Persona
-            </span>
-            <p className="font-extrabold text-slate-900 text-sm truncate">
-              {brandContext.personas[0]?.personaName || 'Sarah, Busy Founder'}
-            </p>
-            <p className="text-[10px] text-slate-500 truncate font-medium">
-              {brandContext.personas[0]?.demographics?.occupation || brandContext.targetAudience}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────
-          6-POST ADVERTISEMENT CAMPAIGN GALLERY SUITE
-         ───────────────────────────────────────────────────────────── */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-serif text-2xl font-bold text-slate-900">
-              6-Post Commercial Ad Campaign Suite
-            </h2>
-            <p className="text-xs text-slate-500">
-              Tailored advertisement posts generated specifically for <strong className="text-slate-800">{brandContext.productName}</strong> by <strong className="text-slate-800">{brandContext.brandName}</strong>.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {adPosts.map((post, idx) => {
-            const theme = themeStyles[post.theme] || themeStyles.choco_cream;
-            const isCopied = copiedIndex === idx;
-
-            return (
-              <div
-                key={post.id}
-                className="bg-white rounded-3xl border border-[#D6E6EC] shadow-2xs overflow-hidden flex flex-col justify-between space-y-4 p-5 hover:shadow-md transition-all"
+          <div className="flex items-center gap-1.5">
+            {adData.categoryText && (
+              <span
+                className="px-3 py-1 rounded-full text-[10px] font-bold text-white tracking-wider uppercase border border-white/20 backdrop-blur-md shadow-sm"
+                style={{ background: 'rgba(0,0,0,0.35)' }}
               >
-                {/* Card Top Info Header */}
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                {adData.categoryText}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* CENTER HERO STAGE: THE EXACT INVENTORY PRODUCT IMAGE */}
+        <div className="relative my-auto flex flex-col items-center justify-center py-2 z-10">
+          
+          {/* Radial Aura Glow behind the Exact Product */}
+          <div
+            className="absolute w-52 h-52 rounded-full blur-2xl opacity-45 pointer-events-none"
+            style={{ backgroundColor: t.accent }}
+          />
+
+          {exactImage ? (
+            <div className="relative flex flex-col items-center">
+              {/* Ground shadow beneath product */}
+              <div className="absolute -bottom-3 w-44 h-4 bg-black/60 rounded-full blur-md" />
+              <img
+                src={exactImage}
+                alt={adData.headline || selectedProduct?.name || 'Exact Product'}
+                className="max-h-48 sm:max-h-56 max-w-[280px] object-contain drop-shadow-[0_20px_25px_rgba(0,0,0,0.65)] hover:scale-105 transition-transform duration-500 z-10"
+              />
+            </div>
+          ) : (
+            <div className="w-32 h-32 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-slate-300">
+              <Package className="w-12 h-12 text-slate-300" />
+            </div>
+          )}
+
+          {/* Cloud AI Generation Badge */}
+          {cloudBgImage && (
+            <span className="mt-3 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold text-sky-200 bg-sky-950/60 border border-sky-400/30 backdrop-blur-md flex items-center gap-1 shadow-sm">
+              <Cloud className="w-2.5 h-2.5 text-sky-400" /> Cloud Studio Ad
+            </span>
+          )}
+        </div>
+
+        {/* COPY SECTION: USP BADGE, HEADLINE & SUBHEADLINE */}
+        <div className="space-y-2.5 z-10 pt-2">
+          {adData.primaryUSP && (
+            <div
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-md backdrop-blur-md border border-white/10"
+              style={{ backgroundColor: t.badgeBg, color: t.badgeText }}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              <span className="uppercase tracking-wider text-[10px] font-extrabold">{adData.primaryUSP}</span>
+            </div>
+          )}
+
+          <h3 className="text-xl sm:text-2xl font-black leading-tight tracking-tight font-serif text-white drop-shadow-md">
+            {adData.headline}
+          </h3>
+
+          <p className="text-[11px] sm:text-xs text-slate-200 leading-relaxed font-sans line-clamp-2 opacity-95 drop-shadow-sm">
+            {adData.subheadline}
+          </p>
+
+          {adData.positioningMessage && (
+            <p className="text-[10px] text-slate-300 italic border-l-2 border-amber-400/90 pl-2.5 py-0.5 line-clamp-1">
+              "{adData.positioningMessage}"
+            </p>
+          )}
+        </div>
+
+        {/* BOTTOM FOOTER BAR: PRICE & CTA */}
+        <div className="pt-4 border-t border-white/20 flex items-center justify-between z-10 mt-3">
+          <div>
+            {adData.pricingText && (
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-mono font-bold text-slate-300 uppercase tracking-widest block">
+                  Store Price
+                </span>
+                <span className="text-base sm:text-lg font-black text-white drop-shadow-md">
+                  {adData.pricingText}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div
+            className="px-5 py-2.5 rounded-2xl font-extrabold text-xs tracking-wide uppercase shadow-xl flex items-center gap-2 cursor-pointer transition-transform hover:scale-105 border border-white/20"
+            style={{ backgroundColor: t.accent, color: t.text }}
+          >
+            <span>{adData.ctaText || 'Shop Now'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {/* Bottom Ambient Glow */}
+        <div
+          className="absolute -bottom-10 -right-10 w-44 h-44 rounded-full blur-3xl opacity-35 pointer-events-none"
+          style={{ backgroundColor: t.accent }}
+        />
+      </div>
+    </div>
+  );
+};
+
+// ── Main Page Component ─────────────────────────────────────────────────────
+export const AdPosterStudioPage = () => {
+  const { addToast } = useToast();
+  const location = useLocation();
+  const posterRef = useRef(null);
+
+  // Mode: 'existing' | 'upcoming' (defaults to existing as requested)
+  const initialMode = location.state?.mode || 'existing';
+  const [mode, setMode] = useState(initialMode);
+
+  // Active theme and view tab ('canvas' | 'cloud_only')
+  const [activeTheme, setActiveTheme] = useState('indigo_slate');
+  const [previewView, setPreviewView] = useState('canvas');
+
+  // Shared state
+  const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [adPosterData, setAdPosterData] = useState(null);
+  const [error, setError] = useState(null);
+  const [genStepText, setGenStepText] = useState('');
+
+  // ── UPCOMING MODE: strategy data from productStrategyService
+  const [strategyLoading, setStrategyLoading] = useState(false);
+  const [strategyData, setStrategyData] = useState(null);
+  const [upcomingPosterStatus, setUpcomingPosterStatus] = useState('idle');
+
+  // ── EXISTING MODE: Real inventory products from MongoDB
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [inventoryProducts, setInventoryProducts] = useState([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [existingPosterStatus, setExistingPosterStatus] = useState('Not Generated');
+
+  // ── Load data on mount or mode change ──────────────────────────────────────
+  useEffect(() => {
+    if (mode === 'upcoming') {
+      fetchStrategy();
+    } else {
+      fetchInventoryProducts();
+    }
+    setAdPosterData(null);
+    setError(null);
+  }, [mode]);
+
+  const fetchStrategy = async () => {
+    setStrategyLoading(true);
+    try {
+      const res = await marketingProductService.getLatestStrategy();
+      if (res?.success && res?.data?.product) {
+        setStrategyData(res.data.product);
+      }
+    } catch (e) {
+      console.error('Error loading strategy:', e);
+    } finally {
+      setStrategyLoading(false);
+    }
+  };
+
+  const fetchInventoryProducts = async () => {
+    setProductsLoading(true);
+    setError(null);
+    try {
+      const res = await businessService.getProducts({ status: 'ALL' });
+      const prods = res?.data?.products || res?.products || [];
+      setInventoryProducts(prods);
+
+      if (prods.length > 0) {
+        // Pre-select first product or match passed state
+        const targetId = location.state?.productId || prods[0]._id;
+        const targetProd = prods.find((p) => p._id === targetId) || prods[0];
+
+        setSelectedProductId(targetProd._id);
+        setSelectedProduct(targetProd);
+
+        if (targetProd.adPosterData?.headline) {
+          setAdPosterData(targetProd.adPosterData);
+          setExistingPosterStatus(targetProd.adPosterStatus || 'Generated');
+        } else {
+          setAdPosterData(null);
+          setExistingPosterStatus('Not Generated');
+        }
+      }
+    } catch (e) {
+      console.error('Error loading inventory products:', e);
+      setError('Failed to load inventory products from store catalog.');
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
+  const handleSelectProduct = (id) => {
+    setSelectedProductId(id);
+    const prod = inventoryProducts.find((p) => p._id === id);
+    setSelectedProduct(prod || null);
+
+    if (prod?.adPosterData?.headline) {
+      setAdPosterData(prod.adPosterData);
+      setExistingPosterStatus(prod.adPosterStatus || 'Generated');
+    } else {
+      setAdPosterData(null);
+      setExistingPosterStatus('Not Generated');
+    }
+    setError(null);
+  };
+
+  // ── Generate poster for UPCOMING product (from strategy data) ──────────────
+  const handleGenerateUpcoming = async (isRegen = false) => {
+    if (!strategyData?.productName && !strategyData?.productIdea) {
+      addToast('No product strategy found. Please complete the New Product flow first.', 'error');
+      return;
+    }
+    setGenerating(true);
+    setError(null);
+    setGenStepText('Synthesizing launch ad strategy...');
+
+    try {
+      const pid = strategyData._id;
+      if (!pid) throw new Error('Strategy not saved yet. Please save from the New Product page first.');
+      const apiCall = isRegen
+        ? marketingProductService.regenerateAdPoster(pid)
+        : marketingProductService.generateAdPoster(pid);
+      const res = await apiCall;
+      if (res?.success && res?.data?.adPosterData) {
+        setAdPosterData(res.data.adPosterData);
+        setUpcomingPosterStatus('done');
+        addToast('Upcoming product ad poster generated!', 'success');
+      }
+    } catch (e) {
+      console.error(e);
+      const msg = e.response?.data?.message || e.message || 'Failed to generate poster.';
+      setError(msg);
+      addToast(msg, 'error');
+    } finally {
+      setGenerating(false);
+      setGenStepText('');
+    }
+  };
+
+  // ── Generate poster for EXISTING product (from inventory) ─────────────────
+  const handleGenerateExisting = async (isRegen = false) => {
+    if (!selectedProductId) {
+      addToast('Please select an inventory product first.', 'error');
+      return;
+    }
+
+    setGenerating(true);
+    setError(null);
+    setGenStepText('Analyzing inventory product & crafting ad copy...');
+
+    try {
+      setTimeout(() => {
+        setGenStepText('Calling Cloudflare Workers AI (Flux Schnell) for commercial studio visual...');
+      }, 1400);
+
+      const apiCall = isRegen
+        ? businessService.regenerateProductAdPoster(selectedProductId)
+        : businessService.generateProductAdPoster(selectedProductId);
+
+      const res = await apiCall;
+
+      if (res?.success && res?.data?.adPosterData) {
+        const poster = res.data.adPosterData;
+        setAdPosterData(poster);
+        setExistingPosterStatus('Generated');
+        addToast(
+          `Ad Poster generated for "${selectedProduct?.name}" using Cloud AI!`,
+          'success'
+        );
+
+        // Update local list state
+        setInventoryProducts((prev) =>
+          prev.map((p) =>
+            p._id === selectedProductId
+              ? { ...p, adPosterData: poster, adPosterStatus: 'Generated' }
+              : p
+          )
+        );
+      } else {
+        throw new Error(res?.message || 'Failed to generate ad poster');
+      }
+    } catch (e) {
+      console.error('Generate Ad Poster Error:', e);
+      const msg = e.response?.data?.message || e.message || 'Failed to generate poster.';
+      setError(msg);
+      addToast(msg, 'error');
+    } finally {
+      setGenerating(false);
+      setGenStepText('');
+    }
+  };
+
+  // ── Save poster ────────────────────────────────────────────────────────────
+  const handleSavePoster = async () => {
+    if (!adPosterData) return;
+    setSaving(true);
+    try {
+      if (mode === 'existing' && selectedProductId) {
+        await businessService.saveProductAdPoster(selectedProductId, { adPosterData });
+        setExistingPosterStatus('Saved');
+        setInventoryProducts((prev) =>
+          prev.map((p) =>
+            p._id === selectedProductId ? { ...p, adPosterStatus: 'Saved' } : p
+          )
+        );
+        addToast('Ad Poster saved to inventory product in MongoDB!', 'success');
+      } else if (mode === 'upcoming' && strategyData?._id) {
+        await marketingProductService.saveAdPoster(strategyData._id, { adPosterData });
+        setUpcomingPosterStatus('Saved');
+        addToast('Ad poster saved to strategy!', 'success');
+      }
+    } catch (e) {
+      console.error(e);
+      addToast('Failed to save poster.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Download poster as PNG ─────────────────────────────────────────────────
+  const handleDownload = async () => {
+    if (!posterRef.current) return;
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(posterRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        logging: false,
+      });
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      const prodName =
+        mode === 'existing'
+          ? selectedProduct?.name || 'product'
+          : strategyData?.productName || 'upcoming_product';
+      link.href = image;
+      link.download = `${prodName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_ad_poster.png`;
+      link.click();
+      addToast('High-resolution ad poster downloaded!', 'success');
+    } catch (e) {
+      console.error('Export error:', e);
+      addToast('Failed to export poster image.', 'error');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const canGenerate =
+    mode === 'upcoming'
+      ? Boolean(strategyData?.productName)
+      : Boolean(selectedProductId);
+
+  return (
+    <div className="min-h-screen bg-[#FAF8F5] font-sans pb-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-10 space-y-8">
+        {/* ── Page Header ─────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: -14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="space-y-1.5"
+        >
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest border"
+              style={{
+                background: 'rgba(79,70,229,0.08)',
+                borderColor: 'rgba(79,70,229,0.25)',
+                color: '#4F46E5',
+              }}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              AI Commercial Ad Studio
+            </span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-50 text-sky-700 border border-sky-200">
+              <Cloud className="w-3 h-3 text-sky-500" />
+              Cloudflare AI Connected
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F291E] tracking-tight">
+            Ad Poster Generator
+          </h1>
+          <p className="text-sm text-slate-500 max-w-2xl leading-relaxed">
+            Generate high-converting advertising posters based on your real inventory products using cloud AI. The ad prominently showcases the exact product and its verified pricing.
+          </p>
+        </motion.div>
+
+        {/* ── Mode Selector: Existing vs Upcoming ───────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08, duration: 0.4 }}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+        >
+          {/* Existing Product Card (Recommended) */}
+          <button
+            id="mode-existing"
+            onClick={() => setMode('existing')}
+            className={`relative text-left p-5 rounded-3xl border-2 transition-all duration-200 group overflow-hidden cursor-pointer ${
+              mode === 'existing'
+                ? 'border-purple-600 bg-gradient-to-br from-[#120824] via-[#1F0A3D] to-[#2D1054] text-white shadow-xl scale-[1.01]'
+                : 'border-[#E5E0D8] bg-white hover:border-purple-300 hover:shadow-md text-[#0F291E]'
+            }`}
+          >
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                  mode === 'existing' ? 'bg-purple-500/25 border border-purple-400/30' : 'bg-purple-50'
+                }`}
+              >
+                <Package
+                  className={`w-5 h-5 ${
+                    mode === 'existing' ? 'text-purple-300' : 'text-purple-600'
+                  }`}
+                />
+              </div>
+              <div className="space-y-1 flex-1 min-w-0">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-slate-900 text-white font-mono text-xs font-bold flex items-center justify-center">
-                      0{idx + 1}
+                    <p
+                      className={`text-sm font-extrabold ${
+                        mode === 'existing' ? 'text-white' : 'text-[#0F291E]'
+                      }`}
+                    >
+                      Existing Product Ad
+                    </p>
+                    <span
+                      className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        mode === 'existing'
+                          ? 'bg-purple-400/20 text-purple-200 border border-purple-400/30'
+                          : 'bg-purple-50 text-purple-700'
+                      }`}
+                    >
+                      Store Inventory
                     </span>
-                    <div>
-                      <h3 className="font-bold text-xs text-slate-900">{post.title}</h3>
-                      <span className="text-[10px] font-mono text-slate-400">{post.type}</span>
-                    </div>
                   </div>
-
-                  <button
-                    onClick={() => setActiveModalPost(post)}
-                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
-                    title="Expand in Deep Studio Editor"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
+                  {mode === 'existing' && (
+                    <span className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center shrink-0">
+                      <Check className="w-3 h-3 text-white" />
+                    </span>
+                  )}
                 </div>
-
-                {/* AD POSTER CANVAS CARD */}
-                <div
-                  id={`canvas-${post.id}`}
-                  className={`relative rounded-2xl overflow-hidden border border-slate-300 bg-slate-950 group select-none flex flex-col justify-between p-5 text-left transition-all ${
-                    post.aspectRatio === '1:1' ? 'aspect-square' : post.aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-[4/5]'
+                <p
+                  className={`text-xs leading-relaxed ${
+                    mode === 'existing' ? 'text-slate-300' : 'text-slate-500'
                   }`}
                 >
-                  {/* Image Backdrop Layer */}
-                  <img
-                    src={getImageUrlForPost(post)}
-                    alt={post.title}
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = getIndustryFallbackImage(brandContext.industry);
-                    }}
-                    className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105"
-                  />
+                  Generate an ad poster for an active store inventory product. Uses the exact product photo and cloud AI.
+                </p>
+              </div>
+            </div>
+          </button>
 
-                  {/* Gradient Overlay */}
-                  <div className={`absolute inset-0 bg-gradient-to-b ${theme.bg}`} />
+          {/* Upcoming Product Strategy Card */}
+          <button
+            id="mode-upcoming"
+            onClick={() => setMode('upcoming')}
+            className={`relative text-left p-5 rounded-3xl border-2 transition-all duration-200 group overflow-hidden cursor-pointer ${
+              mode === 'upcoming'
+                ? 'border-indigo-600 bg-gradient-to-br from-[#081526] via-[#0B1D35] to-[#0F2B50] text-white shadow-xl scale-[1.01]'
+                : 'border-[#E5E0D8] bg-white hover:border-indigo-300 hover:shadow-md text-[#0F291E]'
+            }`}
+          >
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                  mode === 'upcoming' ? 'bg-indigo-500/25 border border-indigo-400/30' : 'bg-indigo-50'
+                }`}
+              >
+                <Rocket
+                  className={`w-5 h-5 ${
+                    mode === 'upcoming' ? 'text-indigo-300' : 'text-indigo-600'
+                  }`}
+                />
+              </div>
+              <div className="space-y-1 flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <p
+                      className={`text-sm font-extrabold ${
+                        mode === 'upcoming' ? 'text-white' : 'text-[#0F291E]'
+                      }`}
+                    >
+                      Upcoming Product Ad
+                    </p>
+                    <span
+                      className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        mode === 'upcoming'
+                          ? 'bg-indigo-400/20 text-indigo-200 border border-indigo-400/30'
+                          : 'bg-indigo-50 text-indigo-700'
+                      }`}
+                    >
+                      Strategy Idea
+                    </span>
+                  </div>
+                  {mode === 'upcoming' && (
+                    <span className="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center shrink-0">
+                      <Check className="w-3 h-3 text-white" />
+                    </span>
+                  )}
+                </div>
+                <p
+                  className={`text-xs leading-relaxed ${
+                    mode === 'upcoming' ? 'text-slate-300' : 'text-slate-500'
+                  }`}
+                >
+                  Generate a pre-launch concept ad using your saved product strategy idea.
+                </p>
+              </div>
+            </div>
+          </button>
+        </motion.div>
 
-                  {/* Top Bar Header */}
-                  <div className="relative z-10 flex items-start justify-between">
-                    <div>
-                      <span className="font-mono text-[10px] font-extrabold uppercase tracking-widest text-white/90 block">
-                        {brandContext.brandName}
-                      </span>
+        {/* ── Error Banner ─────────────────────────────────────────── */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5 shadow-xs"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{error}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Main Content Area ─────────────────────────────────────── */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={mode}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="glass-panel rounded-3xl border border-[#E5E0D8]/90 shadow-sm p-6 sm:p-8"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* ── Left Panel: Controls & Product Selection ────────── */}
+              <div className="lg:col-span-5 space-y-6">
+                {/* ── EXISTING MODE: Inventory Products Selector ──────── */}
+                {mode === 'existing' && (
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <Boxes className="w-3.5 h-3.5 text-purple-600" />
+                          <span>Select Store Inventory Product</span>
+                        </label>
+                        <span className="text-[10px] font-mono font-bold text-slate-400">
+                          {inventoryProducts.length} in catalog
+                        </span>
+                      </div>
+
+                      {productsLoading ? (
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 animate-pulse text-xs text-slate-400 flex items-center gap-2">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-500" />
+                          <span>Loading inventory products from MongoDB...</span>
+                        </div>
+                      ) : inventoryProducts.length === 0 ? (
+                        <div className="p-6 rounded-2xl border-2 border-dashed border-[#E5E0D8] bg-[#FAF8F5]/50 text-center space-y-3">
+                          <Package className="w-8 h-8 text-slate-300 mx-auto" />
+                          <div>
+                            <p className="text-xs font-bold text-[#0F291E]">No Inventory Products Found</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">Add products to your store catalog first.</p>
+                          </div>
+                          <Link
+                            to="/admin/products"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0F291E] text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors"
+                          >
+                            <ArrowRight className="w-3.5 h-3.5" /> Open Product Manager
+                          </Link>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Dropdown Selector */}
+                          <div className="relative">
+                            <select
+                              id="inventory-product-selector"
+                              value={selectedProductId}
+                              onChange={(e) => handleSelectProduct(e.target.value)}
+                              className="w-full px-4 py-3.5 pr-10 bg-white border-2 border-[#E5E0D8] rounded-2xl text-xs font-bold text-slate-800 focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer appearance-none shadow-2xs"
+                            >
+                              {inventoryProducts.map((p) => (
+                                <option key={p._id} value={p._id}>
+                                  {p.name} — ₹{p.price?.toLocaleString('en-IN')} ({p.categoryName || 'General'}) [{p.sku || 'SKU'}]
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                          </div>
+
+                          {/* Selected Inventory Product Card with Exact Photo */}
+                          {selectedProduct && (
+                            <div className="p-5 rounded-2xl bg-gradient-to-br from-[#120824] via-[#1E0B38] to-[#2D1054] text-white space-y-3 shadow-lg border border-purple-500/20">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-mono font-bold text-purple-300 uppercase tracking-widest flex items-center gap-1">
+                                  <Tag className="w-3 h-3 text-purple-400" /> Exact Store Product
+                                </span>
+                                {existingPosterStatus !== 'Not Generated' ? (
+                                  <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded-full border border-emerald-400/30 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                    {existingPosterStatus === 'Saved' ? 'Poster Saved' : 'Poster Generated'}
+                                  </span>
+                                ) : (
+                                  <span className="px-2.5 py-0.5 bg-white/10 text-slate-300 text-[10px] font-medium rounded-full">
+                                    Ready to Generate
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Product Thumbnail & Details Row */}
+                              <div className="flex items-center gap-3.5 pt-1">
+                                <div className="w-16 h-16 rounded-xl bg-white/10 border border-white/20 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                                  {selectedProduct.images?.[0] ? (
+                                    <img
+                                      src={selectedProduct.images[0]}
+                                      alt={selectedProduct.name}
+                                      className="w-full h-full object-contain rounded-lg drop-shadow"
+                                    />
+                                  ) : (
+                                    <Package className="w-8 h-8 text-slate-400" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1 space-y-0.5">
+                                  <p className="text-sm font-extrabold text-white font-serif truncate capitalize">
+                                    {selectedProduct.name}
+                                  </p>
+                                  <p className="text-[11px] text-purple-200 font-mono">
+                                    SKU: <span className="font-bold">{selectedProduct.sku || 'N/A'}</span> • {selectedProduct.categoryName || 'Store'}
+                                  </p>
+                                  <div className="flex items-center gap-2 pt-0.5">
+                                    <span className="text-xs font-black text-white">
+                                      ₹{selectedProduct.price?.toLocaleString('en-IN')}
+                                    </span>
+                                    {selectedProduct.stock > 0 ? (
+                                      <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
+                                        In Stock ({selectedProduct.stock})
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold">
+                                        Out of Stock
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {selectedProduct.description && (
+                                <p className="text-[11px] text-slate-300 line-clamp-2 pt-1 border-t border-white/10 leading-relaxed">
+                                  {selectedProduct.description}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
+                  </div>
+                )}
 
-                    {post.badgeText && (
-                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider uppercase shadow-xs ${theme.accent}`}>
-                        {post.badgeText}
+                {/* ── UPCOMING MODE: Strategy Summary ─────────────────── */}
+                {mode === 'upcoming' && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Product Strategy Source
+                    </p>
+                    {strategyLoading ? (
+                      <div className="p-4 rounded-2xl bg-slate-50 animate-pulse text-xs text-slate-400">
+                        Loading strategy...
+                      </div>
+                    ) : !strategyData?.productName ? (
+                      <div className="p-6 rounded-2xl border-2 border-dashed border-[#E5E0D8] bg-[#FAF8F5]/50 text-center space-y-3">
+                        <Rocket className="w-8 h-8 text-slate-300 mx-auto" />
+                        <div>
+                          <p className="text-xs font-bold text-[#0F291E]">No strategy found</p>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Complete the New Product strategy flow first.</p>
+                        </div>
+                        <Link
+                          to="/marketing/product-strategy"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0F291E] text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors"
+                        >
+                          <ArrowRight className="w-3.5 h-3.5" /> Go to Product Strategy
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="p-5 rounded-2xl bg-gradient-to-br from-[#081526] via-[#0B1D35] to-[#0F2B50] text-white space-y-3 shadow-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold text-indigo-300 uppercase tracking-widest">
+                            Strategy Loaded
+                          </span>
+                          <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] font-bold rounded-full border border-indigo-400/30">
+                            Upcoming
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-base font-extrabold text-white font-serif">{strategyData.productName}</p>
+                          {strategyData.productTagline && (
+                            <p className="text-xs text-indigo-200 italic mt-0.5">"{strategyData.productTagline}"</p>
+                          )}
+                        </div>
+                        {strategyData.shortDescription && (
+                          <p className="text-[11px] text-slate-300 line-clamp-2">{strategyData.shortDescription}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Theme Palette Selector ──────────────────────────── */}
+                <div className="space-y-2 pt-1">
+                  <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Palette className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Poster Theme Style</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 font-mono">
+                      {themes[activeTheme]?.label}
+                    </span>
+                  </label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {Object.entries(themes).map(([key, t]) => (
+                      <button
+                        key={key}
+                        id={`theme-${key}`}
+                        title={t.label}
+                        onClick={() => setActiveTheme(key)}
+                        className={`h-11 rounded-xl border-2 flex items-center justify-center transition-all cursor-pointer relative overflow-hidden ${
+                          activeTheme === key
+                            ? 'border-indigo-600 scale-105 shadow-md ring-2 ring-indigo-500/20'
+                            : 'border-[#E5E0D8] hover:border-slate-400'
+                        }`}
+                        style={{ backgroundColor: t.primary }}
+                      >
+                        <div className="w-3.5 h-3.5 rounded-full shadow-xs" style={{ backgroundColor: t.accent }} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── Action Buttons ──────────────────────────────────── */}
+                <div className="space-y-3 pt-2">
+                  <button
+                    id="btn-generate-poster"
+                    onClick={() =>
+                      mode === 'upcoming'
+                        ? handleGenerateUpcoming(Boolean(adPosterData))
+                        : handleGenerateExisting(Boolean(adPosterData))
+                    }
+                    disabled={generating || !canGenerate}
+                    className="w-full py-4 rounded-2xl font-bold text-xs sm:text-sm flex flex-col items-center justify-center gap-1 transition-all disabled:opacity-50 cursor-pointer shadow-lg hover:shadow-xl hover:scale-101"
+                    style={{
+                      background:
+                        mode === 'existing'
+                          ? 'linear-gradient(135deg, #2D1054 0%, #4C1D95 50%, #1F0A3D 100%)'
+                          : 'linear-gradient(135deg, #0B1D35 0%, #1E3A8A 50%, #0F2B50 100%)',
+                      color: '#fff',
+                    }}
+                  >
+                    {generating ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+                          <span>Generating Ad Poster...</span>
+                        </div>
+                        {genStepText && (
+                          <span className="text-[10px] text-amber-200/80 font-mono font-normal animate-pulse px-4 text-center">
+                            {genStepText}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-300" />
+                        <span>
+                          {adPosterData
+                            ? 'Regenerate Cloud Ad Poster'
+                            : 'Generate Ad Poster (Cloud AI)'}
+                        </span>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Secondary Save & Download Actions */}
+                  {adPosterData && (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        id="btn-save-poster"
+                        onClick={handleSavePoster}
+                        disabled={saving}
+                        className="py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>{saving ? 'Saving...' : 'Save to MongoDB'}</span>
+                      </button>
+
+                      <button
+                        id="btn-download-poster"
+                        onClick={handleDownload}
+                        disabled={downloading}
+                        className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>{downloading ? 'Exporting...' : 'Download PNG'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Right Panel: Live Poster Canvas & Preview Views ── */}
+              <div className="lg:col-span-7 flex flex-col space-y-4">
+                {/* View Mode Switcher Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Live Preview Stage
+                    </span>
+                    {adPosterData && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Exact Product Ad
                       </span>
                     )}
                   </div>
 
-                  {/* Center Tag */}
-                  <div className="relative z-10 my-auto text-center">
-                    <span className="inline-block px-3 py-1 rounded-full bg-black/50 backdrop-blur-md text-white/90 text-[9px] font-mono border border-white/20">
-                      ✨ {brandContext.productName}
-                    </span>
-                  </div>
-
-                  {/* Bottom Typography */}
-                  <div className="relative z-10 space-y-2 pt-3 border-t border-white/15">
-                    <h4 className={`text-xl font-bold tracking-tight leading-tight ${theme.text}`}>
-                      {post.headlineText}
-                    </h4>
-                    <p className="text-xs text-white/80 font-medium line-clamp-2">
-                      {post.subtitleText}
-                    </p>
-
-                    <div className="pt-1 flex items-center justify-between">
-                      <span className={`px-3 py-1 rounded-full font-bold text-[10px] shadow-md ${theme.btn}`}>
-                        {post.ctaText}
-                      </span>
-                      <span className="text-[8px] font-mono text-white/60 uppercase">
-                        {post.websiteUrl}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* AD COPY & HASHTAGS CAPTION PREVIEW */}
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-2 text-left">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase flex items-center gap-1">
-                      <MessageSquare className="w-3 h-3 text-blue-600" /> Formatted Ad Caption
-                    </span>
-
-                    <button
-                      onClick={() => copyCaptionText(post.captionText, idx)}
-                      className="text-[10px] font-bold text-slate-700 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
-                    >
-                      {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      <span>{isCopied ? 'Copied!' : 'Copy Caption'}</span>
-                    </button>
-                  </div>
-
-                  <p className="font-sans text-[11px] leading-relaxed text-slate-800 line-clamp-3 whitespace-pre-line">
-                    {post.captionText}
-                  </p>
-                </div>
-
-                {/* CARD FOOTER DOWNLOAD ACTIONS */}
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => setActiveModalPost(post)}
-                    className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <Sliders className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Studio Editor</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleDownloadSinglePost(post.id, 'png', post.title)}
-                    disabled={downloading}
-                    className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1"
-                    title="Download PNG image"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>PNG</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleDownloadSinglePost(post.id, 'pdf', post.title)}
-                    disabled={downloading}
-                    className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1"
-                    title="Download PDF document"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-blue-400" />
-                    <span>PDF</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────
-          DEEP STUDIO EDITOR MODAL (FULL SCREEN CUSTOMIZER)
-         ───────────────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {activeModalPost && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl max-w-4xl w-full border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-6 text-left relative my-auto max-h-[90vh] overflow-y-auto font-sans"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                <div>
-                  <h3 className="font-serif text-xl font-bold text-slate-900 flex items-center gap-2">
-                    <Sliders className="w-5 h-5 text-blue-600" />
-                    Deep Studio Editor: {activeModalPost.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Fine-tune AI prompt keywords, visual themes, typography, and copy overlays for this post.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setActiveModalPost(null)}
-                  className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Left Column: Live Canvas Preview */}
-                <div className="lg:col-span-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-slate-900 uppercase">Live Canvas</span>
-                    <span className="text-[10px] font-mono text-slate-400">{activeModalPost.aspectRatio} Aspect</span>
-                  </div>
-
-                  <div
-                    id={`modal-canvas-${activeModalPost.id}`}
-                    className={`relative rounded-2xl overflow-hidden border border-slate-300 bg-slate-950 group select-none flex flex-col justify-between p-6 text-left shadow-lg ${
-                      activeModalPost.aspectRatio === '1:1' ? 'aspect-square' : activeModalPost.aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-[4/5]'
-                    }`}
-                  >
-                    <img
-                      src={getImageUrlForPost(activeModalPost)}
-                      alt={activeModalPost.title}
-                      crossOrigin="anonymous"
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-
-                    <div className={`absolute inset-0 bg-gradient-to-b ${themeStyles[activeModalPost.theme]?.bg || themeStyles.choco_cream.bg}`} />
-
-                    <div className="relative z-10 flex items-start justify-between">
-                      <span className="font-mono text-[10px] font-extrabold uppercase tracking-widest text-white/90">
-                        {brandContext.brandName}
-                      </span>
-                      {activeModalPost.badgeText && (
-                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${themeStyles[activeModalPost.theme]?.accent || themeStyles.choco_cream.accent}`}>
-                          {activeModalPost.badgeText}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="relative z-10 my-auto text-center">
-                      <span className="inline-block px-3 py-1 rounded-full bg-black/50 backdrop-blur-md text-white/90 text-[9px] font-mono border border-white/20">
-                        ✨ {brandContext.productName}
-                      </span>
-                    </div>
-
-                    <div className="relative z-10 space-y-2 pt-3 border-t border-white/15">
-                      <h4 className={`text-xl font-bold tracking-tight ${themeStyles[activeModalPost.theme]?.text || 'text-white'}`}>
-                        {activeModalPost.headlineText}
-                      </h4>
-                      <p className="text-xs text-white/80 font-medium">
-                        {activeModalPost.subtitleText}
-                      </p>
-
-                      <div className="pt-1 flex items-center justify-between">
-                        <span className={`px-3 py-1 rounded-full font-bold text-[10px] ${themeStyles[activeModalPost.theme]?.btn || 'bg-amber-400 text-slate-950'}`}>
-                          {activeModalPost.ctaText}
-                        </span>
-                        <span className="text-[8px] font-mono text-white/60 uppercase">
-                          {activeModalPost.websiteUrl}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column: Editing Controls */}
-                <div className="lg:col-span-7 space-y-4 text-xs">
-                  {/* Theme Switcher */}
-                  <div>
-                    <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
-                      Color Palette Theme
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[
-                        { id: 'choco_cream', name: 'Choco Cream' },
-                        { id: 'emerald_gold', name: 'Emerald Gold' },
-                        { id: 'dark_luxury', name: 'Midnight Dark' },
-                        { id: 'velvet_crimson', name: 'Velvet Crimson' },
-                        { id: 'cyber_neon', name: 'Cyber Neon' },
-                        { id: 'sunset_gold', name: 'Sunset Amber' },
-                        { id: 'royal_indigo', name: 'Royal Indigo' },
-                        { id: 'minimalist_pearl', name: 'Minimal Pearl' },
-                      ].map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => {
-                            setAdPosts((prev) =>
-                              prev.map((p) => (p.id === activeModalPost.id ? { ...p, theme: t.id } : p))
-                            );
-                            setActiveModalPost((prev) => ({ ...prev, theme: t.id }));
-                          }}
-                          className={`p-2 rounded-xl border text-[10px] font-bold cursor-pointer ${
-                            activeModalPost.theme === t.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                          }`}
-                        >
-                          {t.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Copy Editors */}
-                  <div>
-                    <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
-                      Headline Text
-                    </label>
-                    <input
-                      type="text"
-                      value={activeModalPost.headlineText}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setAdPosts((prev) =>
-                          prev.map((p) => (p.id === activeModalPost.id ? { ...p, headlineText: val } : p))
-                        );
-                        setActiveModalPost((prev) => ({ ...prev, headlineText: val }));
-                      }}
-                      className="w-full bg-[#EAF4F7]/40 border border-[#D6E6EC] focus:border-slate-900 focus:bg-white rounded-xl px-3 py-2 outline-none font-semibold text-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
-                      Subtitle / Pitch Copy
-                    </label>
-                    <input
-                      type="text"
-                      value={activeModalPost.subtitleText}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setAdPosts((prev) =>
-                          prev.map((p) => (p.id === activeModalPost.id ? { ...p, subtitleText: val } : p))
-                        );
-                        setActiveModalPost((prev) => ({ ...prev, subtitleText: val }));
-                      }}
-                      className="w-full bg-[#EAF4F7]/40 border border-[#D6E6EC] focus:border-slate-900 focus:bg-white rounded-xl px-3 py-2 outline-none font-medium text-slate-900"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
-                        Promotional Badge
-                      </label>
-                      <input
-                        type="text"
-                        value={activeModalPost.badgeText}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setAdPosts((prev) =>
-                            prev.map((p) => (p.id === activeModalPost.id ? { ...p, badgeText: val } : p))
-                          );
-                          setActiveModalPost((prev) => ({ ...prev, badgeText: val }));
-                        }}
-                        className="w-full bg-[#EAF4F7]/40 border border-[#D6E6EC] focus:border-slate-900 focus:bg-white rounded-xl px-3 py-2 outline-none font-semibold text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
-                        Call to Action
-                      </label>
-                      <input
-                        type="text"
-                        value={activeModalPost.ctaText}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setAdPosts((prev) =>
-                            prev.map((p) => (p.id === activeModalPost.id ? { ...p, ctaText: val } : p))
-                          );
-                          setActiveModalPost((prev) => ({ ...prev, ctaText: val }));
-                        }}
-                        className="w-full bg-[#EAF4F7]/40 border border-[#D6E6EC] focus:border-slate-900 focus:bg-white rounded-xl px-3 py-2 outline-none font-semibold text-slate-900"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Actions in Modal */}
-                  <div className="pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
-                    <button
-                      onClick={handleSaveAndSyncToBrandDNA}
-                      disabled={syncing}
-                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Save className="w-3.5 h-3.5" /> Save & Sync Brand DNA
-                    </button>
-
-                    <div className="flex items-center gap-2">
+                  {/* Toggle between Full Composite Poster vs Pure Cloud AI visual */}
+                  {adPosterData && adDataHasCloudImage(adPosterData) && (
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
                       <button
-                        onClick={() => handleDownloadSinglePost(activeModalPost.id, 'png', activeModalPost.title)}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5"
+                        onClick={() => setPreviewView('canvas')}
+                        className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${
+                          previewView === 'canvas'
+                            ? 'bg-white text-slate-900 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
                       >
-                        <Download className="w-3.5 h-3.5" /> Download PNG
+                        Branded Ad Poster
                       </button>
                       <button
-                        onClick={() => handleDownloadSinglePost(activeModalPost.id, 'pdf', activeModalPost.title)}
-                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5"
+                        onClick={() => setPreviewView('cloud_only')}
+                        className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 ${
+                          previewView === 'cloud_only'
+                            ? 'bg-white text-slate-900 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
                       >
-                        <FileText className="w-3.5 h-3.5 text-blue-400" /> Download PDF
+                        <Cloud className="w-3 h-3 text-sky-500" /> Cloud Studio Render
                       </button>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ─────────────────────────────────────────────────────────────
-          DOWNLOADED FILE PREVIEW MODAL
-         ───────────────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {downloadedFilePreview && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl max-w-xl w-full border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-6 text-left relative my-auto font-sans"
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                <div>
-                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold uppercase">
-                    Downloaded File Preview ({downloadedFilePreview.format})
-                  </span>
-                  <h3 className="font-serif text-xl font-bold text-slate-900 mt-1">
-                    {downloadedFilePreview.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-mono">
-                    {downloadedFilePreview.fileName} • {downloadedFilePreview.dimensions}
-                  </p>
+                  )}
                 </div>
 
-                <button
-                  onClick={() => setDownloadedFilePreview(null)}
-                  className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Render Preview Image */}
-              <div className="relative rounded-2xl overflow-hidden border border-slate-300 shadow-lg bg-slate-950 max-h-[60vh] flex items-center justify-center">
-                <img
-                  src={downloadedFilePreview.imageUri}
-                  alt={downloadedFilePreview.fileName}
-                  className="w-full h-auto object-contain max-h-[60vh]"
+                {/* Canvas Display */}
+                <PosterCanvas
+                  posterRef={posterRef}
+                  adData={adPosterData}
+                  theme={activeTheme}
+                  selectedProduct={selectedProduct}
+                  previewView={previewView}
+                  setPreviewView={setPreviewView}
                 />
               </div>
-
-              {/* Actions */}
-              <div className="pt-2 flex items-center justify-between gap-3">
-                <a
-                  href={downloadedFilePreview.imageUri}
-                  download={downloadedFilePreview.fileName}
-                  className="flex-1 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs text-center transition-all cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <Download className="w-4 h-4 text-emerald-400" />
-                  <span>Save / Re-Download File</span>
-                </a>
-
-                <button
-                  onClick={() => setDownloadedFilePreview(null)}
-                  className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all cursor-pointer"
-                >
-                  Close Preview
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
+};
+
+// Helper to check if cloud image exists
+const adDataHasCloudImage = (data) => {
+  return Boolean(data?.cloudImageUrl || data?.cloudImageBase64);
 };
 
 export default AdPosterStudioPage;

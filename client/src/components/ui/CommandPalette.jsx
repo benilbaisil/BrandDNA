@@ -40,13 +40,11 @@ export const CommandPalette = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const actions = [
-    { id: 'dash', name: 'Executive Dashboard', path: '/dashboard', icon: LayoutDashboard, category: 'Navigation', shortcut: 'G D' },
+    { id: 'dash', name: 'Executive Dashboard', path: '/brand-analysis', icon: LayoutDashboard, category: 'Navigation', shortcut: 'G D' },
     { id: 'brand', name: 'Brand Studio & AI Analyzer', path: '/brand-identity', icon: Sparkles, category: 'AI Tools', shortcut: 'G B' },
     { id: 'prod', name: 'Product Strategy & Roadmap', path: '/product-strategy', icon: Package, category: 'Strategy', shortcut: 'G P' },
     { id: 'comp', name: 'Competitor Intelligence Radar', path: '/competitors', icon: Users, category: 'Intelligence', shortcut: 'G C' },
-    { id: 'ai', name: 'AI Advisor Chatbot', path: '/ai-chat', icon: Bot, category: 'AI Tools', shortcut: 'G A' },
     { id: 'legal', name: 'Legal Advisory & Trademark Clearance', path: '/legal', icon: Scale, category: 'Legal', shortcut: 'G L' },
-    { id: 'mkt', name: 'Marketing Campaign Planner', path: '/marketing-planner', icon: Megaphone, category: 'Marketing', shortcut: 'G M' },
     { id: 'reports', name: 'Generate Executive PDF Report', path: '/reports', icon: FileText, category: 'Reports', shortcut: 'G R' },
     { id: 'analytics', name: 'Deep Performance Analytics', path: '/analytics', icon: BarChart3, category: 'Analytics', shortcut: 'G N' },
     { id: 'design', name: 'Design System & Component Library', path: '/design-system', icon: Layers, category: 'Developer', shortcut: 'G S' },

@@ -13,6 +13,7 @@ import {
   resetPasswordService,
 } from '../services/authService.js';
 import { sendResponse } from '../utils/apiResponse.js';
+import { User } from '../models/User.js';
 
 export const googleAuth = async (req, res, next) => {
   try {
@@ -144,5 +145,37 @@ export const resetPassword = async (req, res, next) => {
     return sendResponse(res, 200, true, result.message);
   } catch (error) {
     return sendResponse(res, 400, false, error.message || 'Failed to reset password');
+  }
+};
+
+export const getWishlist = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id || req.user._id).populate('wishlist');
+    if (!user) return sendResponse(res, 404, false, 'User not found');
+    return sendResponse(res, 200, true, 'Wishlist retrieved', { wishlist: user.wishlist });
+  } catch (error) {
+    return sendResponse(res, 400, false, error.message || 'Failed to get wishlist');
+  }
+};
+
+export const toggleWishlist = async (req, res, next) => {
+  try {
+    const productId = req.params.productId;
+    const user = await User.findById(req.user.id || req.user._id);
+    if (!user) return sendResponse(res, 404, false, 'User not found');
+    
+    const index = user.wishlist.indexOf(productId);
+    if (index === -1) {
+      user.wishlist.push(productId);
+    } else {
+      user.wishlist.splice(index, 1);
+    }
+    await user.save();
+    
+    const updatedUser = await User.findById(req.user.id || req.user._id).populate('wishlist');
+    
+    return sendResponse(res, 200, true, 'Wishlist updated', { wishlist: updatedUser.wishlist });
+  } catch (error) {
+    return sendResponse(res, 400, false, error.message || 'Failed to update wishlist');
   }
 };

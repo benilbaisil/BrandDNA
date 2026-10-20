@@ -2,7 +2,7 @@ import React from 'react';
 
 export const DashboardFooter = () => {
   return (
-    <footer className="mt-12 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-medium">
+    <footer className="mt-12 pt-6 border-t border-[#E5E0D8]/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-medium">
       <div className="flex items-center gap-2">
         <span className="font-bold text-slate-700">BrandDNA AI</span>
         <span>• Version 2.4.0</span>
@@ -17,3 +17,4 @@ export const DashboardFooter = () => {
     </footer>
   );
 };
+

@@ -76,7 +76,7 @@ export const AdminIndustriesPage = () => {
           <span className="text-xs font-mono font-bold text-blue-600 uppercase tracking-wider">
             Taxonomy & Sector Configuration
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F291E] tracking-tight mt-1">
             Industry Management ({industriesList.length})
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -86,7 +86,7 @@ export const AdminIndustriesPage = () => {
 
         <button
           onClick={() => setModalMode('add')}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors shadow-xs shrink-0 self-start sm:self-auto"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-colors shadow-xs shrink-0 self-start sm:self-auto"
         >
           <Plus className="w-4 h-4 text-white" />
           <span>Add New Industry</span>
@@ -94,7 +94,7 @@ export const AdminIndustriesPage = () => {
       </div>
 
       {/* Search */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+      <div className="p-4 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs">
         <div className="relative max-w-md">
           <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
           <input
@@ -102,17 +102,17 @@ export const AdminIndustriesPage = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search industry name..."
-            className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder-slate-400 rounded-xl pl-9 pr-4 py-2.5 outline-none"
+            className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] placeholder-slate-400 rounded-xl pl-9 pr-4 py-2.5 outline-none"
           />
         </div>
       </div>
 
       {/* Industry Table */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
+      <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-500 font-mono text-[10px] uppercase bg-slate-50">
+              <tr className="border-b border-[#E5E0D8] text-slate-500 font-mono text-[10px] uppercase bg-[#FAF8F5]">
                 <th className="py-3 px-4">Industry Sector Name</th>
                 <th className="py-3 px-4">Active Startups</th>
                 <th className="py-3 px-4">Status</th>
@@ -121,17 +121,17 @@ export const AdminIndustriesPage = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredIndustries.map((ind) => (
-                <tr key={ind.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2">
+                <tr key={ind.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
+                  <td className="py-3.5 px-4 font-bold text-[#0F291E] flex items-center gap-2">
                     <Layers className="w-4 h-4 text-blue-600" />
                     <span>{ind.name}</span>
                   </td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{ind.startupCount} Startups</td>
+                  <td className="py-3.5 px-4 font-mono font-bold text-[#0F291E]">{ind.startupCount} Startups</td>
                   <td className="py-3.5 px-4">
                     <button
                       onClick={() => handleToggleStatus(ind.id)}
                       className={`px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold border transition-colors cursor-pointer ${
-                        ind.status === 'Enabled' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                        ind.status === 'Enabled' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-slate-100 text-slate-600 border-[#E5E0D8] hover:bg-slate-200'
                       }`}
                     >
                       {ind.status}
@@ -157,11 +157,11 @@ export const AdminIndustriesPage = () => {
 
       {/* Add Modal */}
       {modalMode === 'add' && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleAddIndustry} className="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-md w-full p-6 text-left space-y-4">
+        <div className="fixed inset-0 z-50 bg-[#0F291E]/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <form onSubmit={handleAddIndustry} className="glass-panel border border-[#E5E0D8] rounded-3xl shadow-2xl max-w-md w-full p-6 text-left space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Add New Industry</h3>
-              <button type="button" onClick={() => setModalMode(null)} className="p-1 text-slate-400 hover:text-slate-900">
+              <h3 className="text-base font-bold text-[#0F291E]">Add New Industry</h3>
+              <button type="button" onClick={() => setModalMode(null)} className="p-1 text-slate-400 hover:text-[#0F291E]">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -173,12 +173,12 @@ export const AdminIndustriesPage = () => {
                 value={newIndustryName}
                 onChange={(e) => setNewIndustryName(e.target.value)}
                 placeholder="e.g. Clean Energy, E-Commerce..."
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl px-3.5 py-2.5 outline-none"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none"
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setModalMode(null)} className="px-4 py-2 rounded-xl bg-slate-100 font-bold text-xs">Cancel</button>
-              <button type="submit" className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs">Save Industry</button>
+              <button type="submit" className="px-4 py-2 rounded-xl bg-[#0F291E] text-white font-bold text-xs">Save Industry</button>
             </div>
           </form>
         </div>
@@ -187,3 +187,4 @@ export const AdminIndustriesPage = () => {
     </div>
   );
 };
+

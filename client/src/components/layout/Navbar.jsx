@@ -1,126 +1,228 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Dna, Menu, X, ArrowRight, Sparkles } from 'lucide-react';
-import { Button } from '../ui/Button';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Search,
+  User,
+  ShoppingBag,
+  Menu,
+  X,
+  ChevronDown,
+  Compass,
+  ArrowUpRight
+} from 'lucide-react';
+import { useAuth, getRoleRedirectPath } from '../../context/AuthContext';
+import { PRODUCT_CATEGORIES } from '../../constants/categories';
 
 export const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [catMenuOpen, setCatMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 20) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    if (user?.role !== 'customer') {
+      navigate(getRoleRedirectPath(user?.role));
+      return;
+    }
+    if (searchQuery.trim()) {
+      navigate(`/customer/dashboard?search=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/customer/dashboard');
+    }
+  };
+
+  const getNavLink = (searchParam = '') => {
+    if (!isAuthenticated) return '/login';
+    if (user?.role === 'customer') {
+      return searchParam ? `/customer/dashboard?search=${searchParam}` : '/customer/dashboard';
+    }
+    return getRoleRedirectPath(user?.role);
+  };
 
   const navLinks = [
-    { name: 'Home', href: '/' },
-    { name: 'Features', href: '#features' },
-    { name: 'How It Works', href: '#how-it-works' },
-    { name: 'Pricing', href: '#pricing' },
-    { name: 'About', href: '#about' },
-    { name: 'Contact', href: '#contact' },
+    { name: 'About', href: '/#about' },
+    { name: 'Catalog', href: getNavLink() },
+    { name: 'Special Offers', href: getNavLink('special') },
+    { name: 'Bestsellers', href: getNavLink('bestseller') },
+    { name: 'Categories', href: getNavLink() },
   ];
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-200 ${
-        isScrolled
-          ? 'bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs py-3'
-          : 'bg-white/60 backdrop-blur-xs py-4 border-b border-transparent'
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          {/* BrandDNA AI Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-              <Dna className="w-5 h-5" />
+    <header className="w-full bg-white font-sans sticky top-0 z-50 border-b border-stone-200/60 shadow-2xs">
+      
+      {/* Editorial Luxury Top Bar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
+        
+        {/* Left: Serif Editorial Logo (inspired by perf. in reference) */}
+        <Link to="/" className="flex items-center gap-2 group shrink-0">
+          <span className="font-serif font-extrabold text-2xl sm:text-3xl tracking-tight text-[#0F291E] lowercase group-hover:opacity-80 transition-opacity">
+            brand.
+          </span>
+          <span className="text-[10px] font-sans font-bold tracking-widest text-[#0F382C] uppercase bg-[#E8F5E9] px-2 py-0.5 rounded-full border border-[#C4E1D4]">
+            sports
+          </span>
+        </Link>
+
+        {/* Center: Search input (collapsible/expandable on hover) */}
+        <form onSubmit={handleSearchSubmit} className="hidden lg:flex flex-1 max-w-sm relative items-center">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search trekking, workout, gear..."
+            className="w-full bg-[#FAF8F5] border border-stone-200/80 text-xs text-stone-900 rounded-full pl-4 pr-10 py-2 outline-none focus:border-[#0F382C] focus:bg-white transition-all font-medium placeholder-stone-400"
+          />
+          <button
+            type="submit"
+            className="absolute right-2 text-stone-400 hover:text-[#0F382C] p-1 transition-colors cursor-pointer"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </form>
+
+        {/* Right: Reference Horizontal Navigation Links */}
+        <div className="hidden md:flex items-center gap-4 text-xs font-semibold text-stone-800">
+          {navLinks.map((link) => (
+            <Link
+              key={link.name}
+              to={link.href}
+              className="hover:text-[#0F382C] transition-colors py-1 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[#0F382C] hover:after:w-full after:transition-all"
+            >
+              {link.name}
+            </Link>
+          ))}
+
+          {/* User Account / Role Redirect */}
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              <Link
+                to={getRoleRedirectPath(user?.role)}
+                className="px-4 py-2 rounded-full bg-[#0F382C] text-white font-bold text-xs hover:bg-[#08221B] transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
+              </Link>
+              <button
+                onClick={logout}
+                className="px-3 py-2 rounded-full bg-stone-100 hover:bg-stone-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+              >
+                Logout
+              </button>
             </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-lg text-slate-900 tracking-tight flex items-center gap-1">
-                BrandDNA <span className="text-blue-600 font-extrabold text-sm px-1.5 py-0.5 bg-blue-50 rounded-md border border-blue-100">AI</span>
-              </span>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/login"
+                className="px-4 py-2 rounded-full bg-[#FAF8F5] hover:bg-[#F4EFE6] text-[#0F291E] border border-stone-200 font-bold text-xs transition-all"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                className="px-4 py-2 rounded-full bg-[#0F382C] hover:bg-[#08221B] text-white font-bold text-xs transition-all shadow-xs"
+              >
+                Register
+              </Link>
             </div>
+          )}
+
+          {/* Cart Counter */}
+          <Link
+            to={isAuthenticated ? (user?.role === 'customer' ? "/customer/dashboard?tab=cart" : getRoleRedirectPath(user?.role)) : "/login"}
+            className="font-bold text-[#0F291E] hover:text-emerald-700 flex items-center gap-1 bg-[#FAF8F5] px-3.5 py-2 rounded-full border border-stone-200"
+          >
+            <ShoppingBag className="w-3.5 h-3.5 text-[#0F382C]" />
+            <span>Cart</span>
+          </Link>
+        </div>
+
+        {/* Mobile menu button */}
+        <div className="flex items-center gap-3 md:hidden">
+          <Link
+            to={isAuthenticated ? (user?.role === 'customer' ? "/customer/dashboard?tab=cart" : getRoleRedirectPath(user?.role)) : "/login"}
+            className="font-bold text-xs text-[#0F291E] flex items-center gap-1 bg-[#FAF8F5] px-3 py-1.5 rounded-full border border-stone-200"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>Cart</span>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
-            {navLinks.map((link) => {
-              const isHash = link.href.startsWith('#');
-              return (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  className="text-sm font-medium text-slate-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-slate-100/60 transition-colors"
-                >
-                  {link.name}
-                </a>
-              );
-            })}
-          </nav>
-
-          {/* Action Buttons */}
-          <div className="hidden md:flex items-center gap-3">
-            <Link to="/login">
-              <Button variant="ghost" size="sm">
-                Login
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button variant="primary" size="sm" icon={ArrowRight} iconPosition="right">
-                Get Started
-              </Button>
-            </Link>
-          </div>
-
-          {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-            aria-label="Toggle Menu"
+            className="p-2 text-stone-800 hover:text-[#0F382C]"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
+
       </div>
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-slate-200 px-4 pt-3 pb-6 space-y-3 shadow-lg">
-          <nav className="flex flex-col space-y-1">
+        <div className="md:hidden bg-white border-b border-stone-200 p-5 space-y-4 shadow-xl">
+          <form onSubmit={handleSearchSubmit} className="flex relative items-center">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search gear & products..."
+              className="w-full bg-[#FAF8F5] border border-stone-200 text-xs rounded-full pl-4 pr-10 py-2.5 outline-none"
+            />
+            <button type="submit" className="absolute right-2 text-stone-600 p-1">
+              <Search className="w-4 h-4" />
+            </button>
+          </form>
+
+          <nav className="flex flex-col space-y-3 pt-2">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
-                href={link.href}
+                to={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-base font-medium text-slate-700 hover:text-blue-600 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors"
+                className="text-sm font-bold text-stone-800 hover:text-[#0F382C] py-2 border-b border-stone-100 flex items-center justify-between"
               >
-                {link.name}
-              </a>
+                <span>{link.name}</span>
+                <ArrowUpRight className="w-4 h-4 text-stone-400" />
+              </Link>
             ))}
+
+            {isAuthenticated ? (
+              <Link
+                to={getRoleRedirectPath(user?.role)}
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-3 bg-[#0F382C] text-white text-center font-bold text-xs rounded-xl mt-2 block"
+              >
+                Go to Workspace ({user?.role})
+              </Link>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2.5 text-center bg-stone-100 text-stone-800 font-bold text-xs rounded-xl"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2.5 text-center bg-[#0F382C] text-white font-bold text-xs rounded-xl"
+                >
+                  Register
+                </Link>
+              </div>
+            )}
           </nav>
-          <div className="pt-4 border-t border-slate-100 flex flex-col gap-2.5">
-            <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="outline" className="w-full justify-center">
-                Login
-              </Button>
-            </Link>
-            <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="primary" className="w-full justify-center">
-                Get Started
-              </Button>
-            </Link>
-          </div>
         </div>
       )}
+
     </header>
   );
 };
+

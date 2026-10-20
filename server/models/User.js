@@ -35,8 +35,21 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['startup_owner', 'admin'],
-      default: 'startup_owner',
+      enum: ['admin', 'inventory_staff', 'marketing_staff', 'customer', 'startup_owner', 'delivery_agent', 'DELIVERY_AGENT'],
+      default: 'customer',
+    },
+    vehicleNumber: {
+      type: String,
+      default: '',
+    },
+    vehicleType: {
+      type: String,
+      default: '',
+    },
+    availabilityStatus: {
+      type: String,
+      enum: ['Available', 'Unavailable'],
+      default: 'Available',
     },
     status: {
       type: String,
@@ -45,6 +58,10 @@ const userSchema = new mongoose.Schema(
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+    wishlist: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product'
+    }],
   },
   {
     timestamps: true,

@@ -1,18 +1,42 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   Bell,
   Menu,
   Zap,
+  Plus,
+  PackagePlus,
 } from 'lucide-react';
 import { CommandPalette } from '../ui/CommandPalette';
+import { ProductModal } from './ProductModal';
 
 export const TopNavbar = ({ onOpenMobile }) => {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+
+  React.useEffect(() => {
+    const handleOpenModal = () => setShowProductModal(true);
+    window.addEventListener('open-add-product-modal', handleOpenModal);
+    return () => window.removeEventListener('open-add-product-modal', handleOpenModal);
+  }, []);
+
+  let role = user?.role;
+  if (!role) {
+    try {
+      const u = localStorage.getItem('branddna_user');
+      role = u && u !== 'undefined' ? JSON.parse(u)?.role : 'customer';
+    } catch(e) { role = 'customer'; }
+  }
+  const canManageProducts = role === 'admin' || role === 'inventory_staff' || role === 'marketing_staff';
+
+  const handleAddProductClick = () => {
+    setShowProductModal(true);
+  };
 
   const getPageInfo = () => {
     switch (location.pathname) {
@@ -50,11 +74,9 @@ export const TopNavbar = ({ onOpenMobile }) => {
 
   const pageInfo = getPageInfo();
 
-  const mockNotifications = [
-    { id: 1, title: 'Trademark Audit Passed', time: '10m ago', text: 'BrandDNA scan for "Aura AI" returned 98% Low Risk.' },
-    { id: 2, title: 'Competitor Alert', time: '1h ago', text: 'Linear updated pricing tier; competitor radar adjusted.' },
-    { id: 3, title: 'Report Ready', time: '3h ago', text: 'Q3 Brand Executive PDF report is ready to download.' },
-  ];
+  const notifications = user?.fullName ? [
+    { id: '1', title: 'System Active', time: 'Just now', text: `Welcome back, ${user.fullName}. Brand DNA engine ready.` }
+  ] : [];
 
   return (
     <>
@@ -77,13 +99,19 @@ export const TopNavbar = ({ onOpenMobile }) => {
           </div>
         </div>
 
-
-
-        {/* Right: Workspace Selector, Notifications, Quick Analyze CTA */}
+        {/* Right: Actions & Notifications */}
         <div className="flex items-center gap-2 sm:gap-3">
-          
+          {canManageProducts && (
+            <button
+              onClick={handleAddProductClick}
+              className="px-3.5 py-1.5 bg-[#0F382C] hover:bg-[#16503f] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer border border-emerald-800"
+              title="Add New Product to Shop"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Product</span>
+            </button>
+          )}
 
-          {/* Notifications Dropdown */}
           <div className="relative">
             <button
               onClick={() => setNotificationsOpen(!notificationsOpen)}
@@ -91,7 +119,9 @@ export const TopNavbar = ({ onOpenMobile }) => {
               title="Notifications"
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white" />
+              {notifications.length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white" />
+              )}
             </button>
 
             {notificationsOpen && (
@@ -101,15 +131,21 @@ export const TopNavbar = ({ onOpenMobile }) => {
                   <span className="text-[10px] text-blue-600 hover:underline cursor-pointer font-semibold">Mark all read</span>
                 </div>
                 <div className="space-y-2">
-                  {mockNotifications.map((n) => (
-                    <div key={n.id} className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-100">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-slate-900">{n.title}</span>
-                        <span className="text-[10px] text-slate-400">{n.time}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600">{n.text}</p>
+                  {notifications.length === 0 ? (
+                    <div className="p-3 text-center text-slate-400 text-xs">
+                      No new notifications.
                     </div>
-                  ))}
+                  ) : (
+                    notifications.map((n) => (
+                      <div key={n.id} className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-100">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-slate-900">{n.title}</span>
+                          <span className="text-[10px] text-slate-400">{n.time}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-600">{n.text}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -120,6 +156,16 @@ export const TopNavbar = ({ onOpenMobile }) => {
 
       {/* Command Palette Trigger Modal */}
       <CommandPalette isOpen={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
+      
+      {/* Product Modal */}
+      <ProductModal 
+        isOpen={showProductModal} 
+        onClose={() => setShowProductModal(false)} 
+        onSuccess={() => {
+          // If the user is on a page that needs to refresh products, we can dispatch an event
+          window.dispatchEvent(new CustomEvent('product-added-success'));
+        }} 
+      />
     </>
   );
 };

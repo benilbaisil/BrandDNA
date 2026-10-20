@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Dna, Mail, ArrowLeft, Send } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import { Sparkles, Mail, ArrowLeft, Send } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { authService } from '../../services/authService';
 import { useToast } from '../../context/ToastContext';
@@ -40,28 +39,30 @@ export const ForgotPasswordPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 font-sans">
-      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200/90 shadow-xl p-6 sm:p-8 text-left">
+    <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-4 sm:p-6 font-sans text-left">
+      <div className="max-w-md w-full bg-white rounded-3xl border border-stone-200 shadow-xl p-6 sm:p-10 space-y-6">
         
-        <div className="mb-6 flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white">
-            <Dna className="w-5 h-5" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl bg-[#08221B] border border-emerald-700/50 flex items-center justify-center text-emerald-300 shadow-md">
+            <Sparkles className="w-5 h-5 text-emerald-300" />
           </div>
-          <span className="font-bold text-lg text-slate-900">
-            BrandDNA <span className="text-blue-600 font-extrabold">AI</span>
+          <span className="font-serif font-bold text-2xl text-slate-900 tracking-tight">
+            BrandDNA
           </span>
         </div>
 
-        <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mb-2">Reset Password</h2>
-        <p className="text-xs sm:text-sm text-slate-500 mb-6">
-          Enter your registered email address and we'll send you instructions to reset your password.
-        </p>
+        <div>
+          <h2 className="font-serif text-3xl font-bold text-slate-900 tracking-tight">Reset Password</h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Enter your registered email address and we'll send instructions to reset your password.
+          </p>
+        </div>
 
         {sent ? (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs sm:text-sm leading-relaxed space-y-3">
-            <p className="font-semibold">Check your inbox!</p>
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs sm:text-sm leading-relaxed space-y-3">
+            <p className="font-bold">Check your inbox!</p>
             <p>We have dispatched a password reset link to your email address.</p>
-            <Link to="/login" className="inline-block text-xs font-bold text-blue-600 hover:underline pt-2">
+            <Link to="/login" className="inline-block text-xs font-bold text-[#0F382C] hover:underline pt-1">
               ← Return to Sign In
             </Link>
           </div>
@@ -77,19 +78,17 @@ export const ForgotPasswordPage = () => {
               {...register('email')}
             />
 
-            <Button
+            <button
               type="submit"
-              variant="primary"
-              size="lg"
-              className="w-full shadow-md shadow-blue-500/20"
-              isLoading={loading}
-              icon={Send}
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl bg-[#0F382C] hover:bg-[#16503f] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              Send Reset Link
-            </Button>
+              <span>{loading ? 'Sending Instructions...' : 'Send Reset Link'}</span>
+              <Send className="w-4 h-4" />
+            </button>
 
             <div className="text-center pt-2">
-              <Link to="/login" className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-blue-600">
+              <Link to="/login" className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-[#0F382C] transition-colors">
                 <ArrowLeft className="w-3.5 h-3.5" /> Back to Login
               </Link>
             </div>
@@ -100,3 +99,4 @@ export const ForgotPasswordPage = () => {
     </div>
   );
 };
+

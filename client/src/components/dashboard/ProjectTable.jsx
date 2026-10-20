@@ -70,7 +70,7 @@ export const ProjectTable = ({ filterQuery = '' }) => {
   );
 
   return (
-    <Card className="text-left border-slate-200/90 p-0 overflow-hidden">
+    <Card className="text-left border-[#E5E0D8]/90 p-0 overflow-hidden">
       {/* Table Header */}
       <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -78,7 +78,7 @@ export const ProjectTable = ({ filterQuery = '' }) => {
             <FolderKanban className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 leading-tight">Recent Projects</h3>
+            <h3 className="text-base font-bold text-[#0F291E] leading-tight">Recent Projects</h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">Live MongoDB Database Workspace ({projects.length})</p>
           </div>
         </div>
@@ -96,7 +96,7 @@ export const ProjectTable = ({ filterQuery = '' }) => {
       {/* Table Container */}
       <div className="overflow-x-auto">
         <table className="w-full text-xs text-left text-slate-600">
-          <thead className="bg-slate-50 border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+          <thead className="bg-[#FAF8F5] border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
             <tr>
               <th className="py-3 px-6">Project Name</th>
               <th className="py-3 px-6">Created Date</th>
@@ -119,8 +119,8 @@ export const ProjectTable = ({ filterQuery = '' }) => {
               </tr>
             ) : (
               filteredProjects.map((project) => (
-                <tr key={project.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-6 font-bold text-slate-900">{project.name}</td>
+                <tr key={project.id} className="hover:bg-[#FAF8F5]/70 transition-colors">
+                  <td className="py-3.5 px-6 font-bold text-[#0F291E]">{project.name}</td>
                   <td className="py-3.5 px-6 font-medium text-slate-500">{project.date}</td>
                   <td className="py-3.5 px-6">
                     <span
@@ -167,3 +167,4 @@ export const ProjectTable = ({ filterQuery = '' }) => {
     </Card>
   );
 };
+

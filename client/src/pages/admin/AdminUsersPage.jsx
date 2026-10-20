@@ -50,9 +50,7 @@ export const AdminUsersPage = () => {
       (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (u.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole =
-      roleFilter === 'all' ||
-      (roleFilter === 'admin' && u.role === 'admin') ||
-      (roleFilter === 'startup_owner' && u.role === 'startup_owner');
+      roleFilter === 'all' || u.role === roleFilter;
     const matchesStatus =
       statusFilter === 'all' || (u.status || 'Active').toLowerCase() === statusFilter.toLowerCase();
     return matchesSearch && matchesRole && matchesStatus;
@@ -98,12 +96,12 @@ export const AdminUsersPage = () => {
     <div className="space-y-8 max-w-7xl mx-auto pb-16 text-left">
       
       {/* Header Banner */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-[10px] font-sans font-bold uppercase tracking-wider">
+          <span className="px-3 py-1 rounded-full bg-[#0F291E] text-white text-[10px] font-sans font-bold uppercase tracking-wider">
             User Accounts Directory
           </span>
-          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight mt-2">
+          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#0F291E] tracking-tight mt-2">
             User Management ({loading ? '...' : usersList.length})
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -114,7 +112,7 @@ export const AdminUsersPage = () => {
         <button
           onClick={fetchUsers}
           disabled={loading}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-xs shrink-0 self-start sm:self-auto cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-xs shrink-0 self-start sm:self-auto cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 text-white ${loading ? 'animate-spin' : ''}`} />
           <span>Refresh Users</span>
@@ -122,7 +120,7 @@ export const AdminUsersPage = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="p-4 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="p-4 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
           <input
@@ -130,7 +128,7 @@ export const AdminUsersPage = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by name or email..."
-            className="w-full bg-[#EAF4F7]/40 border border-[#D6E6EC] focus:border-slate-900 focus:bg-white text-xs text-slate-900 placeholder-slate-400 rounded-xl pl-9 pr-4 py-2.5 outline-none font-medium transition-all"
+            className="w-full bg-[#FAF8F5]/40 border border-[#D6E6EC] focus:border-slate-900 focus:glass-panel text-xs text-[#0F291E] placeholder-slate-400 rounded-xl pl-9 pr-4 py-2.5 outline-none font-medium transition-all"
           />
         </div>
 
@@ -138,17 +136,19 @@ export const AdminUsersPage = () => {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="bg-[#EAF4F7]/40 border border-[#D6E6EC] text-xs text-slate-900 font-bold rounded-xl px-3.5 py-2.5 outline-none cursor-pointer"
+            className="bg-[#FAF8F5]/40 border border-[#D6E6EC] text-xs text-[#0F291E] font-bold rounded-xl px-3.5 py-2.5 outline-none cursor-pointer"
           >
             <option value="all">All Roles</option>
-            <option value="startup_owner">Startup Owner</option>
             <option value="admin">Administrator</option>
+            <option value="inventory_staff">Inventory Staff</option>
+            <option value="marketing_staff">Marketing Staff</option>
+            <option value="customer">Customer</option>
           </select>
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-[#EAF4F7]/40 border border-[#D6E6EC] text-xs text-slate-900 font-bold rounded-xl px-3.5 py-2.5 outline-none cursor-pointer"
+            className="bg-[#FAF8F5]/40 border border-[#D6E6EC] text-xs text-[#0F291E] font-bold rounded-xl px-3.5 py-2.5 outline-none cursor-pointer"
           >
             <option value="all">All Statuses</option>
             <option value="active">Active</option>
@@ -158,10 +158,10 @@ export const AdminUsersPage = () => {
       </div>
 
       {/* Users Table */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-4">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-4">
         {loading ? (
           <div className="py-12 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin text-slate-900" />
+            <RefreshCw className="w-4 h-4 animate-spin text-[#0F291E]" />
             <span>Loading user records from database...</span>
           </div>
         ) : filteredUsers.length === 0 ? (
@@ -172,7 +172,7 @@ export const AdminUsersPage = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-[#D6E6EC] text-slate-500 font-mono text-[10px] uppercase bg-[#EAF4F7]/50">
+                <tr className="border-b border-[#D6E6EC] text-slate-500 font-mono text-[10px] uppercase bg-[#FAF8F5]/50">
                   <th className="py-3.5 px-4 font-bold">Full Name</th>
                   <th className="py-3.5 px-4 font-bold">Email</th>
                   <th className="py-3.5 px-4 font-bold">Role</th>
@@ -183,14 +183,14 @@ export const AdminUsersPage = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-[#EAF4F7]/30 transition-colors">
-                    <td className="py-4 px-4 font-bold text-slate-900">{u.name}</td>
+                  <tr key={u.id} className="hover:bg-[#FAF8F5]/30 transition-colors">
+                    <td className="py-4 px-4 font-bold text-[#0F291E]">{u.name}</td>
                     <td className="py-4 px-4 text-slate-600 font-mono text-[11px]">{u.email}</td>
                     <td className="py-4 px-4">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
-                        u.role === 'admin' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-100 text-slate-700 border-slate-200'
+                        u.role === 'admin' ? 'bg-[#0F291E] text-white border-slate-900' : 'bg-slate-100 text-slate-700 border-[#E5E0D8]'
                       }`}>
-                        {u.role === 'admin' ? 'Administrator' : 'Startup Owner'}
+                        {u.role ? u.role.replace('_', ' ') : 'User'}
                       </span>
                     </td>
                     <td className="py-4 px-4 text-slate-500 font-mono text-[11px]">{u.date || 'N/A'}</td>
@@ -205,7 +205,7 @@ export const AdminUsersPage = () => {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleExportUserReport(u.id, u.name)}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900 text-white font-bold text-[10px] hover:bg-slate-800 transition-all shadow-2xs cursor-pointer"
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0F291E] text-white font-bold text-[10px] hover:bg-slate-800 transition-all shadow-2xs cursor-pointer"
                           title="Generate & Download Separate User Report PDF"
                         >
                           <Download className="w-3 h-3 text-amber-400" />
@@ -213,7 +213,7 @@ export const AdminUsersPage = () => {
                         </button>
                         <button
                           onClick={() => { setSelectedUser(u); setModalMode('view'); }}
-                          className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-full text-slate-400 hover:text-[#0F291E] hover:bg-slate-100 transition-colors cursor-pointer"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
@@ -245,18 +245,18 @@ export const AdminUsersPage = () => {
       {/* Modal */}
       <AnimatePresence>
         {modalMode && selectedUser && (
-          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 bg-[#0F291E]/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white max-w-md w-full rounded-3xl border border-[#D6E6EC] shadow-2xl overflow-hidden text-left"
+              className="glass-panel max-w-md w-full rounded-3xl border border-[#D6E6EC] shadow-2xl overflow-hidden text-left"
             >
-              <div className="p-6 bg-[#EAF4F7]/60 border-b border-[#D6E6EC] flex items-center justify-between">
-                <h3 className="font-serif text-xl font-bold text-slate-900">
+              <div className="p-6 bg-[#FAF8F5]/60 border-b border-[#D6E6EC] flex items-center justify-between">
+                <h3 className="font-serif text-xl font-bold text-[#0F291E]">
                   {modalMode === 'view' ? 'User Record Inspector' : 'Delete Confirmation'}
                 </h3>
-                <button onClick={() => setModalMode(null)} className="p-1.5 rounded-full text-slate-400 hover:text-slate-900">
+                <button onClick={() => setModalMode(null)} className="p-1.5 rounded-full text-slate-400 hover:text-[#0F291E]">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -264,18 +264,18 @@ export const AdminUsersPage = () => {
               <div className="p-6 space-y-4 text-xs">
                 {modalMode === 'view' ? (
                   <div className="space-y-3">
-                    <div className="p-4 bg-[#EAF4F7]/40 rounded-2xl border border-[#D6E6EC] space-y-1">
-                      <h4 className="font-serif text-lg font-bold text-slate-900">{selectedUser.name}</h4>
+                    <div className="p-4 bg-[#FAF8F5]/40 rounded-2xl border border-[#D6E6EC] space-y-1">
+                      <h4 className="font-serif text-lg font-bold text-[#0F291E]">{selectedUser.name}</h4>
                       <p className="text-slate-500 font-mono text-[11px]">{selectedUser.email}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-[#EAF4F7]/40 rounded-2xl border border-[#D6E6EC]">
+                      <div className="p-3 bg-[#FAF8F5]/40 rounded-2xl border border-[#D6E6EC]">
                         <span className="text-[10px] text-slate-400 font-mono uppercase font-bold">ROLE</span>
-                        <p className="font-bold text-slate-900 mt-0.5">{selectedUser.role}</p>
+                        <p className="font-bold text-[#0F291E] mt-0.5">{selectedUser.role}</p>
                       </div>
-                      <div className="p-3 bg-[#EAF4F7]/40 rounded-2xl border border-[#D6E6EC]">
+                      <div className="p-3 bg-[#FAF8F5]/40 rounded-2xl border border-[#D6E6EC]">
                         <span className="text-[10px] text-slate-400 font-mono uppercase font-bold">STATUS</span>
-                        <p className="font-bold text-slate-900 mt-0.5">{selectedUser.status}</p>
+                        <p className="font-bold text-[#0F291E] mt-0.5">{selectedUser.status}</p>
                       </div>
                     </div>
                   </div>
@@ -287,7 +287,7 @@ export const AdminUsersPage = () => {
                     <div className="flex justify-end gap-2 pt-2">
                       <button
                         onClick={() => setModalMode(null)}
-                        className="px-5 py-2.5 rounded-full bg-slate-100 font-bold text-slate-800 hover:bg-slate-200 transition-colors"
+                        className="px-5 py-2.5 rounded-full bg-slate-100 font-bold text-[#0F291E]/90 hover:bg-slate-200 transition-colors"
                       >
                         Cancel
                       </button>
@@ -303,10 +303,10 @@ export const AdminUsersPage = () => {
               </div>
 
               {modalMode === 'view' && (
-                <div className="p-4 bg-slate-50 border-t border-[#D6E6EC] flex justify-end">
+                <div className="p-4 bg-[#FAF8F5] border-t border-[#D6E6EC] flex justify-end">
                   <button
                     onClick={() => setModalMode(null)}
-                    className="px-6 py-2.5 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="px-6 py-2.5 rounded-full bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-colors cursor-pointer"
                   >
                     Close
                   </button>
@@ -320,3 +320,4 @@ export const AdminUsersPage = () => {
     </div>
   );
 };
+

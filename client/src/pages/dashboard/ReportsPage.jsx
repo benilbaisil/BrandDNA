@@ -55,7 +55,7 @@ export const ReportsPage = () => {
           <span className="text-xs font-mono font-bold text-blue-600 uppercase tracking-wider">
             Investor & Board Deliverables
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F291E] tracking-tight mt-1">
             Executive Report Generator
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -66,7 +66,7 @@ export const ReportsPage = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={handleShare}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors shadow-2xs"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl glass-panel border border-[#E5E0D8] text-slate-700 text-xs font-bold hover:bg-[#FAF8F5] transition-colors shadow-2xs"
           >
             {copiedShare ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
             <span>{copiedShare ? 'Link Copied' : 'Share Deck'}</span>
@@ -75,7 +75,7 @@ export const ReportsPage = () => {
           <button
             onClick={handleDownload}
             disabled={isGenerating}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 shadow-xs"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 shadow-xs"
           >
             <Download className="w-4 h-4 text-white" />
             <span>{isGenerating ? 'Compiling PDF...' : 'Download PDF Report'}</span>
@@ -86,8 +86,8 @@ export const ReportsPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column: Module Customization Options */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
+          <h3 className="text-sm font-bold text-[#0F291E] flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-blue-600" />
             <span>Select Report Modules</span>
           </h3>
@@ -105,9 +105,9 @@ export const ReportsPage = () => {
               <div
                 key={mod.key}
                 onClick={() => toggleModule(mod.key)}
-                className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 cursor-pointer flex items-center justify-between text-xs select-none transition-colors"
+                className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] hover:border-slate-300 cursor-pointer flex items-center justify-between text-xs select-none transition-colors"
               >
-                <span className="text-slate-800 font-medium">{mod.label}</span>
+                <span className="text-[#0F291E]/90 font-medium">{mod.label}</span>
                 {selectedModules[mod.key] ? (
                   <CheckSquare className="w-4 h-4 text-blue-600" />
                 ) : (
@@ -121,7 +121,7 @@ export const ReportsPage = () => {
         {/* Right 2 Columns: Live Interactive PDF Preview */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-900 flex items-center gap-2">
+            <span className="text-xs font-bold text-[#0F291E] flex items-center gap-2">
               <Eye className="w-4 h-4 text-blue-600" />
               <span>PDF Live Page Preview</span>
             </span>
@@ -129,15 +129,15 @@ export const ReportsPage = () => {
           </div>
 
           {/* Paper Sheet Preview Container */}
-          <div className="p-8 rounded-2xl bg-white text-slate-900 shadow-lg border border-slate-300 space-y-6 min-h-[500px]">
+          <div className="p-8 rounded-2xl glass-panel text-[#0F291E] shadow-lg border border-slate-300 space-y-6 min-h-[500px]">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+            <div className="flex items-center justify-between border-b border-[#E5E0D8] pb-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-lg bg-[#0F291E] text-white flex items-center justify-center font-bold">
                   <Dna className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-extrabold text-slate-900 tracking-tight">BrandDNA AI</h2>
+                  <h2 className="text-base font-extrabold text-[#0F291E] tracking-tight">BrandDNA AI</h2>
                   <span className="text-[10px] text-slate-500 font-mono uppercase">Confidential Executive Report</span>
                 </div>
               </div>
@@ -150,7 +150,7 @@ export const ReportsPage = () => {
             {/* Title Section */}
             <div className="space-y-2">
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Brand Intelligence Audit</span>
-              <h1 className="text-2xl font-black text-slate-900">
+              <h1 className="text-2xl font-black text-[#0F291E]">
                 Aura AI: Global Strategy & Legal Clearance Deck
               </h1>
               <p className="text-xs text-slate-600 leading-relaxed">
@@ -159,10 +159,10 @@ export const ReportsPage = () => {
             </div>
 
             {/* Metrics Overview in PDF preview */}
-            <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="grid grid-cols-3 gap-3 p-4 bg-[#FAF8F5] rounded-xl border border-[#E5E0D8]">
               <div>
                 <span className="text-[9px] font-mono text-slate-500 uppercase">Overall Score</span>
-                <div className="text-lg font-black text-slate-900">94 / 100</div>
+                <div className="text-lg font-black text-[#0F291E]">94 / 100</div>
               </div>
               <div>
                 <span className="text-[9px] font-mono text-slate-500 uppercase">Trademark Risk</span>
@@ -176,7 +176,7 @@ export const ReportsPage = () => {
 
             {/* Content Preview Blocks */}
             <div className="space-y-3 pt-2 text-xs text-slate-700">
-              <h3 className="font-bold text-slate-900 text-sm border-b border-slate-200 pb-1">1. Brand DNA & Archetype</h3>
+              <h3 className="font-bold text-[#0F291E] text-sm border-b border-[#E5E0D8] pb-1">1. Brand DNA & Archetype</h3>
               <p className="text-[11px] leading-normal text-slate-600">
                 Aura AI embodies **The Visionary Creator** archetype. Tone is direct, luxurious, and authoritative, striking a perfect balance between software speed and legal safety.
               </p>
@@ -189,3 +189,4 @@ export const ReportsPage = () => {
     </div>
   );
 };
+

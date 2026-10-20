@@ -31,7 +31,7 @@ export const DesignSystemPage = () => {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2">
-          <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-white text-[10px] font-mono font-bold border border-white/20 uppercase">
+          <span className="px-2.5 py-0.5 rounded-full glass-panel/10 text-white text-[10px] font-mono font-bold border border-white/20 uppercase">
             Monochrome Design System & UI Kit
           </span>
         </div>
@@ -50,7 +50,7 @@ export const DesignSystemPage = () => {
           <span>1. Button System</span>
         </h2>
         <div className="flex flex-wrap items-center gap-3">
-          <button className="px-4 py-2.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-zinc-200 transition-all shadow-md shadow-white/10">
+          <button className="px-4 py-2.5 rounded-xl glass-panel text-black font-bold text-xs hover:bg-zinc-200 transition-all shadow-md shadow-white/10">
             Primary White Button
           </button>
 
@@ -58,15 +58,15 @@ export const DesignSystemPage = () => {
             Secondary Surface
           </button>
 
-          <button className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-zinc-300 font-semibold text-xs transition-colors">
+          <button className="px-4 py-2.5 rounded-xl glass-panel/5 border border-white/10 hover:glass-panel/10 text-zinc-300 font-semibold text-xs transition-colors">
             Ghost Outline
           </button>
 
-          <button className="px-4 py-2.5 rounded-xl bg-white/10 text-white border border-white/20 font-bold text-xs hover:bg-white/20 transition-colors">
+          <button className="px-4 py-2.5 rounded-xl glass-panel/10 text-white border border-white/20 font-bold text-xs hover:glass-panel/20 transition-colors">
             High Contrast Badge
           </button>
 
-          <button disabled className="px-4 py-2.5 rounded-xl bg-white/5 text-zinc-600 font-semibold text-xs border border-white/5 cursor-not-allowed">
+          <button disabled className="px-4 py-2.5 rounded-xl glass-panel/5 text-zinc-600 font-semibold text-xs border border-white/5 cursor-not-allowed">
             Disabled State
           </button>
         </div>
@@ -100,7 +100,7 @@ export const DesignSystemPage = () => {
                 placeholder="Search..."
                 className="w-full bg-[#141414] border border-white/10 text-xs text-white placeholder-zinc-500 rounded-xl pl-9 pr-8 py-2.5 outline-none"
               />
-              <kbd className="absolute right-2.5 top-2 text-[9px] font-mono text-zinc-300 bg-white/10 px-1.5 py-0.5 rounded border border-white/10">
+              <kbd className="absolute right-2.5 top-2 text-[9px] font-mono text-zinc-300 glass-panel/10 px-1.5 py-0.5 rounded border border-white/10">
                 ⌘K
               </kbd>
             </div>
@@ -127,7 +127,7 @@ export const DesignSystemPage = () => {
             <div
               onClick={() => setCheckboxVal(!checkboxVal)}
               className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                checkboxVal ? 'bg-white border-white text-black' : 'border-white/20 bg-[#141414]'
+                checkboxVal ? 'glass-panel border-white text-black' : 'border-white/20 bg-[#141414]'
               }`}
             >
               {checkboxVal && <Check className="w-3 h-3 text-black" />}
@@ -169,13 +169,13 @@ export const DesignSystemPage = () => {
 
         {/* Badges */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-white text-[10px] font-mono font-bold border border-white/20">
+          <span className="px-2.5 py-0.5 rounded-full glass-panel/10 text-white text-[10px] font-mono font-bold border border-white/20">
             PASSED 98.2%
           </span>
-          <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-white text-[10px] font-mono font-bold border border-white/20">
+          <span className="px-2.5 py-0.5 rounded-full glass-panel/10 text-white text-[10px] font-mono font-bold border border-white/20">
             AI ACTIVE
           </span>
-          <span className="px-2.5 py-0.5 rounded-full bg-white text-black text-[10px] font-mono font-bold">
+          <span className="px-2.5 py-0.5 rounded-full glass-panel text-black text-[10px] font-mono font-bold">
             TIER 1 ELITE
           </span>
           <span className="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-[10px] font-mono font-bold border border-zinc-700">
@@ -194,7 +194,7 @@ export const DesignSystemPage = () => {
               initial={{ width: 0 }}
               animate={{ width: '85%' }}
               transition={{ duration: 1 }}
-              className="h-full bg-white rounded-full"
+              className="h-full glass-panel rounded-full"
             />
           </div>
         </div>
@@ -203,8 +203,8 @@ export const DesignSystemPage = () => {
         <div className="space-y-2 pt-2 max-w-md">
           <span className="text-[11px] font-medium text-zinc-400 block">Loading Skeleton Preview</span>
           <div className="p-4 rounded-xl bg-[#141414] border border-white/10 space-y-2 animate-pulse">
-            <div className="h-4 bg-white/10 rounded w-3/4" />
-            <div className="h-3 bg-white/5 rounded w-1/2" />
+            <div className="h-4 glass-panel/10 rounded w-3/4" />
+            <div className="h-3 glass-panel/5 rounded w-1/2" />
           </div>
         </div>
       </section>
@@ -237,7 +237,7 @@ export const DesignSystemPage = () => {
           <div className="space-y-2">
             <button
               onClick={() => setToastVisible(true)}
-              className="w-full p-3 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-xs hover:bg-white/20 transition-colors"
+              className="w-full p-3 rounded-xl glass-panel/10 border border-white/20 text-white font-bold text-xs hover:glass-panel/20 transition-colors"
             >
               Trigger System Toast Notification
             </button>
@@ -258,7 +258,7 @@ export const DesignSystemPage = () => {
 
         {/* Empty State */}
         <div className="p-8 rounded-xl bg-[#141414]/40 border border-dashed border-white/10 text-center space-y-3 pt-6">
-          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 text-zinc-500 mx-auto flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl glass-panel/5 border border-white/10 text-zinc-500 mx-auto flex items-center justify-center">
             <FolderOpen className="w-6 h-6 text-white" />
           </div>
           <h3 className="text-xs font-bold text-white">No Archival Decks Selected</h3>
@@ -271,3 +271,4 @@ export const DesignSystemPage = () => {
     </div>
   );
 };
+

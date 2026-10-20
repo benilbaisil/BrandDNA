@@ -171,11 +171,11 @@ export const CustomerPersonaPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           PAGE HEADER & MASTER ACTIONS
          ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs space-y-4">
+      <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-[10px] font-sans font-bold uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-[#0F291E] text-white text-[10px] font-sans font-bold uppercase tracking-wider">
                 Module 05: Customer Persona Engine
               </span>
               <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
@@ -183,7 +183,7 @@ export const CustomerPersonaPage = () => {
                 Brand Context Synced
               </span>
             </div>
-            <h1 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight mt-2">
+            <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#0F291E] tracking-tight mt-2">
               Target Customer Persona Generator
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -195,7 +195,7 @@ export const CustomerPersonaPage = () => {
             <button
               onClick={handleGeneratePersonas}
               disabled={aiGenerating}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all border border-[#D6E6EC] cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-bold transition-all border border-[#D6E6EC] cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-slate-700 ${aiGenerating ? 'animate-spin' : ''}`} />
               <span>{aiGenerating ? 'Generating Personas...' : 'Regenerate Personas'}</span>
@@ -204,7 +204,7 @@ export const CustomerPersonaPage = () => {
             <button
               onClick={handleSaveAndContinue}
               disabled={saving || personas.length === 0}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-md cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-md cursor-pointer disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5 text-emerald-400" />
               <span>Save & Continue</span>
@@ -215,52 +215,52 @@ export const CustomerPersonaPage = () => {
       </div>
 
       {/* Accumulated Context Summary Banner */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#D6E6EC] shadow-2xs space-y-3">
+      <div className="p-4 sm:p-5 rounded-2xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-3">
         <div className="flex items-center justify-between border-b border-[#D6E6EC]/60 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-[#0F291E] text-white flex items-center justify-center font-bold shrink-0">
               <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Source Brand Context</span>
-              <h3 className="text-sm font-extrabold text-slate-900">{brandContext.brandName || 'Master Brand Identity'}</h3>
+              <h3 className="text-sm font-extrabold text-[#0F291E]">{brandContext.brandName || 'Master Brand Identity'}</h3>
             </div>
           </div>
           {brandContext.industry && (
-            <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+            <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-[#E5E0D8]">
               {brandContext.industry}
             </span>
           )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="p-3 rounded-xl bg-[#EAF4F7]/40 border border-[#D6E6EC]">
+          <div className="p-3 rounded-xl bg-[#FAF8F5]/40 border border-[#D6E6EC]">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-0.5">Target Audience Focus</span>
-            <p className="text-slate-800 font-semibold">{brandContext.targetAudience || 'Modern Consumers & Founders'}</p>
+            <p className="text-[#0F291E]/90 font-semibold">{brandContext.targetAudience || 'Modern Consumers & Founders'}</p>
           </div>
 
-          <div className="p-3 rounded-xl bg-[#EAF4F7]/40 border border-[#D6E6EC]">
+          <div className="p-3 rounded-xl bg-[#FAF8F5]/40 border border-[#D6E6EC]">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-0.5">Active Product Solution</span>
-            <p className="text-slate-800 font-semibold">{brandContext.productName || 'Flagship Offering'}</p>
+            <p className="text-[#0F291E]/90 font-semibold">{brandContext.productName || 'Flagship Offering'}</p>
           </div>
         </div>
       </div>
 
       {/* Empty State / CTA if no personas generated yet */}
       {personas.length === 0 && !aiGenerating && (
-        <div className="p-8 sm:p-12 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs text-center space-y-4">
+        <div className="p-8 sm:p-12 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs text-center space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
             <Users className="w-7 h-7" />
           </div>
           <div className="space-y-1 max-w-md mx-auto">
-            <h3 className="font-serif text-xl font-bold text-slate-900">No Target Customer Personas Generated Yet</h3>
+            <h3 className="font-serif text-xl font-bold text-[#0F291E]">No Target Customer Personas Generated Yet</h3>
             <p className="text-xs text-slate-500">
               Click the button below to execute AI consumer psychology analysis and generate 2 distinct target customer profiles based on your brand DNA & product strategy.
             </p>
           </div>
           <button
             onClick={handleGeneratePersonas}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-md cursor-pointer"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-md cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-amber-400" />
             <span>Generate Customer Personas with AI</span>
@@ -281,7 +281,7 @@ export const CustomerPersonaPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2].map((idx) => (
-              <div key={idx} className="p-6 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-6 animate-pulse">
+              <div key={idx} className="p-6 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-6 animate-pulse">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-slate-200" />
@@ -305,7 +305,7 @@ export const CustomerPersonaPage = () => {
       {!aiGenerating && personas.length > 0 && (
         <div className="space-y-8">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <span className="text-xs font-mono font-bold text-[#0F291E] uppercase tracking-wider flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-600" />
               2 Generated Target Customer Persona Profiles
             </span>
@@ -319,12 +319,12 @@ export const CustomerPersonaPage = () => {
               return (
                 <div
                   key={pIdx}
-                  className="bg-white rounded-3xl border border-[#D6E6EC] shadow-2xs overflow-hidden flex flex-col justify-between text-left transition-all"
+                  className="glass-panel rounded-3xl border border-[#D6E6EC] shadow-2xs overflow-hidden flex flex-col justify-between text-left transition-all"
                 >
                   {/* Persona Card Header */}
-                  <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
+                  <div className="p-6 bg-[#0F291E] text-white flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-white/10 text-white flex items-center justify-center font-bold border border-white/20 shrink-0">
+                      <div className="w-11 h-11 rounded-2xl glass-panel/10 text-white flex items-center justify-center font-bold border border-white/20 shrink-0">
                         <User className="w-6 h-6 text-amber-400" />
                       </div>
                       <div>
@@ -339,7 +339,7 @@ export const CustomerPersonaPage = () => {
 
                     <button
                       onClick={() => handleCopy(JSON.stringify(persona, null, 2), `persona-${pIdx}`)}
-                      className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                      className="p-2 rounded-xl text-slate-300 hover:text-white hover:glass-panel/10 transition-colors"
                       title="Copy JSON Profile"
                     >
                       {copiedKey === `persona-${pIdx}` ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
@@ -362,8 +362,8 @@ export const CustomerPersonaPage = () => {
                           onClick={() => handleTabSwitch(pIdx, tab.id)}
                           className={`py-2 px-1 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
                             isActive
-                              ? 'bg-white text-slate-900 shadow-2xs font-extrabold border border-slate-200'
-                              : 'text-slate-500 hover:text-slate-900 hover:bg-white/50'
+                              ? 'glass-panel text-[#0F291E] shadow-2xs font-extrabold border border-[#E5E0D8]'
+                              : 'text-slate-500 hover:text-[#0F291E] hover:glass-panel/50'
                           }`}
                         >
                           <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
@@ -387,26 +387,26 @@ export const CustomerPersonaPage = () => {
                           className="space-y-4 text-xs"
                         >
                           <div className="grid grid-cols-2 gap-3">
-                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8]">
                               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-0.5">Age Range</span>
-                              <p className="font-bold text-slate-900">{persona.demographics?.age || 'N/A'}</p>
+                              <p className="font-bold text-[#0F291E]">{persona.demographics?.age || 'N/A'}</p>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8]">
                               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-0.5">Location</span>
-                              <p className="font-bold text-slate-900">{persona.demographics?.location || 'N/A'}</p>
+                              <p className="font-bold text-[#0F291E]">{persona.demographics?.location || 'N/A'}</p>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8]">
                               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-0.5">Income Level</span>
-                              <p className="font-bold text-slate-900">{formatIncomeToINR(persona.demographics?.income)}</p>
+                              <p className="font-bold text-[#0F291E]">{formatIncomeToINR(persona.demographics?.income)}</p>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8]">
                               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-0.5">Occupation / Role</span>
-                              <p className="font-bold text-slate-900">{persona.demographics?.occupation || 'N/A'}</p>
+                              <p className="font-bold text-[#0F291E]">{persona.demographics?.occupation || 'N/A'}</p>
                             </div>
                           </div>
 
                           {persona.demographics?.details && (
-                            <div className="p-3.5 rounded-xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
+                            <div className="p-3.5 rounded-xl bg-[#FAF8F5]/40 border border-[#D6E6EC] space-y-1">
                               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Background & Context</span>
                               <p className="text-slate-700 leading-relaxed font-medium">{persona.demographics.details}</p>
                             </div>
@@ -452,7 +452,7 @@ export const CustomerPersonaPage = () => {
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Media & Information Channels</span>
                             <div className="flex flex-wrap gap-1.5">
                               {persona.interests?.mediaConsumption?.map((item, idx) => (
-                                <span key={idx} className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 font-semibold border border-slate-200 text-[11px]">
+                                <span key={idx} className="px-2.5 py-1 rounded-lg bg-slate-100 text-[#0F291E]/90 font-semibold border border-[#E5E0D8] text-[11px]">
                                   {item}
                                 </span>
                               )) || <p className="text-slate-400 italic">No media listed</p>}
@@ -460,7 +460,7 @@ export const CustomerPersonaPage = () => {
                           </div>
 
                           {persona.interests?.details && (
-                            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                            <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Psychographic Summary</span>
                               <p className="text-slate-700 leading-relaxed font-medium">{persona.interests.details}</p>
                             </div>
@@ -477,23 +477,23 @@ export const CustomerPersonaPage = () => {
                           exit={{ opacity: 0, y: -8 }}
                           className="space-y-4 text-xs"
                         >
-                          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                          <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Shopping & Evaluation Habits</span>
-                            <p className="text-slate-800 font-semibold leading-relaxed">{persona.buyingBehaviour?.shoppingHabits || 'N/A'}</p>
+                            <p className="text-[#0F291E]/90 font-semibold leading-relaxed">{persona.buyingBehaviour?.shoppingHabits || 'N/A'}</p>
                           </div>
 
-                          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                          <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Decision Drivers</span>
-                            <p className="text-slate-800 font-semibold leading-relaxed">{persona.buyingBehaviour?.decisionDrivers || 'N/A'}</p>
+                            <p className="text-[#0F291E]/90 font-semibold leading-relaxed">{persona.buyingBehaviour?.decisionDrivers || 'N/A'}</p>
                           </div>
 
-                          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                          <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Price Sensitivity</span>
-                            <p className="text-slate-800 font-semibold leading-relaxed">{persona.buyingBehaviour?.priceSensitivity || 'N/A'}</p>
+                            <p className="text-[#0F291E]/90 font-semibold leading-relaxed">{persona.buyingBehaviour?.priceSensitivity || 'N/A'}</p>
                           </div>
 
                           {persona.buyingBehaviour?.details && (
-                            <div className="p-3.5 rounded-xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
+                            <div className="p-3.5 rounded-xl bg-[#FAF8F5]/40 border border-[#D6E6EC] space-y-1">
                               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Buying Rationale</span>
                               <p className="text-slate-700 leading-relaxed font-medium">{persona.buyingBehaviour.details}</p>
                             </div>
@@ -521,16 +521,16 @@ export const CustomerPersonaPage = () => {
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Specific Frustrations Solved</span>
                             <div className="space-y-1.5">
                               {persona.painPoints?.specificFrustrations?.map((item, idx) => (
-                                <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2">
+                                <div key={idx} className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-start gap-2">
                                   <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                                  <span className="text-slate-800 font-semibold leading-snug">{item}</span>
+                                  <span className="text-[#0F291E]/90 font-semibold leading-snug">{item}</span>
                                 </div>
                               )) || <p className="text-slate-400 italic">No specific frustrations listed</p>}
                             </div>
                           </div>
 
                           {persona.painPoints?.details && (
-                            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                            <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Solution Fit Rationale</span>
                               <p className="text-slate-700 leading-relaxed font-medium">{persona.painPoints.details}</p>
                             </div>
@@ -542,7 +542,7 @@ export const CustomerPersonaPage = () => {
                   </div>
 
                   {/* Persona Card Footer */}
-                  <div className="p-4 bg-slate-50 border-t border-[#D6E6EC] flex items-center justify-between text-xs">
+                  <div className="p-4 bg-[#FAF8F5] border-t border-[#D6E6EC] flex items-center justify-between text-xs">
                     <span className="text-[10px] font-mono text-slate-500 font-semibold">
                       Aligned with {brandContext.brandName || 'Brand Strategy'}
                     </span>
@@ -556,16 +556,16 @@ export const CustomerPersonaPage = () => {
           </div>
 
           {/* Bottom Action Footer Bar */}
-          <div className="p-6 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="p-6 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <h4 className="text-sm font-extrabold text-slate-900">Ready to build your AI Marketing Plan?</h4>
+              <h4 className="text-sm font-extrabold text-[#0F291E]">Ready to build your AI Marketing Plan?</h4>
               <p className="text-xs text-slate-500">Save these customer personas to your MongoDB project document and proceed to Module 6: AI Marketing Planner.</p>
             </div>
 
             <button
               onClick={handleSaveAndContinue}
               disabled={saving}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-md cursor-pointer shrink-0 disabled:opacity-50"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-md cursor-pointer shrink-0 disabled:opacity-50"
             >
               <Save className="w-4 h-4 text-emerald-400" />
               <span>Save & Continue</span>
@@ -581,3 +581,4 @@ export const CustomerPersonaPage = () => {
 };
 
 export default CustomerPersonaPage;
+

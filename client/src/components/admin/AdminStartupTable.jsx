@@ -41,14 +41,14 @@ export const AdminStartupTable = () => {
   };
 
   return (
-    <Card className="text-left border-slate-200/90 p-0 overflow-hidden">
+    <Card className="text-left border-[#E5E0D8]/90 p-0 overflow-hidden">
       <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
             <Building2 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 leading-tight">Startup Management</h3>
+            <h3 className="text-base font-bold text-[#0F291E] leading-tight">Startup Management</h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">Live MongoDB Startup Profiles ({startups.length})</p>
           </div>
         </div>
@@ -56,7 +56,7 @@ export const AdminStartupTable = () => {
 
       <div className="overflow-x-auto">
         <table className="w-full text-xs text-left text-slate-600">
-          <thead className="bg-slate-50 border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+          <thead className="bg-[#FAF8F5] border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
             <tr>
               <th className="py-3 px-6">Company Name</th>
               <th className="py-3 px-6">Industry</th>
@@ -81,8 +81,8 @@ export const AdminStartupTable = () => {
               </tr>
             ) : (
               startups.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-6 font-bold text-slate-900">{s.name}</td>
+                <tr key={s.id} className="hover:bg-[#FAF8F5]/70 transition-colors">
+                  <td className="py-3.5 px-6 font-bold text-[#0F291E]">{s.name}</td>
                   <td className="py-3.5 px-6 font-medium text-slate-600">{s.industry}</td>
                   <td className="py-3.5 px-6 text-slate-700 font-medium">{s.owner}</td>
                   <td className="py-3.5 px-6 text-slate-500 font-medium">{s.date}</td>
@@ -131,3 +131,4 @@ export const AdminStartupTable = () => {
     </Card>
   );
 };
+

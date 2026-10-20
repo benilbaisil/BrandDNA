@@ -88,7 +88,7 @@ export const BrandIntelligencePage = () => {
         <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900">Business Profile Required</h2>
+        <h2 className="text-xl font-bold text-[#0F291E]">Business Profile Required</h2>
         <p className="text-sm text-slate-500">
           You need to complete your business profile to generate brand identity assets.
         </p>
@@ -119,7 +119,7 @@ export const BrandIntelligencePage = () => {
         <button
           onClick={handleGenerate}
           disabled={generating}
-          className="relative inline-flex items-center justify-center gap-2 px-6 py-3 overflow-hidden rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all shadow-[0_0_20px_rgba(0,0,0,0.1)] hover:shadow-[0_0_25px_rgba(59,130,246,0.3)] disabled:opacity-70 disabled:cursor-not-allowed group"
+          className="relative inline-flex items-center justify-center gap-2 px-6 py-3 overflow-hidden rounded-xl bg-[#0F291E] text-white font-bold text-sm hover:bg-slate-800 transition-all shadow-[0_0_20px_rgba(0,0,0,0.1)] hover:shadow-[0_0_25px_rgba(59,130,246,0.3)] disabled:opacity-70 disabled:cursor-not-allowed group"
         >
           <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-10 transition-opacity" />
           {generating ? (
@@ -147,7 +147,7 @@ export const BrandIntelligencePage = () => {
           >
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay" />
             <div className="relative z-10 flex flex-col items-center gap-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-blue-200 border border-white/10 text-[10px] font-bold font-mono tracking-widest uppercase backdrop-blur-sm">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass-panel/10 text-blue-200 border border-white/10 text-[10px] font-bold font-mono tracking-widest uppercase backdrop-blur-sm">
                 <Sparkles className="w-3 h-3" /> Core Identity
               </span>
               <h2 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight drop-shadow-lg">
@@ -164,12 +164,12 @@ export const BrandIntelligencePage = () => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 shadow-sm border border-slate-200/60 hover:shadow-md transition-all group"
+            className="glass-panel/60 backdrop-blur-xl rounded-3xl p-6 shadow-sm border border-[#E5E0D8]/60 hover:shadow-md transition-all group"
           >
             <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-inner">
               <Target className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-2 font-display">Mission Statement</h3>
+            <h3 className="text-lg font-bold text-[#0F291E] mb-2 font-display">Mission Statement</h3>
             <p className="text-sm text-slate-600 leading-relaxed">
               {brandData.missionStatement}
             </p>
@@ -180,12 +180,12 @@ export const BrandIntelligencePage = () => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 shadow-sm border border-slate-200/60 hover:shadow-md transition-all group"
+            className="glass-panel/60 backdrop-blur-xl rounded-3xl p-6 shadow-sm border border-[#E5E0D8]/60 hover:shadow-md transition-all group"
           >
             <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-inner">
               <Lightbulb className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-2 font-display">Vision Statement</h3>
+            <h3 className="text-lg font-bold text-[#0F291E] mb-2 font-display">Vision Statement</h3>
             <p className="text-sm text-slate-600 leading-relaxed">
               {brandData.visionStatement}
             </p>
@@ -196,13 +196,13 @@ export const BrandIntelligencePage = () => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="md:col-span-2 bg-white/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/60 hover:shadow-md transition-all group"
+            className="md:col-span-2 glass-panel/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-sm border border-[#E5E0D8]/60 hover:shadow-md transition-all group"
           >
              <div className="flex items-center gap-4 mb-4">
                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner">
                  <BookOpen className="w-6 h-6" />
                </div>
-               <h3 className="text-xl font-bold text-slate-900 font-display">Brand Story</h3>
+               <h3 className="text-xl font-bold text-[#0F291E] font-display">Brand Story</h3>
              </div>
             <p className="text-sm sm:text-base text-slate-600 leading-relaxed whitespace-pre-wrap">
               {brandData.brandStory}
@@ -216,11 +216,11 @@ export const BrandIntelligencePage = () => {
             transition={{ delay: 0.5 }}
             className="md:col-span-2 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-3xl p-6 sm:p-8 shadow-sm border border-emerald-100/50 flex flex-col sm:flex-row items-center gap-6"
           >
-            <div className="w-16 h-16 rounded-3xl bg-white text-emerald-600 flex items-center justify-center shrink-0 shadow-sm border border-emerald-100">
+            <div className="w-16 h-16 rounded-3xl glass-panel text-emerald-600 flex items-center justify-center shrink-0 shadow-sm border border-emerald-100">
               <MessageCircleHeart className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1 font-display">Brand Personality</h3>
+              <h3 className="text-lg font-bold text-[#0F291E] mb-1 font-display">Brand Personality</h3>
               <p className="text-sm sm:text-base text-emerald-800 font-medium">
                 {brandData.brandPersonality}
               </p>
@@ -233,12 +233,12 @@ export const BrandIntelligencePage = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-slate-50 border border-dashed border-slate-300 rounded-3xl p-12 text-center flex flex-col items-center justify-center"
+          className="bg-[#FAF8F5] border border-dashed border-slate-300 rounded-3xl p-12 text-center flex flex-col items-center justify-center"
         >
-          <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-sm border border-slate-200 mb-6">
+          <div className="w-20 h-20 rounded-full glass-panel flex items-center justify-center shadow-sm border border-[#E5E0D8] mb-6">
             <Sparkles className="w-10 h-10 text-slate-400" />
           </div>
-          <h3 className="text-2xl font-bold text-slate-800 mb-2">No Identity Generated Yet</h3>
+          <h3 className="text-2xl font-bold text-[#0F291E]/90 mb-2">No Identity Generated Yet</h3>
           <p className="text-slate-500 max-w-md mx-auto mb-8">
             Click the generate button above to let Gemini AI analyze your business profile and craft a premium brand identity for you.
           </p>
@@ -247,23 +247,23 @@ export const BrandIntelligencePage = () => {
 
       {/* Saved Business Summary Collapsible or Mini View */}
       {savedData && (
-        <div className="pt-8 border-t border-slate-200/50">
+        <div className="pt-8 border-t border-[#E5E0D8]/50">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 ml-2">Reference Context (Your Input)</p>
-          <div className="bg-white/40 backdrop-blur-md rounded-2xl border border-slate-200/50 shadow-sm overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+          <div className="glass-panel/40 backdrop-blur-md rounded-2xl border border-[#E5E0D8]/50 shadow-sm overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
             <div className="px-5 py-3 border-b border-slate-100/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
                   <Building2 className="w-4 h-4 text-slate-500" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-800">
+                  <p className="text-xs font-bold text-[#0F291E]/90">
                     {savedData?.businessType || 'Business'} · {savedData?.industry}
                   </p>
                 </div>
               </div>
               <Link
                 to="/dashboard"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors border border-slate-200 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass-panel text-slate-600 font-semibold text-xs hover:bg-[#FAF8F5] transition-colors border border-[#E5E0D8] cursor-pointer"
               >
                 <Edit2 className="w-3 h-3" /> Edit Profile
               </Link>
@@ -286,3 +286,4 @@ export const BrandIntelligencePage = () => {
     </div>
   );
 };
+

@@ -107,7 +107,7 @@ export const AdminLoginPage = () => {
             <div className="space-y-3 pt-2">
               <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">System Telemetry:</span>
               
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between text-xs">
+              <div className="p-3 rounded-xl glass-panel/5 border border-white/10 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <Server className="w-3.5 h-3.5 text-emerald-400" />
                   <span className="text-slate-300 font-medium">USPTO Database Sync</span>
@@ -115,7 +115,7 @@ export const AdminLoginPage = () => {
                 <span className="text-[10px] font-mono text-emerald-400 font-bold">OPERATIONAL</span>
               </div>
 
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between text-xs">
+              <div className="p-3 rounded-xl glass-panel/5 border border-white/10 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
                   <span className="text-slate-300 font-medium">Neural Engine Cluster</span>
@@ -123,7 +123,7 @@ export const AdminLoginPage = () => {
                 <span className="text-[10px] font-mono text-amber-400 font-bold">140ms LATENCY</span>
               </div>
 
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between text-xs">
+              <div className="p-3 rounded-xl glass-panel/5 border border-white/10 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
                   <span className="text-slate-300 font-medium">Audit Vault Encryption</span>
@@ -156,7 +156,7 @@ export const AdminLoginPage = () => {
                 <button
                   type="button"
                   onClick={handleFillDemo}
-                  className="text-[10px] font-mono text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg border border-white/10 transition-colors"
+                  className="text-[10px] font-mono text-slate-400 hover:text-white glass-panel/5 hover:glass-panel/10 px-2.5 py-1 rounded-lg border border-white/10 transition-colors"
                 >
                   ⚡ Auto-Fill Demo Admin
                 </button>
@@ -263,3 +263,4 @@ export const AdminLoginPage = () => {
     </div>
   );
 };
+

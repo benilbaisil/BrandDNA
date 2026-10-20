@@ -492,7 +492,7 @@ export const BrandAnalysisPage = () => {
         <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900">Business Profile Required</h2>
+        <h2 className="text-xl font-bold text-[#0F291E]">Business Profile Required</h2>
         <p className="text-sm text-slate-500">
           Please submit your basic business details first to provide context for AI brand generation.
         </p>
@@ -512,15 +512,15 @@ export const BrandAnalysisPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           PAGE HEADER + PROGRESS BAR
          ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs space-y-4">
+      <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-[10px] font-sans font-bold uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-[#0F291E] text-white text-[10px] font-sans font-bold uppercase tracking-wider">
                 AI Identity Builder
               </span>
             </div>
-            <h1 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight mt-2">
+            <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#0F291E] tracking-tight mt-2">
               Brand Analysis
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -532,7 +532,7 @@ export const BrandAnalysisPage = () => {
             <button
               onClick={handleSaveAllAndProceed}
               disabled={savingAll}
-              className="px-5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+              className="px-5 py-2.5 rounded-full bg-[#0F291E] hover:bg-slate-800 text-white font-bold text-xs transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
             >
               {savingAll ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-400" />
@@ -545,7 +545,7 @@ export const BrandAnalysisPage = () => {
 
             <Link
               to="/brand-summary"
-              className="px-5 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all flex items-center gap-2 border border-[#D6E6EC] cursor-pointer"
+              className="px-5 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 font-bold text-xs transition-all flex items-center gap-2 border border-[#D6E6EC] cursor-pointer"
             >
               <BookmarkCheck className="w-4 h-4 text-slate-700" />
               <span>View Brand DNA</span>
@@ -562,7 +562,7 @@ export const BrandAnalysisPage = () => {
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                   item.completed
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-[#EAF4F7]/40 text-slate-500 border-[#D6E6EC]'
+                    : 'bg-[#FAF8F5]/40 text-slate-500 border-[#D6E6EC]'
                 }`}
               >
                 {item.completed ? (
@@ -581,16 +581,16 @@ export const BrandAnalysisPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           1. BRAND NAME SECTION
          ───────────────────────────────────────────────────────────── */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-5">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF4F7] text-slate-900 flex items-center justify-center shrink-0 font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] text-[#0F291E] flex items-center justify-center shrink-0 font-bold">
               <Tag className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">01</span>
-                <h3 className="font-serif text-xl font-bold text-slate-900">Brand Name</h3>
+                <h3 className="font-serif text-xl font-bold text-[#0F291E]">Brand Name</h3>
                 {savedValues.brandName && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved ({sources.brandNameSource === 'manual' ? 'Manual' : 'AI'})
@@ -606,7 +606,7 @@ export const BrandAnalysisPage = () => {
           <button
             onClick={() => handleRegenerate('brandName')}
             disabled={regenerating.brandName}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.brandName ? 'animate-spin' : ''}`} />
             <span>{regenerating.brandName ? 'Generating new suggestions...' : 'Regenerate Suggestions'}</span>
@@ -640,7 +640,7 @@ export const BrandAnalysisPage = () => {
 
         {/* Loading Spinner overlay when regenerating */}
         {regenerating.brandName && (
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 animate-pulse">
+          <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-blue-600 animate-spin mx-auto" />
             <p className="text-xs font-medium text-slate-600">Gemini is brainstorming brand names for your business...</p>
           </div>
@@ -663,17 +663,17 @@ export const BrandAnalysisPage = () => {
                     }}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 ${
                       isSelected
-                        ? 'bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-slate-900 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                        ? 'bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-[#0F291E] shadow-xs'
+                        : 'bg-[#FAF8F5] border-[#E5E0D8] hover:bg-slate-100 text-slate-700'
                     }`}
                   >
                     <div className="mt-0.5">
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-400 bg-white'}`}>
-                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-400 glass-panel'}`}>
+                        {isSelected && <div className="w-1.5 h-1.5 rounded-full glass-panel" />}
                       </div>
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-bold text-slate-900">{nameStr}</p>
+                      <p className="text-sm font-bold text-[#0F291E]">{nameStr}</p>
                       {item.rationale && <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{item.rationale}</p>}
                     </div>
                   </div>
@@ -685,7 +685,7 @@ export const BrandAnalysisPage = () => {
 
         {/* Initial Trigger if no suggestions yet */}
         {!regenerating.brandName && suggestions.brandName.length === 0 && inputModes.brandName === 'ai' && (
-          <div className="p-5 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
+          <div className="p-5 rounded-xl bg-[#FAF8F5] border border-dashed border-slate-300 text-center space-y-2">
             <p className="text-xs text-slate-500">No name suggestions generated yet.</p>
             <button
               onClick={() => handleRegenerate('brandName')}
@@ -720,7 +720,7 @@ export const BrandAnalysisPage = () => {
                 setSelectedValues({ ...selectedValues, brandName: e.target.value });
               }}
               placeholder="Enter brand name..."
-              className="flex-1 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-xs font-bold text-slate-900 rounded-xl px-3.5 py-2.5 outline-none transition-all"
+              className="flex-1 bg-[#FAF8F5] border border-[#E5E0D8] focus:border-slate-900 focus:glass-panel text-xs font-bold text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none transition-all"
             />
             {saveSuccess.brandName && (
               <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 shrink-0">
@@ -731,7 +731,7 @@ export const BrandAnalysisPage = () => {
             <button
               onClick={() => handleSaveSection('brandName', manualFields.brandName, inputModes.brandName === 'manual' ? 'manual' : 'ai')}
               disabled={saving.brandName || !manualFields.brandName.trim()}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs shrink-0"
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs shrink-0"
             >
               {saving.brandName ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -748,16 +748,16 @@ export const BrandAnalysisPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           2. TAGLINE SECTION
          ───────────────────────────────────────────────────────────── */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-5">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF4F7] text-slate-900 flex items-center justify-center shrink-0 font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] text-[#0F291E] flex items-center justify-center shrink-0 font-bold">
               <Target className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">02</span>
-                <h3 className="font-serif text-xl font-bold text-slate-900">Tagline</h3>
+                <h3 className="font-serif text-xl font-bold text-[#0F291E]">Tagline</h3>
                 {savedValues.tagline && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved ({sources.taglineSource === 'manual' ? 'Manual' : 'AI'})
@@ -773,7 +773,7 @@ export const BrandAnalysisPage = () => {
           <button
             onClick={() => handleRegenerate('tagline')}
             disabled={regenerating.tagline}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.tagline ? 'animate-spin' : ''}`} />
             <span>{regenerating.tagline ? 'Generating new suggestions...' : 'Regenerate'}</span>
@@ -807,7 +807,7 @@ export const BrandAnalysisPage = () => {
 
         {/* Loading overlay */}
         {regenerating.tagline && (
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 animate-pulse">
+          <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-purple-600 animate-spin mx-auto" />
             <p className="text-xs font-medium text-slate-600">Gemini is crafting catchy taglines...</p>
           </div>
@@ -830,14 +830,14 @@ export const BrandAnalysisPage = () => {
                     }}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
                       isSelected
-                        ? 'bg-purple-50/70 border-purple-500 ring-2 ring-purple-500/20 text-slate-900 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                        ? 'bg-purple-50/70 border-purple-500 ring-2 ring-purple-500/20 text-[#0F291E] shadow-xs'
+                        : 'bg-[#FAF8F5] border-[#E5E0D8] hover:bg-slate-100 text-slate-700'
                     }`}
                   >
-                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-purple-600 bg-purple-600' : 'border-slate-400 bg-white'}`}>
-                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-purple-600 bg-purple-600' : 'border-slate-400 glass-panel'}`}>
+                      {isSelected && <div className="w-1.5 h-1.5 rounded-full glass-panel" />}
                     </div>
-                    <span className="text-xs font-semibold text-slate-900">"{taglineStr}"</span>
+                    <span className="text-xs font-semibold text-[#0F291E]">"{taglineStr}"</span>
                   </div>
                 );
               })}
@@ -846,7 +846,7 @@ export const BrandAnalysisPage = () => {
         )}
 
         {!regenerating.tagline && suggestions.tagline.length === 0 && inputModes.tagline === 'ai' && (
-          <div className="p-5 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
+          <div className="p-5 rounded-xl bg-[#FAF8F5] border border-dashed border-slate-300 text-center space-y-2">
             <p className="text-xs text-slate-500">No tagline suggestions generated yet.</p>
             <button
               onClick={() => handleRegenerate('tagline')}
@@ -879,7 +879,7 @@ export const BrandAnalysisPage = () => {
                 setSelectedValues({ ...selectedValues, tagline: e.target.value });
               }}
               placeholder="Enter tagline..."
-              className="flex-1 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-xs font-medium text-slate-900 rounded-xl px-3.5 py-2.5 outline-none transition-all"
+              className="flex-1 bg-[#FAF8F5] border border-[#E5E0D8] focus:border-slate-900 focus:glass-panel text-xs font-medium text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none transition-all"
             />
             {saveSuccess.tagline && (
               <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 shrink-0">
@@ -890,7 +890,7 @@ export const BrandAnalysisPage = () => {
             <button
               onClick={() => handleSaveSection('tagline', manualFields.tagline, inputModes.tagline === 'manual' ? 'manual' : 'ai')}
               disabled={saving.tagline || !manualFields.tagline.trim()}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs shrink-0"
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs shrink-0"
             >
               {saving.tagline ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Tagline</span>
@@ -903,16 +903,16 @@ export const BrandAnalysisPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           3. MISSION STATEMENT SECTION
          ───────────────────────────────────────────────────────────── */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-5">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF4F7] text-slate-900 flex items-center justify-center shrink-0 font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] text-[#0F291E] flex items-center justify-center shrink-0 font-bold">
               <Compass className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">03</span>
-                <h3 className="font-serif text-xl font-bold text-slate-900">Mission Statement</h3>
+                <h3 className="font-serif text-xl font-bold text-[#0F291E]">Mission Statement</h3>
                 {savedValues.missionStatement && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved ({sources.missionSource === 'manual' ? 'Manual' : 'AI'})
@@ -928,7 +928,7 @@ export const BrandAnalysisPage = () => {
           <button
             onClick={() => handleRegenerate('mission')}
             disabled={regenerating.mission}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.mission ? 'animate-spin' : ''}`} />
             <span>{regenerating.mission ? 'Generating new suggestions...' : 'Regenerate'}</span>
@@ -962,7 +962,7 @@ export const BrandAnalysisPage = () => {
 
         {/* Loading overlay */}
         {regenerating.mission && (
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 animate-pulse">
+          <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin mx-auto" />
             <p className="text-xs font-medium text-slate-600">Gemini is formulating mission statements...</p>
           </div>
@@ -985,16 +985,16 @@ export const BrandAnalysisPage = () => {
                     }}
                     className={`p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3.5 ${
                       isSelected
-                        ? 'bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/20 text-slate-900 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                        ? 'bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/20 text-[#0F291E] shadow-xs'
+                        : 'bg-[#FAF8F5] border-[#E5E0D8] hover:bg-slate-100 text-slate-700'
                     }`}
                   >
                     <div className="mt-0.5 shrink-0">
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'border-emerald-600 bg-emerald-600' : 'border-slate-400 bg-white'}`}>
-                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'border-emerald-600 bg-emerald-600' : 'border-slate-400 glass-panel'}`}>
+                        {isSelected && <div className="w-1.5 h-1.5 rounded-full glass-panel" />}
                       </div>
                     </div>
-                    <p className="text-xs leading-relaxed font-medium text-slate-800">
+                    <p className="text-xs leading-relaxed font-medium text-[#0F291E]/90">
                       "{missionStr}"
                     </p>
                   </div>
@@ -1005,7 +1005,7 @@ export const BrandAnalysisPage = () => {
         )}
 
         {!regenerating.mission && suggestions.mission.length === 0 && inputModes.mission === 'ai' && (
-          <div className="p-5 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
+          <div className="p-5 rounded-xl bg-[#FAF8F5] border border-dashed border-slate-300 text-center space-y-2">
             <p className="text-xs text-slate-500">No mission statement suggestions generated yet.</p>
             <button
               onClick={() => handleRegenerate('mission')}
@@ -1037,7 +1037,7 @@ export const BrandAnalysisPage = () => {
               setSelectedValues({ ...selectedValues, missionStatement: e.target.value });
             }}
             placeholder="Type or refine mission statement..."
-            className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-xs font-medium text-slate-900 rounded-xl p-3 outline-none resize-none transition-all"
+            className="w-full bg-[#FAF8F5] border border-[#E5E0D8] focus:border-slate-900 focus:glass-panel text-xs font-medium text-[#0F291E] rounded-xl p-3 outline-none resize-none transition-all"
           />
 
           <div className="flex items-center justify-end gap-3">
@@ -1050,7 +1050,7 @@ export const BrandAnalysisPage = () => {
             <button
               onClick={() => handleSaveSection('mission', manualFields.missionStatement, inputModes.mission === 'manual' ? 'manual' : 'ai')}
               disabled={saving.mission || !manualFields.missionStatement.trim()}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
             >
               {saving.mission ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Mission Statement</span>
@@ -1063,16 +1063,16 @@ export const BrandAnalysisPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           4. VISION STATEMENT SECTION
          ───────────────────────────────────────────────────────────── */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-5">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF4F7] text-slate-900 flex items-center justify-center shrink-0 font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] text-[#0F291E] flex items-center justify-center shrink-0 font-bold">
               <Eye className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">04</span>
-                <h3 className="font-serif text-xl font-bold text-slate-900">Vision Statement</h3>
+                <h3 className="font-serif text-xl font-bold text-[#0F291E]">Vision Statement</h3>
                 {savedValues.visionStatement && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved ({sources.visionSource === 'manual' ? 'Manual' : 'AI'})
@@ -1088,7 +1088,7 @@ export const BrandAnalysisPage = () => {
           <button
             onClick={() => handleRegenerate('vision')}
             disabled={regenerating.vision}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.vision ? 'animate-spin' : ''}`} />
             <span>{regenerating.vision ? 'Generating new suggestions...' : 'Regenerate'}</span>
@@ -1122,7 +1122,7 @@ export const BrandAnalysisPage = () => {
 
         {/* Loading overlay */}
         {regenerating.vision && (
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 animate-pulse">
+          <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-amber-600 animate-spin mx-auto" />
             <p className="text-xs font-medium text-slate-600">Gemini is envisioning long-term goals...</p>
           </div>
@@ -1145,16 +1145,16 @@ export const BrandAnalysisPage = () => {
                     }}
                     className={`p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3.5 ${
                       isSelected
-                        ? 'bg-amber-50/70 border-amber-500 ring-2 ring-amber-500/20 text-slate-900 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                        ? 'bg-amber-50/70 border-amber-500 ring-2 ring-amber-500/20 text-[#0F291E] shadow-xs'
+                        : 'bg-[#FAF8F5] border-[#E5E0D8] hover:bg-slate-100 text-slate-700'
                     }`}
                   >
                     <div className="mt-0.5 shrink-0">
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'border-amber-600 bg-amber-600' : 'border-slate-400 bg-white'}`}>
-                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'border-amber-600 bg-amber-600' : 'border-slate-400 glass-panel'}`}>
+                        {isSelected && <div className="w-1.5 h-1.5 rounded-full glass-panel" />}
                       </div>
                     </div>
-                    <p className="text-xs leading-relaxed font-medium text-slate-800">
+                    <p className="text-xs leading-relaxed font-medium text-[#0F291E]/90">
                       "{visionStr}"
                     </p>
                   </div>
@@ -1165,7 +1165,7 @@ export const BrandAnalysisPage = () => {
         )}
 
         {!regenerating.vision && suggestions.vision.length === 0 && inputModes.vision === 'ai' && (
-          <div className="p-5 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
+          <div className="p-5 rounded-xl bg-[#FAF8F5] border border-dashed border-slate-300 text-center space-y-2">
             <p className="text-xs text-slate-500">No vision statement suggestions generated yet.</p>
             <button
               onClick={() => handleRegenerate('vision')}
@@ -1197,7 +1197,7 @@ export const BrandAnalysisPage = () => {
               setSelectedValues({ ...selectedValues, visionStatement: e.target.value });
             }}
             placeholder="Type or refine vision statement..."
-            className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-xs font-medium text-slate-900 rounded-xl p-3 outline-none resize-none transition-all"
+            className="w-full bg-[#FAF8F5] border border-[#E5E0D8] focus:border-slate-900 focus:glass-panel text-xs font-medium text-[#0F291E] rounded-xl p-3 outline-none resize-none transition-all"
           />
 
           <div className="flex items-center justify-end gap-3">
@@ -1210,7 +1210,7 @@ export const BrandAnalysisPage = () => {
             <button
               onClick={() => handleSaveSection('vision', manualFields.visionStatement, inputModes.vision === 'manual' ? 'manual' : 'ai')}
               disabled={saving.vision || !manualFields.visionStatement.trim()}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
             >
               {saving.vision ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Vision Statement</span>
@@ -1223,16 +1223,16 @@ export const BrandAnalysisPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           5. BRAND STORY SECTION
          ───────────────────────────────────────────────────────────── */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-5">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF4F7] text-slate-900 flex items-center justify-center shrink-0 font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] text-[#0F291E] flex items-center justify-center shrink-0 font-bold">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">05</span>
-                <h3 className="font-serif text-xl font-bold text-slate-900">Brand Story</h3>
+                <h3 className="font-serif text-xl font-bold text-[#0F291E]">Brand Story</h3>
                 {savedValues.brandStory && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved ({sources.brandStorySource === 'manual' ? 'Manual' : 'AI'})
@@ -1248,7 +1248,7 @@ export const BrandAnalysisPage = () => {
           <button
             onClick={() => handleRegenerate('brandStory')}
             disabled={regenerating.brandStory}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.brandStory ? 'animate-spin' : ''}`} />
             <span>{regenerating.brandStory ? 'Generating new suggestions...' : 'Regenerate Stories'}</span>
@@ -1282,7 +1282,7 @@ export const BrandAnalysisPage = () => {
 
         {/* Loading overlay */}
         {regenerating.brandStory && (
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 animate-pulse">
+          <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-indigo-600 animate-spin mx-auto" />
             <p className="text-xs font-medium text-slate-600">Gemini is writing authentic brand stories...</p>
           </div>
@@ -1307,25 +1307,25 @@ export const BrandAnalysisPage = () => {
                     }}
                     className={`p-5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
                       isSelected
-                        ? 'bg-indigo-50/70 border-indigo-500 ring-2 ring-indigo-500/20 text-slate-900 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                        ? 'bg-indigo-50/70 border-indigo-500 ring-2 ring-indigo-500/20 text-[#0F291E] shadow-xs'
+                        : 'bg-[#FAF8F5] border-[#E5E0D8] hover:bg-slate-100 text-slate-700'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                        <span className="text-xs font-bold text-[#0F291E] flex items-center gap-2">
                           <FileText className="w-3.5 h-3.5 text-indigo-600" />
                           {storyTitle}
                         </span>
-                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-400 bg-white'}`}>
-                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-400 glass-panel'}`}>
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full glass-panel" />}
                         </div>
                       </div>
                       <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap line-clamp-6">
                         {storyContent}
                       </p>
                     </div>
-                    <div className="text-[11px] font-bold text-indigo-600 pt-2 border-t border-slate-200/50">
+                    <div className="text-[11px] font-bold text-indigo-600 pt-2 border-t border-[#E5E0D8]/50">
                       {isSelected ? '✓ Selected' : 'Click to select'}
                     </div>
                   </div>
@@ -1336,7 +1336,7 @@ export const BrandAnalysisPage = () => {
         )}
 
         {!regenerating.brandStory && suggestions.brandStory.length === 0 && inputModes.brandStory === 'ai' && (
-          <div className="p-5 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
+          <div className="p-5 rounded-xl bg-[#FAF8F5] border border-dashed border-slate-300 text-center space-y-2">
             <p className="text-xs text-slate-500">No brand stories generated yet.</p>
             <button
               onClick={() => handleRegenerate('brandStory')}
@@ -1368,7 +1368,7 @@ export const BrandAnalysisPage = () => {
               setSelectedValues({ ...selectedValues, brandStory: e.target.value });
             }}
             placeholder="Write or edit your full brand story..."
-            className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-xs font-medium text-slate-900 rounded-xl p-4 outline-none resize-y transition-all leading-relaxed"
+            className="w-full bg-[#FAF8F5] border border-[#E5E0D8] focus:border-slate-900 focus:glass-panel text-xs font-medium text-[#0F291E] rounded-xl p-4 outline-none resize-y transition-all leading-relaxed"
           />
 
           <div className="flex items-center justify-end gap-3">
@@ -1381,7 +1381,7 @@ export const BrandAnalysisPage = () => {
             <button
               onClick={() => handleSaveSection('brandStory', manualFields.brandStory, inputModes.brandStory === 'manual' ? 'manual' : 'ai')}
               disabled={saving.brandStory || !manualFields.brandStory.trim()}
-              className="px-5 py-2.5 rounded-full bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              className="px-5 py-2.5 rounded-full bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
             >
               {saving.brandStory ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Brand Story</span>
@@ -1394,7 +1394,7 @@ export const BrandAnalysisPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           6. BRAND PERSONALITY SECTION
          ───────────────────────────────────────────────────────────── */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-5">
+      <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
@@ -1403,7 +1403,7 @@ export const BrandAnalysisPage = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-teal-600">06</span>
-                <h3 className="text-base font-bold text-slate-900">Brand Personality</h3>
+                <h3 className="text-base font-bold text-[#0F291E]">Brand Personality</h3>
                 {savedValues.brandPersonality && (
                   <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-100">
                     Saved ({sources.brandPersonalitySource === 'manual' ? 'Manual' : 'AI'})
@@ -1419,7 +1419,7 @@ export const BrandAnalysisPage = () => {
           <button
             onClick={() => handleRegenerate('brandPersonality')}
             disabled={regenerating.brandPersonality}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.brandPersonality ? 'animate-spin' : ''}`} />
             <span>{regenerating.brandPersonality ? 'Generating new suggestions...' : 'Regenerate Personality'}</span>
@@ -1453,7 +1453,7 @@ export const BrandAnalysisPage = () => {
 
         {/* Loading overlay */}
         {regenerating.brandPersonality && (
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 animate-pulse">
+          <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-teal-600 animate-spin mx-auto" />
             <p className="text-xs font-medium text-slate-600">Gemini is analyzing brand personality traits...</p>
           </div>
@@ -1486,7 +1486,7 @@ export const BrandAnalysisPage = () => {
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
                       isSelected
                         ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        : 'bg-[#FAF8F5] text-slate-700 border-[#E5E0D8] hover:bg-slate-100'
                     }`}
                   >
                     {isSelected ? <Check className="w-3.5 h-3.5 text-white" /> : <Plus className="w-3.5 h-3.5 text-slate-400" />}
@@ -1499,7 +1499,7 @@ export const BrandAnalysisPage = () => {
         )}
 
         {!regenerating.brandPersonality && suggestions.brandPersonality.length === 0 && (
-          <div className="p-5 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
+          <div className="p-5 rounded-xl bg-[#FAF8F5] border border-dashed border-slate-300 text-center space-y-2">
             <p className="text-xs text-slate-500">No personality traits suggested yet.</p>
             <button
               onClick={() => handleRegenerate('brandPersonality')}
@@ -1519,7 +1519,7 @@ export const BrandAnalysisPage = () => {
               {selectedValues.brandPersonality.map((trait, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold shadow-2xs"
                 >
                   <span>{trait}</span>
                   <button
@@ -1542,12 +1542,12 @@ export const BrandAnalysisPage = () => {
               value={manualFields.brandPersonalityInput}
               onChange={(e) => setManualFields({ ...manualFields, brandPersonalityInput: e.target.value })}
               placeholder="Add custom trait (e.g. Luxurious)..."
-              className="flex-1 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-xs text-slate-900 rounded-xl px-3.5 py-2 outline-none transition-all"
+              className="flex-1 bg-[#FAF8F5] border border-[#E5E0D8] focus:border-slate-900 focus:glass-panel text-xs text-[#0F291E] rounded-xl px-3.5 py-2 outline-none transition-all"
             />
             <button
               type="submit"
               disabled={!manualFields.brandPersonalityInput.trim()}
-              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1 cursor-pointer shrink-0"
+              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1 cursor-pointer shrink-0"
             >
               <Plus className="w-3.5 h-3.5 text-slate-600" />
               <span>Add Trait</span>
@@ -1564,7 +1564,7 @@ export const BrandAnalysisPage = () => {
             <button
               onClick={() => handleSaveSection('brandPersonality', selectedValues.brandPersonality, 'ai')}
               disabled={saving.brandPersonality || selectedValues.brandPersonality.length === 0}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
             >
               {saving.brandPersonality ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Brand Personality</span>
@@ -1607,3 +1607,4 @@ export const BrandAnalysisPage = () => {
     </div>
   );
 };
+

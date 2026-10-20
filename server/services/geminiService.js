@@ -1,5 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 dotenv.config();
 
 const getAIClient = () => {
@@ -47,18 +49,17 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const generateWithFallback = async (prompt) => {
   const ai = getAIClient();
   const candidateModels = [
-    'gemini-3.1-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-3.7-flash',
-    'gemini-3-flash-preview',
+    'gemini-3.6-flash',
     'gemini-flash-lite-latest',
     'gemini-flash-latest',
+    'gemini-3.5-flash',
+    'gemini-3.1-flash-lite',
   ];
 
   let lastError = null;
 
   for (const model of candidateModels) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const response = await ai.models.generateContent({
           model,
@@ -76,8 +77,8 @@ const generateWithFallback = async (prompt) => {
           break;
         }
 
-        if (attempt < 1) {
-          await delay(600);
+        if (attempt < 2) {
+          await delay(800 * (attempt + 1));
         }
       }
     }
@@ -313,3 +314,162 @@ export const generateBrandPersonalityAI = async (profile, brandName, selectedMis
     throw new Error('Unable to generate brand personality traits right now. Please try again.');
   }
 };
+
+/**
+ * 7. LOGO PROMPT GENERATOR
+ */
+export const generateLogoPromptAI = async (profile, brandName) => {
+  const prompt = `
+    You are an expert Brand Identity Designer & AI Image Prompt Specialist.
+    Generate 3 distinct creative logo design concepts and AI image generation prompts for a brand.
+    Brand Name: ${brandName || 'Our Brand'}.
+    
+    Return strictly a JSON array of 3 objects with keys:
+    "conceptName": "Short descriptive title",
+    "style": "Minimalist / Abstract / Geometric / Lettermark / Emblem",
+    "promptText": "Detailed Midjourney / DALL-E / Imagen prompt for generating this logo icon",
+    "visualDescription": "Explanation of the icon symbols, shape geometry, and visual meaning"
+
+    Business Context:
+    ${formatProfileContext(profile)}
+  `;
+
+  try {
+    const rawText = await generateWithFallback(prompt);
+    return cleanJsonResponse(rawText);
+  } catch (error) {
+    console.error('Gemini Logo Prompt Generation Error:', error);
+    return [
+      {
+        conceptName: "Minimalist Geometry",
+        style: "Geometric Vector Mark",
+        promptText: `Vector logo icon for ${brandName || 'Brand'}, minimalist geometry, clean lines, high contrast, white background`,
+        visualDescription: "Modern geometric shapes representing forward momentum, precision, and trust."
+      },
+      {
+        conceptName: "Abstract Emblem",
+        style: "Abstract Vector",
+        promptText: `Abstract emblem logo for ${brandName || 'Brand'}, premium luxury, clean vector symbol, isolated on white`,
+        visualDescription: "Interlocking organic loops symbolizing seamless harmony and capability."
+      }
+    ];
+  }
+};
+
+/**
+ * 8. COLOR PSYCHOLOGY GENERATOR
+ */
+export const generateColorPsychologyAI = async (profile, brandName) => {
+  const prompt = `
+    You are a Color Psychology & Visual Design Strategist.
+    Recommend a tailored color palette for this brand with color psychology rationale.
+    Brand Name: ${brandName || 'Our Brand'}.
+
+    Return strictly a JSON object with:
+    "palette": [
+      { "role": "Primary Brand Color", "hex": "#1E293B", "name": "Slate Obsidian", "psychology": "Conveys authority, stability, and professional trust." },
+      { "role": "Primary Accent", "hex": "#6366F1", "name": "Electric Indigo", "psychology": "Inspires innovation, creativity, and modern technology." },
+      { "role": "Secondary Accent", "hex": "#10B981", "name": "Emerald Green", "psychology": "Represents growth, vitality, and sustainability." },
+      { "role": "Background Porcelain", "hex": "#F8FAFC", "name": "Soft Off-White", "psychology": "Provides clean readability and high contrast." }
+    ],
+    "colorPsychologyRationale": "Comprehensive 2-sentence summary explaining why these colors resonate with the target audience and industry."
+
+    Business Context:
+    ${formatProfileContext(profile)}
+  `;
+
+  try {
+    const rawText = await generateWithFallback(prompt);
+    return cleanJsonResponse(rawText);
+  } catch (error) {
+    console.error('Gemini Color Psychology Error:', error);
+    return {
+      palette: [
+        { role: "Primary Brand Color", hex: "#0F172A", name: "Obsidian Slate", psychology: "Authority and structural foundation." },
+        { role: "Primary Accent", hex: "#4F46E5", name: "Indigo", psychology: "Innovation, vision, and technology." },
+        { role: "Highlight Accent", hex: "#10B981", name: "Emerald", psychology: "Growth, vitality, and clarity." }
+      ],
+      colorPsychologyRationale: "Tailored palette balancing corporate trust with vibrant modern energy."
+    };
+  }
+};
+
+/**
+ * 9. URL IMAGE PROMPT GENERATOR
+ */
+export const generateImagePromptFromUrl = async (url) => {
+  try {
+    const response = await axios.get(url);
+    const $ = cheerio.load(response.data);
+    
+    // Remove unwanted elements
+    $('script, style, nav, footer, header').remove();
+    
+    // Get text content
+    let textContent = $('body').text().replace(/\s+/g, ' ').trim();
+    if (textContent.length > 5000) {
+      textContent = textContent.substring(0, 5000); // Limit context length
+    }
+
+    const prompt = `
+      You are an expert prompt engineer for AI image generation.
+      Based on the following extracted text from a product webpage, create a highly detailed, premium, professional e-commerce advertising poster prompt for this product.
+      The prompt should be written to be used directly by a high-end diffusion model (like Flux or Midjourney).
+      Include:
+      - The product as the main hero placed prominently in the center.
+      - A fitting realistic environment based on the product.
+      - Cinematic lighting, realistic product photography, premium aesthetics, clean composition, sharp details.
+      - Clean empty space at the top and bottom for text.
+      - No people, no logos, no watermark, no random text, no distorted objects.
+      
+      Extracted Text:
+      "${textContent}"
+      
+      Return ONLY the final prompt text string. No markdown formatting, no JSON, no introduction.
+    `;
+
+    const generatedPrompt = await generateWithFallback(prompt);
+    return generatedPrompt.replace(/^"|"$/g, '').trim(); // Remove quotes if added
+  } catch (error) {
+    console.error('Error generating prompt from URL:', error);
+    // Fallback prompt if scraping fails
+    return "Create a premium professional e-commerce advertising poster for a modern product. Show the product as the main hero, placed prominently in the center, with a realistic environment in the background. Use cinematic lighting, realistic product photography, premium brand aesthetics, clean composition, sharp details, and a sophisticated commercial advertising style. Leave clean empty space at the top and bottom for adding text later. No people, no logos, no watermark, no random text.";
+  }
+};
+
+/**
+ * 10. PRODUCT DETAILS IMAGE PROMPT GENERATOR
+ */
+export const generateImagePromptFromProductDetails = async (productDetails) => {
+  try {
+    const prompt = `
+      You are an expert prompt engineer for AI image generation.
+      Based on the following product details, create a highly detailed, premium, professional e-commerce advertising poster prompt for this product.
+      The prompt should be written to be used directly by a high-end diffusion model (like Flux or Midjourney).
+      Include:
+      - The product as the main hero placed prominently in the center.
+      - A fitting realistic environment based on the product.
+      - Cinematic lighting, realistic product photography, premium aesthetics, clean composition, sharp details.
+      - Explicitly instruct the image generation model to write the product name "${productDetails.name || productDetails.productName || 'Modern Product'}" and a short catchy marketing slogan as stylized typography in the poster. 
+      - The typography should be bold, legible, and match the premium aesthetic.
+      - Do NOT use random gibberish text.
+      - No people, no distorted objects, no watermarks.
+      
+      Product Details:
+      Name: ${productDetails.name || productDetails.productName || 'Modern Product'}
+      Category: ${productDetails.categoryName || productDetails.category || ''}
+      Description: ${typeof productDetails.description === 'string' ? productDetails.description : (productDetails.description?.shortDescription || productDetails.productIdea || '')}
+      Key Features: ${(productDetails.description?.keyFeatures || []).join(', ')}
+      Target Audience: ${productDetails.intendedMarket || productDetails.positioning?.targetMarket || 'General Consumers'}
+      
+      Return ONLY the final prompt text string. No markdown formatting, no JSON, no introduction.
+    `;
+
+    const generatedPrompt = await generateWithFallback(prompt);
+    return generatedPrompt.replace(/^"|"$/g, '').trim(); // Remove quotes if added
+  } catch (error) {
+    console.error('Error generating prompt from Product Details:', error);
+    return "Create a premium professional e-commerce advertising poster for a modern product. Show the product as the main hero, placed prominently in the center, with a realistic environment in the background. Use cinematic lighting, realistic product photography, premium brand aesthetics, clean composition, sharp details, and a sophisticated commercial advertising style. Leave clean empty space at the top and bottom for adding text later. No people, no logos, no watermark, no random text.";
+  }
+};
+

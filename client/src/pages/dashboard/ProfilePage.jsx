@@ -40,7 +40,7 @@ export const ProfilePage = () => {
     <div className="max-w-7xl mx-auto space-y-6 text-left pb-16">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-        <span className="flex items-center gap-1 hover:text-slate-900">
+        <span className="flex items-center gap-1 hover:text-[#0F291E]">
           <Home className="w-3.5 h-3.5 text-slate-400" />
           Dashboard
         </span>
@@ -50,7 +50,7 @@ export const ProfilePage = () => {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
+        <h1 className="text-2xl font-extrabold text-[#0F291E] tracking-tight flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
             <User className="w-4 h-4" />
           </div>
@@ -61,13 +61,13 @@ export const ProfilePage = () => {
         </p>
       </div>
 
-      <Card className="p-6 border-slate-200/90 space-y-6">
+      <Card className="p-6 border-[#E5E0D8]/90 space-y-6">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white font-extrabold text-2xl flex items-center justify-center shadow-md">
             {(user?.fullName || 'B')[0].toUpperCase()}
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900">{user?.fullName || 'Startup Founder'}</h2>
+            <h2 className="text-xl font-bold text-[#0F291E]">{user?.fullName || 'Startup Founder'}</h2>
             <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
               <Mail className="w-3.5 h-3.5 text-slate-400" />
               {user?.email || 'user@company.com'}
@@ -87,7 +87,7 @@ export const ProfilePage = () => {
                 required
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:bg-white"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel"
               />
             </div>
 
@@ -98,7 +98,7 @@ export const ProfilePage = () => {
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:bg-white"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel"
               />
             </div>
 
@@ -109,7 +109,7 @@ export const ProfilePage = () => {
                 placeholder="••••••••"
                 value={formData.newPassword}
                 onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:bg-white"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel"
               />
             </div>
 
@@ -120,7 +120,7 @@ export const ProfilePage = () => {
                 placeholder="••••••••"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:bg-white"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel"
               />
             </div>
           </div>
@@ -149,3 +149,4 @@ export const ProfilePage = () => {
     </div>
   );
 };
+

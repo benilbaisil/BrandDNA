@@ -8,6 +8,8 @@ import {
   updateProfile,
   forgotPassword,
   resetPassword,
+  getWishlist,
+  toggleWishlist,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -21,5 +23,7 @@ router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:resetToken', resetPassword);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
+router.get('/wishlist', protect, getWishlist);
+router.post('/wishlist/:productId', protect, toggleWishlist);
 
 export default router;

@@ -13,14 +13,14 @@ export const AdminSystemAnalytics = () => {
   ];
 
   return (
-    <Card hoverEffect className="text-left border-slate-200/90 space-y-4">
+    <Card hoverEffect className="text-left border-[#E5E0D8]/90 space-y-4">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-2xl bg-[#0F291E] text-white flex items-center justify-center font-bold">
             <BarChart3 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 leading-tight">System Analytics</h3>
+            <h3 className="text-base font-bold text-[#0F291E] leading-tight">System Analytics</h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">Platform Usage & Capacity Infrastructure</p>
           </div>
         </div>
@@ -30,7 +30,7 @@ export const AdminSystemAnalytics = () => {
         {metrics.map((m, i) => {
           const Icon = m.icon;
           return (
-            <div key={i} className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 flex flex-col justify-between space-y-2">
+            <div key={i} className="p-4 bg-[#FAF8F5] rounded-2xl border border-[#E5E0D8]/60 flex flex-col justify-between space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{m.label}</span>
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${m.color}`}>
@@ -38,7 +38,7 @@ export const AdminSystemAnalytics = () => {
                 </div>
               </div>
               <div>
-                <p className="text-xl font-extrabold text-slate-900">{m.value}</p>
+                <p className="text-xl font-extrabold text-[#0F291E]">{m.value}</p>
                 <span className="text-[10px] font-semibold text-emerald-600">{m.change}</span>
               </div>
             </div>
@@ -48,3 +48,4 @@ export const AdminSystemAnalytics = () => {
     </Card>
   );
 };
+

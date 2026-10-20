@@ -14,7 +14,7 @@ export const ComingSoonSection = () => {
   return (
     <div className="space-y-4 text-left">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold text-slate-900 tracking-tight">Upcoming AI Modules</h3>
+        <h3 className="text-base font-bold text-[#0F291E] tracking-tight">Upcoming AI Modules</h3>
         <span className="text-xs font-semibold text-slate-400">Roadmap 2026</span>
       </div>
 
@@ -22,7 +22,7 @@ export const ComingSoonSection = () => {
         {upcoming.map((item, index) => {
           const Icon = item.icon;
           return (
-            <Card key={index} className="flex flex-col justify-between p-4 bg-slate-50/60 border-slate-200/70">
+            <Card key={index} className="flex flex-col justify-between p-4 bg-[#FAF8F5]/60 border-[#E5E0D8]/70">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="w-8 h-8 rounded-xl bg-slate-200/80 text-slate-600 flex items-center justify-center">
@@ -32,11 +32,11 @@ export const ComingSoonSection = () => {
                     Coming Soon
                   </span>
                 </div>
-                <h4 className="text-xs font-bold text-slate-800 leading-tight">{item.name}</h4>
+                <h4 className="text-xs font-bold text-[#0F291E]/90 leading-tight">{item.name}</h4>
                 <p className="text-[11px] text-slate-500 mt-1 leading-snug">{item.desc}</p>
               </div>
 
-              <div className="mt-3 pt-2 border-t border-slate-200/50 flex items-center gap-1 text-[10px] text-slate-400 font-semibold">
+              <div className="mt-3 pt-2 border-t border-[#E5E0D8]/50 flex items-center gap-1 text-[10px] text-slate-400 font-semibold">
                 <Clock className="w-3 h-3" />
                 <span>Q3 Release</span>
               </div>
@@ -47,3 +47,4 @@ export const ComingSoonSection = () => {
     </div>
   );
 };
+

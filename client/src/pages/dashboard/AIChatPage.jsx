@@ -94,13 +94,13 @@ export const AIChatPage = () => {
     <div className="max-w-5xl mx-auto flex flex-col h-[calc(100vh-140px)] space-y-4 text-left">
       
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
+      <div className="flex items-center justify-between pb-3 border-b border-[#E5E0D8] shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-xs">
+          <div className="w-10 h-10 rounded-xl bg-[#0F291E] text-white flex items-center justify-center shadow-xs">
             <Bot className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            <h1 className="text-lg font-extrabold text-[#0F291E] tracking-tight flex items-center gap-2">
               BrandDNA Copilot Chat
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
                 v4.5 Enterprise
@@ -112,7 +112,7 @@ export const AIChatPage = () => {
 
         <button
           onClick={() => setMessages([messages[0]])}
-          className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors flex items-center gap-1.5 text-xs"
+          className="p-2 text-slate-500 hover:text-[#0F291E] hover:bg-slate-100 rounded-xl transition-colors flex items-center gap-1.5 text-xs"
           title="Clear Conversation"
         >
           <Trash2 className="w-4 h-4" />
@@ -121,7 +121,7 @@ export const AIChatPage = () => {
       </div>
 
       {/* Chat Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
         {messages.map((msg) => (
           <motion.div
             key={msg.id}
@@ -133,7 +133,7 @@ export const AIChatPage = () => {
             <div
               className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
                 msg.sender === 'user'
-                  ? 'bg-slate-900 text-white'
+                  ? 'bg-[#0F291E] text-white'
                   : 'bg-blue-50 border border-blue-100 text-blue-700'
               }`}
             >
@@ -145,19 +145,19 @@ export const AIChatPage = () => {
               <div
                 className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                   msg.sender === 'user'
-                    ? 'bg-slate-900 text-white rounded-tr-none shadow-xs'
-                    : 'bg-slate-50 text-slate-900 border border-slate-200 rounded-tl-none space-y-2'
+                    ? 'bg-[#0F291E] text-white rounded-tr-none shadow-xs'
+                    : 'bg-[#FAF8F5] text-[#0F291E] border border-[#E5E0D8] rounded-tl-none space-y-2'
                 }`}
               >
                 {/* Formatting render */}
                 <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
 
                 {msg.sender === 'ai' && (
-                  <div className="pt-2 flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-200 mt-2">
+                  <div className="pt-2 flex items-center justify-between text-[10px] text-slate-400 border-t border-[#E5E0D8] mt-2">
                     <span>Model: BrandDNA-v4.5-Enterprise</span>
                     <button
                       onClick={() => handleCopyMessage(msg.id, msg.text)}
-                      className="hover:text-slate-900 flex items-center gap-1 transition-colors font-medium"
+                      className="hover:text-[#0F291E] flex items-center gap-1 transition-colors font-medium"
                     >
                       {copiedId === msg.id ? (
                         <>
@@ -180,10 +180,10 @@ export const AIChatPage = () => {
         {/* Typing Indicator */}
         {isTyping && (
           <div className="flex gap-3 items-center">
-            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-[#0F291E] text-white flex items-center justify-center font-bold">
               <Bot className="w-4 h-4 animate-spin text-white" />
             </div>
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
+            <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-slate-500 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping" />
               <span>Thinking & Analyzing USPTO Registers...</span>
             </div>
@@ -200,7 +200,7 @@ export const AIChatPage = () => {
           <button
             key={i}
             onClick={() => handleSend(prompt)}
-            className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-[11px] text-slate-700 hover:text-slate-900 whitespace-nowrap transition-colors flex items-center gap-1.5 shadow-2xs"
+            className="px-3 py-1.5 rounded-xl glass-panel hover:bg-[#FAF8F5] border border-[#E5E0D8] text-[11px] text-slate-700 hover:text-[#0F291E] whitespace-nowrap transition-colors flex items-center gap-1.5 shadow-2xs"
           >
             <Sparkles className="w-3 h-3 text-blue-600" />
             <span>{prompt}</span>
@@ -209,9 +209,9 @@ export const AIChatPage = () => {
       </div>
 
       {/* Input Box */}
-      <div className="p-2 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center gap-2 shrink-0">
+      <div className="p-2 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs flex items-center gap-2 shrink-0">
         <button
-          className="p-2.5 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+          className="p-2.5 rounded-xl text-slate-400 hover:text-[#0F291E] hover:bg-slate-100 transition-colors"
           title="Attach file or logo"
         >
           <Paperclip className="w-4 h-4" />
@@ -223,13 +223,13 @@ export const AIChatPage = () => {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Ask BrandDNA AI about trademark risk, strategy, taglines..."
-          className="flex-1 bg-transparent text-xs sm:text-sm text-slate-900 placeholder-slate-400 outline-none px-2 py-1"
+          className="flex-1 bg-transparent text-xs sm:text-sm text-[#0F291E] placeholder-slate-400 outline-none px-2 py-1"
         />
 
         <button
           onClick={() => handleSend()}
           disabled={!input.trim() || isTyping}
-          className="p-2.5 rounded-xl bg-slate-900 text-white font-bold disabled:opacity-40 hover:bg-slate-800 transition-all shadow-xs"
+          className="p-2.5 rounded-xl bg-[#0F291E] text-white font-bold disabled:opacity-40 hover:bg-slate-800 transition-all shadow-xs"
         >
           <Send className="w-4 h-4 text-white" />
         </button>
@@ -238,3 +238,4 @@ export const AIChatPage = () => {
     </div>
   );
 };
+

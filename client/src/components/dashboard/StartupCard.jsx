@@ -14,7 +14,7 @@ export const StartupCard = ({ startup }) => {
   };
 
   return (
-    <Card hoverEffect className="text-left border-slate-200/90 flex flex-col justify-between">
+    <Card hoverEffect className="text-left border-[#E5E0D8]/90 flex flex-col justify-between">
       <div>
         {/* Card Header */}
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
@@ -23,7 +23,7 @@ export const StartupCard = ({ startup }) => {
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 leading-tight">{data.companyName}</h3>
+              <h3 className="text-base font-bold text-[#0F291E] leading-tight">{data.companyName}</h3>
               <p className="text-xs text-slate-500 font-medium mt-0.5">{data.industry}</p>
             </div>
           </div>
@@ -35,14 +35,14 @@ export const StartupCard = ({ startup }) => {
 
         {/* Startup Fields Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
+          <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8]/60 space-y-1">
             <span className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">Business Goal</span>
-            <p className="font-semibold text-slate-800 line-clamp-2">{data.businessGoal || data.businessGoals}</p>
+            <p className="font-semibold text-[#0F291E]/90 line-clamp-2">{data.businessGoal || data.businessGoals}</p>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
+          <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8]/60 space-y-1">
             <span className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">Target Audience</span>
-            <p className="font-semibold text-slate-800 line-clamp-2">{data.targetAudience}</p>
+            <p className="font-semibold text-[#0F291E]/90 line-clamp-2">{data.targetAudience}</p>
           </div>
         </div>
       </div>
@@ -58,3 +58,4 @@ export const StartupCard = ({ startup }) => {
     </Card>
   );
 };
+

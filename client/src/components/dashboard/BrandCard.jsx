@@ -67,7 +67,7 @@ export const BrandCard = () => {
   };
 
   return (
-    <Card hoverEffect className="text-left border-slate-200/90 space-y-5">
+    <Card hoverEffect className="text-left border-[#E5E0D8]/90 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
@@ -75,7 +75,7 @@ export const BrandCard = () => {
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 leading-tight">AI Brand Identity Preview</h3>
+            <h3 className="text-base font-bold text-[#0F291E] leading-tight">AI Brand Identity Preview</h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">Live MongoDB Atlas Database Asset</p>
           </div>
         </div>
@@ -88,7 +88,7 @@ export const BrandCard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
         
         {/* Brand Name & Tagline */}
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 space-y-2 flex flex-col justify-between">
+        <div className="p-4 bg-[#FAF8F5] rounded-2xl border border-[#E5E0D8]/60 space-y-2 flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Brand Name & Tagline</span>
@@ -109,13 +109,13 @@ export const BrandCard = () => {
                 </button>
               </div>
             </div>
-            <h4 className="text-lg font-extrabold text-slate-900">{brandData.name}</h4>
+            <h4 className="text-lg font-extrabold text-[#0F291E]">{brandData.name}</h4>
             <p className="text-xs italic text-slate-600 mt-1">"{brandData.tagline}"</p>
           </div>
         </div>
 
         {/* Brand Personality */}
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 space-y-2 flex flex-col justify-between">
+        <div className="p-4 bg-[#FAF8F5] rounded-2xl border border-[#E5E0D8]/60 space-y-2 flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Brand Personality</span>
@@ -126,12 +126,12 @@ export const BrandCard = () => {
                 {copiedField === 'Personality' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
-            <p className="font-semibold text-slate-800 leading-relaxed mt-1">{brandData.personality}</p>
+            <p className="font-semibold text-[#0F291E]/90 leading-relaxed mt-1">{brandData.personality}</p>
           </div>
         </div>
 
         {/* Mission */}
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 space-y-2 flex flex-col justify-between">
+        <div className="p-4 bg-[#FAF8F5] rounded-2xl border border-[#E5E0D8]/60 space-y-2 flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Mission Statement</span>
@@ -147,7 +147,7 @@ export const BrandCard = () => {
         </div>
 
         {/* Vision */}
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 space-y-2 flex flex-col justify-between">
+        <div className="p-4 bg-[#FAF8F5] rounded-2xl border border-[#E5E0D8]/60 space-y-2 flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Vision Statement</span>
@@ -166,3 +166,4 @@ export const BrandCard = () => {
     </Card>
   );
 };
+

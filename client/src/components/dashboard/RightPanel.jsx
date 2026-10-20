@@ -29,11 +29,11 @@ export const RightPanel = () => {
       </Card>
 
       {/* Recent Notifications */}
-      <Card className="border-slate-200/90 p-5 space-y-3">
+      <Card className="border-[#E5E0D8]/90 p-5 space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <Bell className="w-4 h-4 text-blue-600" />
-            <h4 className="text-xs font-bold text-slate-900">Recent Notifications</h4>
+            <h4 className="text-xs font-bold text-[#0F291E]">Recent Notifications</h4>
           </div>
           <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">3 New</span>
         </div>
@@ -43,10 +43,10 @@ export const RightPanel = () => {
             <div
               key={n.id}
               onClick={() => addToast(`Opening notification: ${n.title}`, 'info')}
-              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 hover:border-slate-300 cursor-pointer transition-colors flex items-center justify-between"
+              className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8]/60 hover:border-slate-300 cursor-pointer transition-colors flex items-center justify-between"
             >
               <div>
-                <p className="text-xs font-semibold text-slate-800 leading-snug">{n.title}</p>
+                <p className="text-xs font-semibold text-[#0F291E]/90 leading-snug">{n.title}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">{n.time}</p>
               </div>
               <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
@@ -56,10 +56,10 @@ export const RightPanel = () => {
       </Card>
 
       {/* Upcoming Features */}
-      <Card className="border-slate-200/90 p-5 space-y-3">
+      <Card className="border-[#E5E0D8]/90 p-5 space-y-3">
         <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
           <Sparkles className="w-4 h-4 text-emerald-600" />
-          <h4 className="text-xs font-bold text-slate-900">Upcoming Features</h4>
+          <h4 className="text-xs font-bold text-[#0F291E]">Upcoming Features</h4>
         </div>
 
         <div className="space-y-2 text-xs">
@@ -81,3 +81,4 @@ export const RightPanel = () => {
     </div>
   );
 };
+

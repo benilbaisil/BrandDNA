@@ -23,7 +23,7 @@ export const Input = forwardRef(
         {label && (
           <label
             htmlFor={inputId}
-            className="text-xs font-semibold text-slate-700 tracking-tight flex items-center justify-between"
+            className="text-xs font-bold text-slate-700 tracking-tight flex items-center justify-between"
           >
             <span>
               {label} {required && <span className="text-rose-500">*</span>}
@@ -40,13 +40,13 @@ export const Input = forwardRef(
             id={inputId}
             ref={ref}
             type={type}
-            className={`w-full bg-white text-slate-900 placeholder:text-slate-400 text-sm rounded-xl border px-3.5 py-2.5 transition-all duration-150 outline-none
+            className={`w-full bg-[#FAF8F5] text-slate-900 placeholder:text-slate-400 text-xs font-medium rounded-xl border px-3.5 py-3 transition-all duration-150 outline-none
               ${Icon ? 'pl-10' : ''}
               ${rightElement ? 'pr-11' : ''}
               ${
                 error
-                  ? 'border-rose-300 focus:border-rose-500 focus:ring-3 focus:ring-rose-500/10'
-                  : 'border-slate-200 hover:border-slate-300 focus:border-blue-600 focus:ring-3 focus:ring-blue-600/10'
+                  ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10'
+                  : 'border-stone-200 hover:border-stone-300 focus:border-[#0F382C] focus:bg-white focus:ring-2 focus:ring-[#0F382C]/10'
               }
               ${className}
             `}
@@ -72,3 +72,4 @@ export const Input = forwardRef(
 );
 
 Input.displayName = 'Input';
+

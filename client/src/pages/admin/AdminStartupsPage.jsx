@@ -71,12 +71,12 @@ export const AdminStartupsPage = () => {
     <div className="space-y-8 max-w-7xl mx-auto pb-16 text-left">
       
       {/* Header Banner */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-[10px] font-sans font-bold uppercase tracking-wider">
+          <span className="px-3 py-1 rounded-full bg-[#0F291E] text-white text-[10px] font-sans font-bold uppercase tracking-wider">
             Startup Profiles Directory
           </span>
-          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight mt-2">
+          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#0F291E] tracking-tight mt-2">
             Startup Profiles ({loading ? '...' : startupsList.length})
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -87,7 +87,7 @@ export const AdminStartupsPage = () => {
         <button
           onClick={fetchStartups}
           disabled={loading}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-xs shrink-0 self-start sm:self-auto cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-xs shrink-0 self-start sm:self-auto cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 text-white ${loading ? 'animate-spin' : ''}`} />
           <span>Refresh Startups</span>
@@ -95,7 +95,7 @@ export const AdminStartupsPage = () => {
       </div>
 
       {/* Filter */}
-      <div className="p-4 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs">
+      <div className="p-4 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs">
         <div className="relative max-w-md">
           <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
           <input
@@ -103,16 +103,16 @@ export const AdminStartupsPage = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search company, industry, or owner..."
-            className="w-full bg-[#EAF4F7]/40 border border-[#D6E6EC] focus:border-slate-900 focus:bg-white text-xs text-slate-900 placeholder-slate-400 rounded-xl pl-9 pr-4 py-2.5 outline-none font-medium transition-all"
+            className="w-full bg-[#FAF8F5]/40 border border-[#D6E6EC] focus:border-slate-900 focus:glass-panel text-xs text-[#0F291E] placeholder-slate-400 rounded-xl pl-9 pr-4 py-2.5 outline-none font-medium transition-all"
           />
         </div>
       </div>
 
       {/* Startups Table */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-4">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-4">
         {loading ? (
           <div className="py-12 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin text-slate-900" />
+            <RefreshCw className="w-4 h-4 animate-spin text-[#0F291E]" />
             <span>Loading startup profile records from database...</span>
           </div>
         ) : filteredStartups.length === 0 ? (
@@ -123,7 +123,7 @@ export const AdminStartupsPage = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-[#D6E6EC] text-slate-500 font-mono text-[10px] uppercase bg-[#EAF4F7]/50">
+                <tr className="border-b border-[#D6E6EC] text-slate-500 font-mono text-[10px] uppercase bg-[#FAF8F5]/50">
                   <th className="py-3.5 px-4 font-bold">Company Name</th>
                   <th className="py-3.5 px-4 font-bold">Industry Domain</th>
                   <th className="py-3.5 px-4 font-bold">Owner</th>
@@ -134,8 +134,8 @@ export const AdminStartupsPage = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredStartups.map((s) => (
-                  <tr key={s.id} className="hover:bg-[#EAF4F7]/30 transition-colors">
-                    <td className="py-4 px-4 text-slate-900">
+                  <tr key={s.id} className="hover:bg-[#FAF8F5]/30 transition-colors">
+                    <td className="py-4 px-4 text-[#0F291E]">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                           <Building2 className="w-4 h-4 text-slate-500 shrink-0" />
@@ -151,7 +151,7 @@ export const AdminStartupsPage = () => {
                     <td className="py-4 px-4 font-semibold text-slate-700">{s.industry}</td>
                     <td className="py-4 px-4">
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-900">{s.ownerName || s.owner}</span>
+                        <span className="font-bold text-[#0F291E]">{s.ownerName || s.owner}</span>
                         <span className="text-[10px] text-slate-400 font-mono">{s.ownerEmail || ''}</span>
                       </div>
                     </td>
@@ -179,7 +179,7 @@ export const AdminStartupsPage = () => {
 
                         <button
                           onClick={() => { setSelectedStartup(s); setModalMode('view_analysis'); }}
-                          className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-[11px] font-bold hover:bg-slate-800 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          className="px-3 py-1.5 rounded-full bg-[#0F291E] text-white text-[11px] font-bold hover:bg-slate-800 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
                           title="View Brand Analysis Summary"
                         >
                           <BookmarkCheck className="w-3.5 h-3.5 text-white" />
@@ -188,7 +188,7 @@ export const AdminStartupsPage = () => {
 
                         <button
                           onClick={() => { setSelectedStartup(s); setModalMode('view_profile'); }}
-                          className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-full text-slate-400 hover:text-[#0F291E] hover:bg-slate-100 transition-colors cursor-pointer"
                           title="View Profile Details"
                         >
                           <Eye className="w-4 h-4" />
@@ -214,25 +214,25 @@ export const AdminStartupsPage = () => {
       {/* Modal */}
       <AnimatePresence>
         {modalMode && selectedStartup && (
-          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 bg-[#0F291E]/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white max-w-2xl w-full rounded-3xl border border-[#D6E6EC] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col text-left"
+              className="glass-panel max-w-2xl w-full rounded-3xl border border-[#D6E6EC] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col text-left"
             >
-              <div className="p-6 bg-[#EAF4F7]/60 border-b border-[#D6E6EC] flex items-center justify-between">
+              <div className="p-6 bg-[#FAF8F5]/60 border-b border-[#D6E6EC] flex items-center justify-between">
                 <div>
-                  <h3 className="font-serif text-2xl font-bold text-slate-900">
+                  <h3 className="font-serif text-2xl font-bold text-[#0F291E]">
                     {selectedStartup.companyName || selectedStartup.name}
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Owner: <span className="font-bold text-slate-800">{selectedStartup.ownerName}</span> ({selectedStartup.ownerEmail})
+                    Owner: <span className="font-bold text-[#0F291E]/90">{selectedStartup.ownerName}</span> ({selectedStartup.ownerEmail})
                   </p>
                 </div>
                 <button
                   onClick={() => setModalMode(null)}
-                  className="p-2 text-slate-400 hover:text-slate-800 rounded-full hover:bg-white transition-colors cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-[#0F291E]/90 rounded-full hover:glass-panel transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -241,7 +241,7 @@ export const AdminStartupsPage = () => {
               <div className="p-6 sm:p-8 overflow-y-auto space-y-5 flex-1">
                 {modalMode === 'view_analysis' && (
                   <div className="space-y-4">
-                    <h4 className="font-serif text-lg font-bold text-slate-900 border-b border-[#D6E6EC] pb-2">
+                    <h4 className="font-serif text-lg font-bold text-[#0F291E] border-b border-[#D6E6EC] pb-2">
                       Brand Identity Analysis Summary
                     </h4>
 
@@ -262,37 +262,37 @@ export const AdminStartupsPage = () => {
 
                       return (
                         <div className="space-y-4 text-xs">
-                          <div className="p-3.5 rounded-2xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
+                          <div className="p-3.5 rounded-2xl bg-[#FAF8F5]/40 border border-[#D6E6EC] space-y-1">
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Brand Name</span>
-                            <p className="font-serif text-xl font-bold text-slate-900">{b.brandName || 'Not saved'}</p>
+                            <p className="font-serif text-xl font-bold text-[#0F291E]">{b.brandName || 'Not saved'}</p>
                           </div>
 
-                          <div className="p-3.5 rounded-2xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
+                          <div className="p-3.5 rounded-2xl bg-[#FAF8F5]/40 border border-[#D6E6EC] space-y-1">
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Tagline</span>
-                            <p className="font-serif text-base italic text-slate-900">"{b.tagline || 'Not saved'}"</p>
+                            <p className="font-serif text-base italic text-[#0F291E]">"{b.tagline || 'Not saved'}"</p>
                           </div>
 
-                          <div className="p-3.5 rounded-2xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
+                          <div className="p-3.5 rounded-2xl bg-[#FAF8F5]/40 border border-[#D6E6EC] space-y-1">
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Mission Statement</span>
-                            <p className="text-slate-800 leading-relaxed font-medium">{b.missionStatement || 'Not saved'}</p>
+                            <p className="text-[#0F291E]/90 leading-relaxed font-medium">{b.missionStatement || 'Not saved'}</p>
                           </div>
 
-                          <div className="p-3.5 rounded-2xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
+                          <div className="p-3.5 rounded-2xl bg-[#FAF8F5]/40 border border-[#D6E6EC] space-y-1">
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Vision Statement</span>
-                            <p className="text-slate-800 leading-relaxed font-medium">{b.visionStatement || 'Not saved'}</p>
+                            <p className="text-[#0F291E]/90 leading-relaxed font-medium">{b.visionStatement || 'Not saved'}</p>
                           </div>
 
-                          <div className="p-3.5 rounded-2xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-1">
+                          <div className="p-3.5 rounded-2xl bg-[#FAF8F5]/40 border border-[#D6E6EC] space-y-1">
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Brand Story</span>
-                            <p className="text-slate-800 leading-relaxed font-medium whitespace-pre-wrap">{b.brandStory || 'Not saved'}</p>
+                            <p className="text-[#0F291E]/90 leading-relaxed font-medium whitespace-pre-wrap">{b.brandStory || 'Not saved'}</p>
                           </div>
 
-                          <div className="p-3.5 rounded-2xl bg-[#EAF4F7]/40 border border-[#D6E6EC] space-y-2">
+                          <div className="p-3.5 rounded-2xl bg-[#FAF8F5]/40 border border-[#D6E6EC] space-y-2">
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Brand Personality</span>
                             {b.brandPersonality ? (
                               <div className="flex flex-wrap gap-1.5">
                                 {b.brandPersonality.split(',').map((t, idx) => (
-                                  <span key={idx} className="px-2.5 py-0.5 rounded-full bg-slate-900 text-white text-[10px] font-bold">
+                                  <span key={idx} className="px-2.5 py-0.5 rounded-full bg-[#0F291E] text-white text-[10px] font-bold">
                                     {t.trim()}
                                   </span>
                                 ))}
@@ -310,31 +310,31 @@ export const AdminStartupsPage = () => {
 
                             return (
                               <div className="pt-4 border-t border-[#D6E6EC] space-y-3">
-                                <span className="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider block">
+                                <span className="text-xs font-mono font-bold text-[#0F291E] uppercase tracking-wider block">
                                   Product Strategy & Positioning
                                 </span>
 
                                 {ps.productName && (
                                   <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-1">
                                     <span className="text-[10px] font-mono font-bold text-blue-600 uppercase">Product Offering Name</span>
-                                    <p className="font-serif text-lg font-bold text-slate-900">{ps.productName} {ps.productTagline ? `("${ps.productTagline}")` : ''}</p>
+                                    <p className="font-serif text-lg font-bold text-[#0F291E]">{ps.productName} {ps.productTagline ? `("${ps.productTagline}")` : ''}</p>
                                   </div>
                                 )}
 
                                 {ps.shortDescription && (
-                                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                                  <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                                     <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Elevator Pitch</span>
-                                    <p className="text-slate-800 leading-relaxed font-medium">{ps.shortDescription}</p>
+                                    <p className="text-[#0F291E]/90 leading-relaxed font-medium">{ps.shortDescription}</p>
                                   </div>
                                 )}
 
                                 {ps.usps?.length > 0 && (
-                                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                                  <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-2">
                                     <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Unique Selling Propositions (USPs)</span>
                                     <div className="space-y-1.5">
                                       {ps.usps.map((u, i) => (
-                                        <div key={i} className="text-slate-800 font-medium leading-snug">
-                                          <strong className="text-slate-900">• {u.title}:</strong> {u.description}
+                                        <div key={i} className="text-[#0F291E]/90 font-medium leading-snug">
+                                          <strong className="text-[#0F291E]">• {u.title}:</strong> {u.description}
                                         </div>
                                       ))}
                                     </div>
@@ -342,7 +342,7 @@ export const AdminStartupsPage = () => {
                                 )}
 
                                 {ps.positioningStatement && (
-                                  <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-1">
+                                  <div className="p-4 rounded-2xl bg-[#0F291E] text-white space-y-1">
                                     <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider block">Positioning Statement</span>
                                     <p className="italic text-xs font-medium leading-relaxed">"{ps.positioningStatement}"</p>
                                   </div>
@@ -358,23 +358,23 @@ export const AdminStartupsPage = () => {
 
                 {modalMode === 'view_profile' && (
                   <div className="space-y-4 text-xs">
-                    <h4 className="font-serif text-lg font-bold text-slate-900 border-b border-[#D6E6EC] pb-2">
+                    <h4 className="font-serif text-lg font-bold text-[#0F291E] border-b border-[#D6E6EC] pb-2">
                       Basic Business Details
                     </h4>
-                    <div className="p-4 bg-[#EAF4F7]/40 rounded-2xl border border-[#D6E6EC] space-y-1">
+                    <div className="p-4 bg-[#FAF8F5]/40 rounded-2xl border border-[#D6E6EC] space-y-1">
                       <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Industry</span>
-                      <p className="font-bold text-slate-900">{selectedStartup.industry}</p>
+                      <p className="font-bold text-[#0F291E]">{selectedStartup.industry}</p>
                     </div>
                     {selectedStartup.companyDescription && (
-                      <div className="p-4 bg-[#EAF4F7]/40 rounded-2xl border border-[#D6E6EC] space-y-1">
+                      <div className="p-4 bg-[#FAF8F5]/40 rounded-2xl border border-[#D6E6EC] space-y-1">
                         <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Description</span>
-                        <p className="text-slate-800 leading-relaxed font-medium">{selectedStartup.companyDescription}</p>
+                        <p className="text-[#0F291E]/90 leading-relaxed font-medium">{selectedStartup.companyDescription}</p>
                       </div>
                     )}
                     {selectedStartup.productsServices && (
-                      <div className="p-4 bg-[#EAF4F7]/40 rounded-2xl border border-[#D6E6EC] space-y-1">
+                      <div className="p-4 bg-[#FAF8F5]/40 rounded-2xl border border-[#D6E6EC] space-y-1">
                         <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Products & Services</span>
-                        <p className="text-slate-800 leading-relaxed font-medium">{selectedStartup.productsServices}</p>
+                        <p className="text-[#0F291E]/90 leading-relaxed font-medium">{selectedStartup.productsServices}</p>
                       </div>
                     )}
                   </div>
@@ -388,7 +388,7 @@ export const AdminStartupsPage = () => {
                     <div className="flex justify-end gap-2 pt-2">
                       <button
                         onClick={() => setModalMode(null)}
-                        className="px-5 py-2.5 rounded-full bg-slate-100 font-bold text-slate-800 hover:bg-slate-200 transition-colors"
+                        className="px-5 py-2.5 rounded-full bg-slate-100 font-bold text-[#0F291E]/90 hover:bg-slate-200 transition-colors"
                       >
                         Cancel
                       </button>
@@ -404,10 +404,10 @@ export const AdminStartupsPage = () => {
               </div>
 
               {modalMode !== 'delete' && (
-                <div className="p-4 bg-slate-50 border-t border-[#D6E6EC] flex justify-end">
+                <div className="p-4 bg-[#FAF8F5] border-t border-[#D6E6EC] flex justify-end">
                   <button
                     onClick={() => setModalMode(null)}
-                    className="px-6 py-2.5 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="px-6 py-2.5 rounded-full bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-colors cursor-pointer"
                   >
                     Close
                   </button>
@@ -421,3 +421,4 @@ export const AdminStartupsPage = () => {
     </div>
   );
 };
+

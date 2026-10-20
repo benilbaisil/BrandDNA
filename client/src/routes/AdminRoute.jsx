@@ -7,7 +7,7 @@ export const AdminRoute = () => {
   const { user, isAuthenticated, loading } = useAuth();
   const { addToast } = useToast();
 
-  const userRole = user?.role || JSON.parse(localStorage.getItem('branddna_user') || '{}')?.role;
+  const userRole = user?.role || (function(){try{var u=localStorage.getItem('branddna_user');return u&&u!=='undefined'?JSON.parse(u)?.role:undefined}catch(e){return undefined}})();
 
   useEffect(() => {
     if (isAuthenticated && userRole !== 'admin') {

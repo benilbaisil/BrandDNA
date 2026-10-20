@@ -30,12 +30,11 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const generateWithFallback = async (prompt) => {
   const ai = getAIClient();
   const candidateModels = [
-    'gemini-3.1-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-3.7-flash',
-    'gemini-3-flash-preview',
-    'gemini-flash-lite-latest',
+    'gemini-3.6-flash',
     'gemini-flash-latest',
+    'gemini-flash-lite-latest',
+    'gemini-3.5-flash',
+    'gemini-3.1-flash-lite',
   ];
 
   let lastError = null;
@@ -293,3 +292,110 @@ export const generateFullProductStrategyChainAI = async (profile, brand, userHin
     },
   };
 };
+
+/**
+ * PRICING SUGGESTIONS GENERATOR
+ */
+export const generatePricingSuggestionsAI = async (profile, brand, productName, userHint = '') => {
+  const brandContext = formatBrandDNAContext(profile, brand);
+  const targetProductName = productName || 'Flagship Product';
+
+  const prompt = `
+You are a SaaS & Product Pricing Strategist.
+Generate strategic pricing recommendations for "${targetProductName}".
+Provide 3 pricing tiers with suggested price ranges in INR (₹) and USD ($), along with billing frequency and pricing strategy rationale.
+
+Return strictly a JSON object matching this structure:
+{
+  "pricingStrategy": "Value-Based / Tiered / Freemium / Premium",
+  "strategyRationale": "Short 2-sentence explanation of why this pricing model fits the product & market segment.",
+  "tiers": [
+    {
+      "tierName": "Starter",
+      "priceINR": "₹999 / mo",
+      "priceUSD": "$12 / mo",
+      "targetSegment": "Early-stage founders & solo creators",
+      "includedFeatures": ["Core features", "Standard support", "Basic export"]
+    },
+    {
+      "tierName": "Pro Growth",
+      "priceINR": "₹2,999 / mo",
+      "priceUSD": "$39 / mo",
+      "targetSegment": "Growing teams & scaling businesses",
+      "includedFeatures": ["Everything in Starter", "Advanced AI tools", "Priority support", "Custom branding"]
+    },
+    {
+      "tierName": "Enterprise",
+      "priceINR": "₹9,999 / mo",
+      "priceUSD": "$129 / mo",
+      "targetSegment": "Large organizations & agencies",
+      "includedFeatures": ["Unlimited usage", "Dedicated account manager", "Custom API & SLAs"]
+    }
+  ]
+}
+
+${brandContext}
+- Target Product: ${targetProductName}
+${userHint ? `- User Guidelines: ${userHint}` : ''}
+`;
+
+  try {
+    const rawText = await generateWithFallback(prompt);
+    return cleanJsonResponse(rawText);
+  } catch (error) {
+    console.error('AI Pricing Suggestions Error:', error);
+    return {
+      pricingStrategy: "Value-Based Tiered Pricing",
+      strategyRationale: "Aligns price with customer scale and realized business value.",
+      tiers: [
+        { tierName: "Starter", priceINR: "₹1,499 / mo", priceUSD: "$19 / mo", targetSegment: "Individual Users", includedFeatures: ["Core Features", "Standard Support"] },
+        { tierName: "Professional", priceINR: "₹3,999 / mo", priceUSD: "$49 / mo", targetSegment: "Growing Companies", includedFeatures: ["Full Suite", "Priority AI", "Analytics"] }
+      ]
+    };
+  }
+};
+
+/**
+ * PACKAGING SUGGESTIONS GENERATOR
+ */
+export const generatePackagingSuggestionsAI = async (profile, brand, productName, userHint = '') => {
+  const brandContext = formatBrandDNAContext(profile, brand);
+  const targetProductName = productName || 'Flagship Product';
+
+  const prompt = `
+You are a Product Packaging & Unboxing Experience Architect.
+Design packaging guidelines and unboxing experience suggestions for "${targetProductName}".
+
+Return strictly a JSON object matching this structure:
+{
+  "packagingStyle": "Minimalist Eco-Luxury / Modern Tech Matte / Premium Box Set",
+  "materials": "Recyclable kraft paperboard, soy-based inks, tactile velvet-touch coating",
+  "unboxingExperience": "Step-by-step unboxing flow detailing opening sequence, insert card, and brand touchpoint.",
+  "visualDetails": {
+    "primaryColor": "Matte Obsidian Black with Foil Accent",
+    "typographyStyle": "Clean Geometric Sans-Serif font embossing",
+    "finish": "Soft-touch matte box with spot-UV logo highlighting"
+  },
+  "sustainabilityHighlight": "100% biodegradable & plastic-free certified packaging."
+}
+
+${brandContext}
+- Target Product: ${targetProductName}
+${userHint ? `- User Guidelines: ${userHint}` : ''}
+`;
+
+  try {
+    const rawText = await generateWithFallback(prompt);
+    return cleanJsonResponse(rawText);
+  } catch (error) {
+    console.error('AI Packaging Suggestions Error:', error);
+    return {
+      packagingStyle: "Eco-Friendly Premium Box",
+      materials: "Recycled corrugated card with eco-soy print",
+      unboxingExperience: "Smooth lid-lift revealing personalized welcome card and product placement.",
+      visualDetails: { primaryColor: "Slate Grey", typographyStyle: "Modern Sans-Serif", finish: "Matte Finish" },
+      sustainabilityHighlight: "Zero-plastic eco-conscious materials."
+    };
+  }
+};
+

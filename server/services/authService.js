@@ -3,25 +3,30 @@ import { generateToken } from '../utils/generateToken.js';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 
-// Ensure default Admin user exists in database without overwriting existing admins
-const seedAdminUser = async () => {
+// Seed default system users for all 4 roles if not existing
+export const seedDefaultRoles = async () => {
   try {
-    const existingAdmin = await User.findOne({ role: 'admin' });
-    if (!existingAdmin) {
-      await User.create({
-        fullName: 'System Administrator',
-        email: 'admin@branddna.ai',
-        password: 'password123',
-        role: 'admin',
-      });
-      console.log('👑 Admin user seeded in local MongoDB.');
+    const rolesToSeed = [
+      { fullName: 'System Administrator', email: 'admin@branddna.ai', password: 'password123', role: 'admin' },
+      { fullName: 'Inventory Manager', email: 'inventory@branddna.ai', password: 'password123', role: 'inventory_staff' },
+      { fullName: 'Marketing Lead', email: 'marketing@branddna.ai', password: 'password123', role: 'marketing_staff' },
+      { fullName: 'Standard Customer', email: 'customer@branddna.ai', password: 'password123', role: 'customer' },
+      { fullName: 'Rahul Kumar', email: 'delivery@branddna.ai', password: 'password123', role: 'delivery_agent', vehicleNumber: 'KL-10-AB-1234', vehicleType: 'Bike', phone: '9876543210', status: 'Active' },
+    ];
+
+    for (const r of rolesToSeed) {
+      const exists = await User.findOne({ email: r.email });
+      if (!exists) {
+        await User.create(r);
+        console.log(`👤 Seeded role user: ${r.role} (${r.email})`);
+      }
     }
   } catch (err) {
-    console.warn('Admin seed notice:', err.message);
+    console.warn('Seed default roles notice:', err.message);
   }
 };
 
-seedAdminUser();
+seedDefaultRoles();
 
 export const googleAuthService = async (idToken) => {
   let googleData = null;
@@ -55,7 +60,7 @@ export const googleAuthService = async (idToken) => {
       email: email.toLowerCase(),
       googleId: sub,
       avatar: picture || '',
-      role: 'startup_owner',
+      role: 'customer',
     });
   }
 
@@ -77,20 +82,18 @@ export const googleAuthService = async (idToken) => {
 export const registerUserService = async (userData) => {
   const { fullName, email, password, phone } = userData;
 
-  // STRICT SECURITY: Normal registration ALWAYS creates role "startup_owner"
-  const assignedRole = 'startup_owner';
-
   const existingUser = await User.findOne({ email: email.toLowerCase() });
   if (existingUser) {
     throw new Error('User with this email address already exists');
   }
 
+  // Force every newly registered account to be a Customer
   const newUser = await User.create({
     fullName,
     email: email.toLowerCase(),
     password,
     phone: phone || '',
-    role: assignedRole,
+    role: 'customer',
   });
 
   const token = generateToken(newUser._id, newUser.role);
@@ -110,18 +113,6 @@ export const registerUserService = async (userData) => {
 export const loginUserService = async (email, password) => {
   const cleanEmail = email.toLowerCase().trim();
   let user = await User.findOne({ email: cleanEmail }).select('+password');
-
-  if (!user && cleanEmail === 'admin@branddna.ai' && (password === 'password123' || password === 'adminmasterpass')) {
-    user = await User.findOne({ role: 'admin' }).select('+password');
-    if (!user) {
-      user = await User.create({
-        fullName: 'System Administrator',
-        email: cleanEmail,
-        password: password,
-        role: 'admin',
-      });
-    }
-  }
 
   if (!user) {
     throw new Error('Invalid email or password credentials');
@@ -157,10 +148,6 @@ export const updateUserProfileService = async (userId, updateData) => {
   if (!user && email) {
     user = await User.findOne({ email: email.toLowerCase() });
   }
-  if (!user) {
-    user = await User.findOne({ role: 'admin' });
-  }
-
   if (!user) {
     throw new Error('User not found');
   }
@@ -201,7 +188,6 @@ export const forgotPasswordService = async (email) => {
   user.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
   await user.save();
 
-  // Create nodemailer transporter
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {

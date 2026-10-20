@@ -50,11 +50,6 @@ export const AdminTopNavbar = ({ onOpenMobile, onSearch }) => {
 
       {/* Right: Actions & Admin Profile */}
       <div className="flex items-center gap-3">
-        {/* Live Health Badge */}
-        <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
-          <Activity className="w-3.5 h-3.5 text-emerald-600" />
-          <span>System Active: 99.9%</span>
-        </div>
 
         {/* Settings Button */}
         <Link

@@ -37,7 +37,7 @@ export const MarketingPlannerPage = () => {
           </p>
         </div>
 
-        <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-zinc-200 transition-all self-start sm:self-auto shadow-md shadow-white/10">
+        <button className="flex items-center gap-2 px-4 py-2 rounded-xl glass-panel text-black text-xs font-bold hover:bg-zinc-200 transition-all self-start sm:self-auto shadow-md shadow-white/10">
           <Sparkles className="w-4 h-4 text-black" />
           <span>Generate AI Campaign</span>
         </button>
@@ -93,11 +93,11 @@ export const MarketingPlannerPage = () => {
             </thead>
             <tbody className="divide-y divide-white/5">
               {campaigns.map((c, i) => (
-                <tr key={i} className="hover:bg-white/5 transition-colors">
+                <tr key={i} className="hover:glass-panel/5 transition-colors">
                   <td className="py-3.5 px-4 font-bold text-white">{c.title}</td>
                   <td className="py-3.5 px-4 text-zinc-300">{c.channel}</td>
                   <td className="py-3.5 px-4">
-                    <span className="px-2 py-0.5 rounded-full bg-white/10 text-white font-mono text-[10px] border border-white/20">
+                    <span className="px-2 py-0.5 rounded-full glass-panel/10 text-white font-mono text-[10px] border border-white/20">
                       {c.status}
                     </span>
                   </td>
@@ -113,3 +113,4 @@ export const MarketingPlannerPage = () => {
     </div>
   );
 };
+

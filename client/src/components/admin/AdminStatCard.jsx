@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 
 export const AdminStatCard = ({ icon: Icon, title, value, change, isPositive = true, trendData = [30, 45, 35, 55, 70, 85] }) => {
   return (
-    <Card hoverEffect className="flex flex-col justify-between text-left p-5 border-slate-200/90">
+    <Card hoverEffect className="flex flex-col justify-between text-left p-5 border-[#E5E0D8]/90">
       <div>
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-slate-500">{title}</span>
@@ -14,7 +14,7 @@ export const AdminStatCard = ({ icon: Icon, title, value, change, isPositive = t
         </div>
 
         <div className="flex items-baseline justify-between">
-          <p className="text-2xl font-extrabold text-slate-900 tracking-tight">{value}</p>
+          <p className="text-2xl font-extrabold text-[#0F291E] tracking-tight">{value}</p>
           
           {change && (
             <span
@@ -44,3 +44,4 @@ export const AdminStatCard = ({ icon: Icon, title, value, change, isPositive = t
     </Card>
   );
 };
+

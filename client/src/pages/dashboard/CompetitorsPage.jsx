@@ -93,7 +93,7 @@ export const CompetitorsPage = () => {
           <span className="text-xs font-mono font-bold text-blue-600 uppercase tracking-wider">
             Competitor Intelligence & Positioning
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F291E] tracking-tight mt-1">
             Market Competitor Radar
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -112,9 +112,9 @@ export const CompetitorsPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Radar Chart Card */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
+        <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-[#0F291E] flex items-center gap-2">
               <RadarIcon className="w-4 h-4 text-blue-600" />
               <span>Multi-Axis Competitor Radar</span>
             </h3>
@@ -140,10 +140,10 @@ export const CompetitorsPage = () => {
         </div>
 
         {/* 2D Brand Positioning Graph & Market Gap */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4 flex flex-col justify-between">
+        <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-[#0F291E] flex items-center gap-2">
                 <Target className="w-4 h-4 text-purple-600" />
                 <span>2D Brand Positioning Matrix</span>
               </h3>
@@ -157,7 +157,7 @@ export const CompetitorsPage = () => {
           </div>
 
           {/* Interactive 2D Graph Canvas representation */}
-          <div className="relative h-64 bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
+          <div className="relative h-64 bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl p-4 flex flex-col justify-between">
             {/* Axis Lines */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-full h-px bg-slate-200" />
@@ -165,34 +165,34 @@ export const CompetitorsPage = () => {
             </div>
 
             {/* Axis Labels */}
-            <span className="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+            <span className="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-slate-600 glass-panel px-2 py-0.5 rounded border border-[#E5E0D8] shadow-2xs">
               High Innovation & Legal AI ↑
             </span>
-            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-slate-600 glass-panel px-2 py-0.5 rounded border border-[#E5E0D8] shadow-2xs">
               Legacy Docs & Manual Strategy ↓
             </span>
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-mono text-slate-600 bg-white px-1 py-0.5 rounded border border-slate-200 shadow-2xs">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-mono text-slate-600 glass-panel px-1 py-0.5 rounded border border-[#E5E0D8] shadow-2xs">
               ← Mass Market
             </span>
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-mono text-slate-600 bg-white px-1 py-0.5 rounded border border-slate-200 shadow-2xs">
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-mono text-slate-600 glass-panel px-1 py-0.5 rounded border border-[#E5E0D8] shadow-2xs">
               Premium Enterprise →
             </span>
 
             {/* Positioning Nodes */}
-            <div className="absolute top-8 right-12 flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-md animate-bounce">
+            <div className="absolute top-8 right-12 flex items-center gap-1.5 bg-[#0F291E] text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-md animate-bounce">
               <Sparkles className="w-3.5 h-3.5 text-white" />
               <span>BrandDNA AI</span>
             </div>
 
-            <div className="absolute top-20 left-16 flex items-center gap-1.5 bg-white border border-slate-300 text-slate-700 px-2.5 py-1 rounded-full text-[11px] shadow-2xs">
+            <div className="absolute top-20 left-16 flex items-center gap-1.5 glass-panel border border-slate-300 text-slate-700 px-2.5 py-1 rounded-full text-[11px] shadow-2xs">
               <span>Perplexity</span>
             </div>
 
-            <div className="absolute bottom-16 right-20 flex items-center gap-1.5 bg-white border border-slate-300 text-slate-700 px-2.5 py-1 rounded-full text-[11px] shadow-2xs">
+            <div className="absolute bottom-16 right-20 flex items-center gap-1.5 glass-panel border border-slate-300 text-slate-700 px-2.5 py-1 rounded-full text-[11px] shadow-2xs">
               <span>Linear</span>
             </div>
 
-            <div className="absolute bottom-12 left-24 flex items-center gap-1.5 bg-white border border-slate-300 text-slate-700 px-2.5 py-1 rounded-full text-[11px] shadow-2xs">
+            <div className="absolute bottom-12 left-24 flex items-center gap-1.5 glass-panel border border-slate-300 text-slate-700 px-2.5 py-1 rounded-full text-[11px] shadow-2xs">
               <span>Notion AI</span>
             </div>
           </div>
@@ -201,10 +201,10 @@ export const CompetitorsPage = () => {
       </div>
 
       {/* Modern Comparison Table */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
+      <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Competitor Intelligence Breakdown</h3>
+            <h3 className="text-base font-bold text-[#0F291E]">Competitor Intelligence Breakdown</h3>
             <p className="text-xs text-slate-500">Detailed feature matrix, similarity score, strengths and weaknesses.</p>
           </div>
 
@@ -216,7 +216,7 @@ export const CompetitorsPage = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Filter competitor..."
-                className="bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder-slate-400 rounded-xl pl-8 pr-3 py-1.5 outline-none focus:border-slate-900"
+                className="bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] placeholder-slate-400 rounded-xl pl-8 pr-3 py-1.5 outline-none focus:border-slate-900"
               />
             </div>
           </div>
@@ -226,7 +226,7 @@ export const CompetitorsPage = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-500 font-mono text-[10px] uppercase bg-slate-50/50">
+              <tr className="border-b border-[#E5E0D8] text-slate-500 font-mono text-[10px] uppercase bg-[#FAF8F5]/50">
                 <th className="py-3 px-4">Platform Name</th>
                 <th className="py-3 px-4">Category</th>
                 <th className="py-3 px-4">Similarity Index</th>
@@ -237,8 +237,8 @@ export const CompetitorsPage = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredCompetitors.map((comp) => (
-                <tr key={comp.name} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2">
+                <tr key={comp.name} className="hover:bg-[#FAF8F5]/80 transition-colors">
+                  <td className="py-3.5 px-4 font-bold text-[#0F291E] flex items-center gap-2">
                     {comp.name === 'BrandDNA AI' ? (
                       <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
                     ) : (
@@ -248,7 +248,7 @@ export const CompetitorsPage = () => {
                   </td>
                   <td className="py-3.5 px-4 text-slate-600">{comp.category}</td>
                   <td className="py-3.5 px-4">
-                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono text-[10px] border border-slate-200">
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono text-[10px] border border-[#E5E0D8]">
                       {comp.similarity}
                     </span>
                   </td>
@@ -283,3 +283,4 @@ export const CompetitorsPage = () => {
     </div>
   );
 };
+

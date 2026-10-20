@@ -65,15 +65,15 @@ export const AdminUserTable = ({ searchQuery = '' }) => {
   };
 
   return (
-    <Card className="text-left border-slate-200/90 p-0 overflow-hidden space-y-0">
+    <Card className="text-left border-[#E5E0D8]/90 p-0 overflow-hidden space-y-0">
       {/* Table Header */}
       <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-2xl bg-[#0F291E] text-white flex items-center justify-center font-bold">
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 leading-tight">User Management</h3>
+            <h3 className="text-base font-bold text-[#0F291E] leading-tight">User Management</h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">Live Database Records ({users.length} Users)</p>
           </div>
         </div>
@@ -86,7 +86,7 @@ export const AdminUserTable = ({ searchQuery = '' }) => {
               value={localQuery}
               onChange={(e) => setLocalQuery(e.target.value)}
               placeholder="Search users..."
-              className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl pl-9 pr-3 py-2 outline-none focus:border-blue-600"
+              className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs rounded-xl pl-9 pr-3 py-2 outline-none focus:border-blue-600"
             />
           </div>
 
@@ -104,7 +104,7 @@ export const AdminUserTable = ({ searchQuery = '' }) => {
       {/* User Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-xs text-left text-slate-600">
-          <thead className="bg-slate-50 border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+          <thead className="bg-[#FAF8F5] border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
             <tr>
               <th className="py-3 px-6">User</th>
               <th className="py-3 px-6">Email</th>
@@ -129,8 +129,8 @@ export const AdminUserTable = ({ searchQuery = '' }) => {
               </tr>
             ) : (
               filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-6 font-bold text-slate-900 flex items-center gap-3">
+                <tr key={user.id} className="hover:bg-[#FAF8F5]/70 transition-colors">
+                  <td className="py-3.5 px-6 font-bold text-[#0F291E] flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
                       {user.name?.[0] || 'U'}
                     </div>
@@ -138,7 +138,7 @@ export const AdminUserTable = ({ searchQuery = '' }) => {
                   </td>
                   <td className="py-3.5 px-6 font-medium text-slate-600">{user.email}</td>
                   <td className="py-3.5 px-6">
-                    <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-[#E5E0D8]">
                       {user.role}
                     </span>
                   </td>
@@ -195,3 +195,4 @@ export const AdminUserTable = ({ searchQuery = '' }) => {
     </Card>
   );
 };
+

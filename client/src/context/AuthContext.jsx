@@ -4,10 +4,33 @@ import { useToast } from './ToastContext';
 
 const AuthContext = createContext(null);
 
+export const getRoleRedirectPath = (role) => {
+  switch (role) {
+    case 'admin':
+      return '/admin/dashboard';
+    case 'inventory_staff':
+      return '/inventory/dashboard';
+    case 'marketing_staff':
+    case 'startup_owner':
+      return '/marketing/dashboard';
+    case 'delivery_agent':
+    case 'DELIVERY_AGENT':
+      return '/delivery';
+    case 'customer':
+      return '/customer/dashboard';
+    default:
+      return '/';
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('branddna_user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      return savedUser && savedUser !== 'undefined' ? JSON.parse(savedUser) : null;
+    } catch (e) {
+      return null;
+    }
   });
   const [token, setToken] = useState(() => localStorage.getItem('branddna_token'));
   const [loading, setLoading] = useState(false);
@@ -28,7 +51,7 @@ export const AuthProvider = ({ children }) => {
           setToken(userToken);
           addToast(`Welcome, ${userData.fullName}! Authenticated with Google.`, 'success');
 
-          const targetUrl = userData.role === 'admin' ? '/admin' : '/dashboard';
+          const targetUrl = getRoleRedirectPath(userData.role);
           setTimeout(() => {
             window.location.href = targetUrl;
           }, 300);
@@ -60,7 +83,7 @@ export const AuthProvider = ({ children }) => {
           setToken(userToken);
           addToast(`Welcome back, ${userData.fullName}!`, 'success');
           
-          const targetUrl = userData.role === 'admin' ? '/admin' : '/dashboard';
+          const targetUrl = getRoleRedirectPath(userData.role);
           setTimeout(() => {
             window.location.href = targetUrl;
           }, 300);
@@ -95,7 +118,7 @@ export const AuthProvider = ({ children }) => {
           setToken(newTok);
           addToast('Account created successfully!', 'success');
           
-          const targetUrl = newUser.role === 'admin' ? '/admin' : '/dashboard';
+          const targetUrl = getRoleRedirectPath(newUser.role);
           setTimeout(() => {
             window.location.href = targetUrl;
           }, 300);
@@ -128,7 +151,7 @@ export const AuthProvider = ({ children }) => {
           updatedUser = res.data.user;
         }
       } catch (apiErr) {
-        // Fallback local update sync
+        // Fallback local update
       }
 
       localStorage.setItem('branddna_user', JSON.stringify(updatedUser));
@@ -156,7 +179,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('branddna_token');
       addToast('Logged out successfully', 'info');
       setTimeout(() => {
-        window.location.href = '/login';
+        window.location.href = '/';
       }, 300);
     }
   };
@@ -171,7 +194,12 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider
       value={{
-        user: user || (localStorage.getItem('branddna_user') ? JSON.parse(localStorage.getItem('branddna_user')) : null),
+        user: user || (() => { 
+          try { 
+            const u = localStorage.getItem('branddna_user'); 
+            return u && u !== 'undefined' ? JSON.parse(u) : null; 
+          } catch(e) { return null; } 
+        })(),
         token: token || localStorage.getItem('branddna_token'),
         isAuthenticated: checkAuth(),
         loading,
@@ -190,8 +218,11 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    const savedUser = localStorage.getItem('branddna_user');
-    const user = savedUser ? JSON.parse(savedUser) : null;
+    let user = null;
+    try {
+      const savedUser = localStorage.getItem('branddna_user');
+      user = savedUser && savedUser !== 'undefined' ? JSON.parse(savedUser) : null;
+    } catch(e) {}
     return {
       user,
       token: localStorage.getItem('branddna_token'),

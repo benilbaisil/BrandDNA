@@ -40,7 +40,7 @@ export const SettingsPage = () => {
         <span className="text-xs font-mono font-bold text-blue-600 uppercase tracking-wider">
           System & Workspace Configuration
         </span>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F291E] tracking-tight mt-1">
           Settings & AI Engine
         </h1>
         <p className="text-xs sm:text-sm text-slate-500">
@@ -49,8 +49,8 @@ export const SettingsPage = () => {
       </div>
 
       {/* AI Engine Model Selector */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
-        <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+      <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
+        <h3 className="text-base font-bold text-[#0F291E] flex items-center gap-2">
           <Bot className="w-4 h-4 text-blue-600" />
           <span>Active AI Strategy Engine</span>
         </h3>
@@ -82,13 +82,13 @@ export const SettingsPage = () => {
               onClick={() => handleSelectModel(model.id, model.name)}
               className={`p-4 rounded-xl border cursor-pointer transition-all select-none flex flex-col justify-between ${
                 activeModel === model.id
-                  ? 'bg-blue-50/50 border-blue-600 text-slate-900 shadow-sm font-bold'
-                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                  ? 'bg-blue-50/50 border-blue-600 text-[#0F291E] shadow-sm font-bold'
+                  : 'bg-[#FAF8F5] border-[#E5E0D8] text-slate-600 hover:border-slate-300'
               }`}
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900">{model.name}</h4>
+                  <h4 className="text-xs font-bold text-[#0F291E]">{model.name}</h4>
                   {activeModel === model.id && <Check className="w-4 h-4 text-blue-600" />}
                 </div>
                 <span className="text-[10px] font-mono text-blue-600 font-bold block">{model.speed}</span>
@@ -100,8 +100,8 @@ export const SettingsPage = () => {
       </div>
 
       {/* API Key Manager */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
-        <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+      <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
+        <h3 className="text-base font-bold text-[#0F291E] flex items-center gap-2">
           <Key className="w-4 h-4 text-emerald-600" />
           <span>Developer API Keys</span>
         </h3>
@@ -112,11 +112,11 @@ export const SettingsPage = () => {
             type="text"
             readOnly
             value={apiKey}
-            className="w-full bg-slate-50 border border-slate-200 text-xs font-mono text-slate-700 rounded-xl px-3.5 py-2.5 outline-none"
+            className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs font-mono text-slate-700 rounded-xl px-3.5 py-2.5 outline-none"
           />
           <button
             onClick={handleCopyKey}
-            className="px-4 py-2.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold transition-colors shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-[#0F291E] text-white hover:bg-slate-800 text-xs font-bold transition-colors shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer"
           >
             {copiedKey ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4 text-white" />}
             <span>{copiedKey ? 'Copied' : 'Copy'}</span>
@@ -125,9 +125,9 @@ export const SettingsPage = () => {
       </div>
 
       {/* Usage & Billing */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
+      <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+          <h3 className="text-base font-bold text-[#0F291E] flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-purple-600" />
             <span>Usage & Billing Tier</span>
           </h3>
@@ -142,7 +142,7 @@ export const SettingsPage = () => {
               <span className="text-slate-700 font-medium">USPTO Legal Scans Used</span>
               <span className="font-mono text-slate-500">1,420 / Unlimited</span>
             </div>
-            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-[#E5E0D8]">
               <div className="h-full bg-emerald-600 w-1/4 rounded-full" />
             </div>
           </div>
@@ -152,7 +152,7 @@ export const SettingsPage = () => {
               <span className="text-slate-700 font-medium">Brand DNA Generative AI Credits</span>
               <span className="font-mono text-slate-500">8,500 / 10,000</span>
             </div>
-            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-[#E5E0D8]">
               <div className="h-full bg-blue-600 w-4/5 rounded-full" />
             </div>
           </div>
@@ -162,3 +162,4 @@ export const SettingsPage = () => {
     </div>
   );
 };
+

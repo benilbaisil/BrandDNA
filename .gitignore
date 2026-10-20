@@ -25,3 +25,23 @@ dist-ssr
 server/.env
 client/.env
 .env
+*.env
+!.env.example
+
+# Local Database Directories
+.mongodb-data/
+server/.mongodb_data/
+
+# Python Cache & Testing Artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+test/.pytest_cache/
+test/__pycache__/
+test/error_*.png
+
+# Temporary Scratch Files & Generated Test Media
+generated-*.png
+testimg.js
+server/test_razorpay.js

@@ -14,14 +14,14 @@ export const AdminNotificationPanel = () => {
   ];
 
   return (
-    <Card hoverEffect className="text-left border-slate-200/90 space-y-4">
+    <Card hoverEffect className="text-left border-[#E5E0D8]/90 space-y-4">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-2xl bg-[#0F291E] text-white flex items-center justify-center font-bold">
             <Bell className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 leading-tight">System Notifications</h3>
+            <h3 className="text-base font-bold text-[#0F291E] leading-tight">System Notifications</h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">Alerts, Security & Gateway Health</p>
           </div>
         </div>
@@ -34,13 +34,13 @@ export const AdminNotificationPanel = () => {
             <div
               key={n.id}
               onClick={() => addToast(`Notification selected: ${n.title}`, 'info')}
-              className="p-3 bg-slate-50 rounded-2xl border border-slate-200/60 hover:border-slate-300 cursor-pointer transition-colors flex items-start gap-3 text-xs"
+              className="p-3 bg-[#FAF8F5] rounded-2xl border border-[#E5E0D8]/60 hover:border-slate-300 cursor-pointer transition-colors flex items-start gap-3 text-xs"
             >
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${n.color}`}>
                 <Icon className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <p className="font-bold text-slate-900 leading-snug">{n.title}</p>
+                <p className="font-bold text-[#0F291E] leading-snug">{n.title}</p>
                 <p className="text-slate-500 text-[11px] mt-0.5">{n.desc}</p>
               </div>
             </div>
@@ -50,3 +50,4 @@ export const AdminNotificationPanel = () => {
     </Card>
   );
 };
+

@@ -13,25 +13,25 @@ export const Button = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98] select-none';
+    'inline-flex items-center justify-center font-bold rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F382C] focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98] select-none cursor-pointer';
 
   const variants = {
     primary:
-      'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md hover:shadow-blue-500/20 border border-blue-600',
+      'bg-[#0F382C] hover:bg-[#16503f] text-white shadow-sm hover:shadow-md border border-[#0F382C]',
     secondary:
-      'bg-slate-900 hover:bg-slate-800 text-white shadow-sm hover:shadow-md border border-slate-900',
+      'bg-stone-900 hover:bg-stone-800 text-white shadow-sm hover:shadow-md border border-stone-900',
     outline:
-      'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 shadow-xs hover:text-slate-900',
+      'bg-white hover:bg-[#FAF8F5] text-slate-800 border border-stone-300 hover:border-[#0F382C] hover:text-[#0F382C] shadow-2xs',
     ghost:
-      'bg-transparent hover:bg-slate-100/80 text-slate-600 hover:text-slate-900',
+      'bg-transparent hover:bg-stone-100 text-slate-700 hover:text-slate-900',
     soft:
-      'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100',
+      'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200',
   };
 
   const sizes = {
     sm: 'text-xs px-3 py-1.5 gap-1.5',
-    md: 'text-sm px-4 py-2.5 gap-2',
-    lg: 'text-base px-6 py-3.5 gap-2.5 rounded-2xl',
+    md: 'text-xs px-4 py-2.5 gap-2',
+    lg: 'text-sm px-6 py-3.5 gap-2.5 rounded-2xl',
   };
 
   return (
@@ -52,3 +52,4 @@ export const Button = ({
     </button>
   );
 };
+

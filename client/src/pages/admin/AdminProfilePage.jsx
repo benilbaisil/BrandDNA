@@ -52,7 +52,7 @@ export const AdminProfilePage = () => {
         <span className="text-xs font-mono font-bold text-blue-600 uppercase tracking-wider">
           System Access Credentials
         </span>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F291E] tracking-tight mt-1">
           Admin Profile Settings
         </h1>
         <p className="text-xs sm:text-sm text-slate-500">
@@ -63,11 +63,11 @@ export const AdminProfilePage = () => {
       <form onSubmit={handleUpdateProfile} className="space-y-6">
         
         {/* Profile Card */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-6">
+        <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-6">
           
           <div className="flex items-center gap-4 border-b border-slate-100 pb-6">
             <div className="relative">
-              <div className="w-16 h-16 rounded-2xl bg-slate-900 text-white font-black text-xl flex items-center justify-center shadow-md">
+              <div className="w-16 h-16 rounded-2xl bg-[#0F291E] text-white font-black text-xl flex items-center justify-center shadow-md">
                 {(user?.fullName || 'A')[0].toUpperCase()}
               </div>
               <button
@@ -79,7 +79,7 @@ export const AdminProfilePage = () => {
               </button>
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">{user?.fullName || formData.fullName}</h3>
+              <h3 className="text-base font-bold text-[#0F291E]">{user?.fullName || formData.fullName}</h3>
               <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-mono text-[10px] font-bold">
                 Platform Root Administrator
               </span>
@@ -94,7 +94,7 @@ export const AdminProfilePage = () => {
                 required
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:bg-white"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel"
               />
             </div>
 
@@ -105,7 +105,7 @@ export const AdminProfilePage = () => {
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:bg-white"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel"
               />
             </div>
 
@@ -116,7 +116,7 @@ export const AdminProfilePage = () => {
                 placeholder="••••••••••••"
                 value={formData.newPassword}
                 onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:bg-white"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel"
               />
             </div>
 
@@ -127,7 +127,7 @@ export const AdminProfilePage = () => {
                 placeholder="••••••••••••"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:bg-white"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel"
               />
             </div>
           </div>
@@ -136,7 +136,7 @@ export const AdminProfilePage = () => {
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors shadow-xs disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-colors shadow-xs disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -159,3 +159,4 @@ export const AdminProfilePage = () => {
     </div>
   );
 };
+

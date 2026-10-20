@@ -54,7 +54,7 @@ export const AdminAIUsagePage = () => {
           <span className="text-xs font-mono font-bold text-amber-600 uppercase tracking-wider">
             Neural Infrastructure Monitoring
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F291E] tracking-tight mt-1">
             AI Usage & Telemetry Monitor
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -72,39 +72,39 @@ export const AdminAIUsagePage = () => {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-2xs">
+        <div className="p-5 glass-panel border border-[#E5E0D8] rounded-2xl shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-2">
             <span>Total AI Requests</span>
             <Cpu className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-extrabold text-slate-900">42,890</div>
+          <div className="text-2xl font-extrabold text-[#0F291E]">42,890</div>
           <span className="text-[11px] text-emerald-600 font-semibold mt-1 block">+28% this month</span>
         </div>
 
-        <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-2xs">
+        <div className="p-5 glass-panel border border-[#E5E0D8] rounded-2xl shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-2">
             <span>Requests Today</span>
             <Zap className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-extrabold text-slate-900">1,420</div>
+          <div className="text-2xl font-extrabold text-[#0F291E]">1,420</div>
           <span className="text-[11px] text-emerald-600 font-semibold mt-1 block">Peak 140 req/hr</span>
         </div>
 
-        <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-2xs">
+        <div className="p-5 glass-panel border border-[#E5E0D8] rounded-2xl shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-2">
             <span>Avg Response Time</span>
             <Clock className="w-4 h-4 text-purple-600" />
           </div>
-          <div className="text-2xl font-extrabold text-slate-900">180ms</div>
+          <div className="text-2xl font-extrabold text-[#0F291E]">180ms</div>
           <span className="text-[11px] text-emerald-600 font-semibold mt-1 block">Optimal Latency</span>
         </div>
 
-        <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-2xs">
+        <div className="p-5 glass-panel border border-[#E5E0D8] rounded-2xl shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-2">
             <span>Failed AI Requests</span>
             <AlertTriangle className="w-4 h-4 text-rose-500" />
           </div>
-          <div className="text-2xl font-extrabold text-slate-900">12</div>
+          <div className="text-2xl font-extrabold text-[#0F291E]">12</div>
           <span className="text-[11px] text-slate-400 font-semibold mt-1 block">0.02% Error Rate</span>
         </div>
       </div>
@@ -113,8 +113,8 @@ export const AdminAIUsagePage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Daily Request Chart */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
+          <h3 className="text-sm font-bold text-[#0F291E] flex items-center gap-2">
             <BarChart2 className="w-4 h-4 text-blue-600" />
             <span>Daily AI Request Volume</span>
           </h3>
@@ -133,8 +133,8 @@ export const AdminAIUsagePage = () => {
         </div>
 
         {/* Feature Popularity Chart */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
+          <h3 className="text-sm font-bold text-[#0F291E] flex items-center gap-2">
             <PieChart className="w-4 h-4 text-purple-600" />
             <span>AI Feature Usage Distribution</span>
           </h3>
@@ -143,10 +143,10 @@ export const AdminAIUsagePage = () => {
             {featureUsage.map((f) => (
               <div key={f.name} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-800">{f.name}</span>
+                  <span className="font-semibold text-[#0F291E]/90">{f.name}</span>
                   <span className="font-mono font-bold text-slate-600">{f.value}%</span>
                 </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-[#E5E0D8]">
                   <div className="h-full rounded-full" style={{ width: `${f.value}%`, backgroundColor: f.color }} />
                 </div>
               </div>
@@ -159,3 +159,4 @@ export const AdminAIUsagePage = () => {
     </div>
   );
 };
+

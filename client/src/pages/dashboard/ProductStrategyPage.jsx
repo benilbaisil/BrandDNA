@@ -125,25 +125,12 @@ export const ProductStrategyPage = () => {
     setLoading(true);
     try {
       const res = await productStrategyService.getStrategy();
-      let loadedStrat = null;
       if (res.success) {
         if (res.data.strategy) {
-          loadedStrat = res.data.strategy;
-          setStrategy(loadedStrat);
+          setStrategy(res.data.strategy);
         }
         if (res.data.brandContext) {
           setBrandContext(res.data.brandContext);
-        }
-
-        const searchParams = new URLSearchParams(location.search);
-        const autoGenerateRequested = searchParams.get('autoGenerate') === 'true' || location.state?.autoGenerate;
-        const isStrategyEmpty = !loadedStrat?.productName && !loadedStrat?.shortDescription && !loadedStrat?.positioningStatement;
-
-        if (autoGenerateRequested || isStrategyEmpty) {
-          showToast('Generating Product Strategy automatically from Brand DNA...', 'info');
-          setTimeout(() => {
-            handleRegenerateAll();
-          }, 300);
         }
       }
     } catch (err) {
@@ -306,15 +293,15 @@ export const ProductStrategyPage = () => {
     }
   };
 
-  // Save & Continue Action
+  // Save & Continue — save strategy then go to ad poster page
   const handleSaveAndContinue = async () => {
     setSaving((prev) => ({ ...prev, all: true }));
     try {
       const res = await productStrategyService.saveStrategy(strategy);
       if (res.success) {
         window.dispatchEvent(new CustomEvent('brand_dna_updated'));
-        showToast('Product Strategy saved! Proceeding to Brand Summary...', 'success');
-        navigate('/brand-summary');
+        showToast('Product Strategy saved! Proceeding to Ad Poster Studio...', 'success');
+        navigate('/marketing/ad-poster', { state: { mode: 'upcoming' } });
       }
     } catch (err) {
       console.error('Error saving strategy:', err);
@@ -393,15 +380,15 @@ export const ProductStrategyPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           PAGE HEADER + PROGRESS BAR (Matches Brand Analysis Layout)
          ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs space-y-4">
+      <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-[10px] font-sans font-bold uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-[#0F291E] text-white text-[10px] font-sans font-bold uppercase tracking-wider">
                 Chained AI Product Engine
               </span>
             </div>
-            <h1 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight mt-2">
+            <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#0F291E] tracking-tight mt-2">
               Product Strategy & Positioning
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -413,7 +400,7 @@ export const ProductStrategyPage = () => {
             <button
               onClick={handleRegenerateAll}
               disabled={regenerating.all}
-              className="px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all flex items-center gap-2 border border-[#D6E6EC] cursor-pointer disabled:opacity-50"
+              className="px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 font-bold text-xs transition-all flex items-center gap-2 border border-[#D6E6EC] cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-slate-700 ${regenerating.all ? 'animate-spin' : ''}`} />
               <span>{regenerating.all ? 'Running Prompt Chain...' : '1-Click Regenerate All'}</span>
@@ -422,7 +409,7 @@ export const ProductStrategyPage = () => {
             <button
               onClick={handleSaveAndContinue}
               disabled={saving.all}
-              className="px-5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+              className="px-5 py-2.5 rounded-full bg-[#0F291E] hover:bg-slate-800 text-white font-bold text-xs transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5 text-emerald-400" />
               <span>Save & Continue</span>
@@ -440,7 +427,7 @@ export const ProductStrategyPage = () => {
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                   item.completed
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-[#EAF4F7]/40 text-slate-500 border-[#D6E6EC]'
+                    : 'bg-[#FAF8F5]/40 text-slate-500 border-[#D6E6EC]'
                 }`}
               >
                 {item.completed ? (
@@ -456,74 +443,48 @@ export const ProductStrategyPage = () => {
       </div>
 
       {/* Source Brand DNA Context Banner */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#D6E6EC] shadow-2xs space-y-3">
+      <div className="p-4 sm:p-5 rounded-2xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-3">
         <div className="flex items-center justify-between border-b border-[#D6E6EC]/60 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-[#0F291E] text-white flex items-center justify-center font-bold shrink-0">
               <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
               <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Master Brand Context</span>
-              <h3 className="text-sm font-extrabold text-slate-900">{brandContext.brandName || 'Brand Identity Loaded'}</h3>
+              <h3 className="text-sm font-extrabold text-[#0F291E]">{brandContext.brandName || 'Brand Identity Loaded'}</h3>
             </div>
           </div>
           {brandContext.industry && (
-            <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+            <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-[#E5E0D8]">
               {brandContext.industry}
             </span>
           )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="p-2.5 rounded-xl bg-[#EAF4F7]/40 border border-[#D6E6EC]">
+          <div className="p-2.5 rounded-xl bg-[#FAF8F5]/40 border border-[#D6E6EC]">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1">Brand Mission</span>
             <p className="text-slate-700 font-medium line-clamp-2">{brandContext.missionStatement || 'Not specified'}</p>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-[#EAF4F7]/40 border border-[#D6E6EC]">
+          <div className="p-2.5 rounded-xl bg-[#FAF8F5]/40 border border-[#D6E6EC]">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1">Brand Personality</span>
             <p className="text-slate-700 font-medium line-clamp-2">{brandContext.brandPersonality || 'Not specified'}</p>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-[#EAF4F7]/40 border border-[#D6E6EC]">
+          <div className="p-2.5 rounded-xl bg-[#FAF8F5]/40 border border-[#D6E6EC]">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1">Target Audience</span>
             <p className="text-slate-700 font-medium line-clamp-2">{brandContext.targetAudience || 'Not specified'}</p>
           </div>
         </div>
       </div>
 
-      {/* Auto-Fill Callout Banner based on Brand Analysis */}
-      {(!strategy.productName || !strategy.shortDescription || !strategy.positioningStatement) && (
-        <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg space-y-4 border border-blue-500/30">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-semibold border border-blue-400/30">
-                <Sparkles className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-                <span>Brand Analysis Found</span>
-              </div>
-              <h3 className="font-serif text-xl font-bold text-white">Fill Product Strategy from Brand DNA</h3>
-              <p className="text-xs text-slate-300 max-w-xl">
-                Your Brand Analysis for <strong className="text-white">{brandContext.brandName || 'your business'}</strong> is active. Generate your complete Product Strategy (Name, Tagline, Pitch, USPs, Positioning, and Value Pillars) in 1-Click.
-              </p>
-            </div>
-
-            <button
-              onClick={handleRegenerateAll}
-              disabled={regenerating.all}
-              className="px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-md flex items-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
-            >
-              <Zap className={`w-4 h-4 text-amber-300 ${regenerating.all ? 'animate-spin' : ''}`} />
-              <span>{regenerating.all ? 'Generating Full Strategy...' : 'Auto-Fill Product Strategy Now'}</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* User Specific Product Idea Input Bar */}
-      <div className="p-5 rounded-2xl bg-white border border-[#D6E6EC] shadow-2xs space-y-3">
+      <div className="p-5 rounded-2xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-3">
         <div className="flex items-center gap-2">
           <Lightbulb className="w-4 h-4 text-amber-500" />
-          <span className="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+          <span className="text-xs font-mono font-bold text-[#0F291E] uppercase tracking-wider">
             Product Idea or Specific Feature Focus
           </span>
         </div>
@@ -533,12 +494,12 @@ export const ProductStrategyPage = () => {
             value={productIdea}
             onChange={(e) => setProductIdea(e.target.value)}
             placeholder='e.g., "Enter your specific product idea or feature" (e.g., AI-powered strategy copilot)'
-            className="flex-1 w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder-slate-400 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:bg-white transition-all font-medium"
+            className="flex-1 w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] placeholder-slate-400 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel transition-all font-medium"
           />
           <button
             onClick={() => handleRegenerate('names')}
             disabled={regenerating.names}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shrink-0"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shrink-0"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>Regenerate with Idea</span>
@@ -550,16 +511,16 @@ export const ProductStrategyPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           1. PRODUCT NAME GENERATOR SECTION (With Individual Regenerate)
          ───────────────────────────────────────────────────────────── */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-5">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF4F7] text-slate-900 flex items-center justify-center shrink-0 font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] text-[#0F291E] flex items-center justify-center shrink-0 font-bold">
               <Zap className="w-5 h-5 text-amber-500" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">01</span>
-                <h3 className="font-serif text-xl font-bold text-slate-900">Product Name Generator</h3>
+                <h3 className="font-serif text-xl font-bold text-[#0F291E]">Product Name Generator</h3>
                 {strategy.productName && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved
@@ -575,7 +536,7 @@ export const ProductStrategyPage = () => {
           <button
             onClick={() => handleRegenerate('names')}
             disabled={regenerating.names}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.names ? 'animate-spin' : ''}`} />
             <span>{regenerating.names ? 'Generating suggestions...' : 'Regenerate Product Names'}</span>
@@ -600,7 +561,7 @@ export const ProductStrategyPage = () => {
 
         {/* Loading Spinner overlay */}
         {regenerating.names && (
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 animate-pulse">
+          <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-amber-500 animate-spin mx-auto" />
             <p className="text-xs font-medium text-slate-600">Gemini is generating brand-aligned product names...</p>
           </div>
@@ -619,13 +580,13 @@ export const ProductStrategyPage = () => {
                     onClick={() => handleSelectProductName(item)}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
                       isSelected
-                        ? 'bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-slate-900 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                        ? 'bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-[#0F291E] shadow-xs'
+                        : 'bg-[#FAF8F5] border-[#E5E0D8] hover:bg-slate-100 text-slate-700'
                     }`}
                   >
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-extrabold text-slate-900">{item.name}</span>
+                        <span className="text-sm font-extrabold text-[#0F291E]">{item.name}</span>
                         <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                           {item.brandAlignmentScore || 96}% Match
                         </span>
@@ -636,13 +597,13 @@ export const ProductStrategyPage = () => {
                       <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">{item.rationale}</p>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                    <div className="pt-2 border-t border-[#E5E0D8]/60 flex items-center justify-between">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCopy(`${item.name} - ${item.tagline || ''}`, `name-${idx}`);
                         }}
-                        className="text-[10px] font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1"
+                        className="text-[10px] font-semibold text-slate-500 hover:text-[#0F291E] flex items-center gap-1"
                       >
                         {copiedKey === `name-${idx}` ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                         <span>Copy</span>
@@ -669,7 +630,7 @@ export const ProductStrategyPage = () => {
               value={strategy.productName}
               onChange={(e) => setStrategy({ ...strategy, productName: e.target.value })}
               placeholder="e.g. BrandDNA Copilot"
-              className="flex-1 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-xs font-bold text-slate-900 rounded-xl px-3.5 py-2.5 outline-none transition-all"
+              className="flex-1 bg-[#FAF8F5] border border-[#E5E0D8] focus:border-slate-900 focus:glass-panel text-xs font-bold text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none transition-all"
             />
             {saveSuccess.names && (
               <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 shrink-0">
@@ -680,7 +641,7 @@ export const ProductStrategyPage = () => {
             <button
               onClick={() => handleSaveSection('names')}
               disabled={saving.names || !strategy.productName.trim()}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs shrink-0"
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs shrink-0"
             >
               {saving.names ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Name</span>
@@ -693,16 +654,16 @@ export const ProductStrategyPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           2. PRODUCT DESCRIPTION & NARRATIVE SECTION (With Individual Regenerate)
          ───────────────────────────────────────────────────────────── */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-5">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF4F7] text-slate-900 flex items-center justify-center shrink-0 font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] text-[#0F291E] flex items-center justify-center shrink-0 font-bold">
               <FileText className="w-5 h-5 text-blue-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">02</span>
-                <h3 className="font-serif text-xl font-bold text-slate-900">Product Description & Narrative</h3>
+                <h3 className="font-serif text-xl font-bold text-[#0F291E]">Product Description & Narrative</h3>
                 {strategy.shortDescription && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved
@@ -718,7 +679,7 @@ export const ProductStrategyPage = () => {
           <button
             onClick={() => handleRegenerate('description')}
             disabled={regenerating.description}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.description ? 'animate-spin' : ''}`} />
             <span>{regenerating.description ? 'Generating description...' : 'Regenerate Description'}</span>
@@ -743,7 +704,7 @@ export const ProductStrategyPage = () => {
 
         {/* Loading Spinner overlay */}
         {regenerating.description && (
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 animate-pulse">
+          <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-blue-600 animate-spin mx-auto" />
             <p className="text-xs font-medium text-slate-600">Gemini is crafting elevator pitch & value narrative...</p>
           </div>
@@ -757,7 +718,7 @@ export const ProductStrategyPage = () => {
                 <label className="text-xs font-mono font-bold text-slate-700 uppercase">Elevator Pitch (Short Pitch)</label>
                 <button
                   onClick={() => handleCopy(strategy.shortDescription, 'shortPitch')}
-                  className="text-[11px] font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1"
+                  className="text-[11px] font-semibold text-slate-500 hover:text-[#0F291E] flex items-center gap-1"
                 >
                   {copiedKey === 'shortPitch' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>Copy</span>
@@ -768,7 +729,7 @@ export const ProductStrategyPage = () => {
                 value={strategy.shortDescription}
                 onChange={(e) => setStrategy({ ...strategy, shortDescription: e.target.value })}
                 placeholder="Click 'Regenerate Description' to generate elevator pitch..."
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl p-3 outline-none focus:border-slate-900 focus:bg-white transition-all font-medium"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl p-3 outline-none focus:border-slate-900 focus:glass-panel transition-all font-medium"
               />
             </div>
 
@@ -777,7 +738,7 @@ export const ProductStrategyPage = () => {
                 <label className="text-xs font-mono font-bold text-slate-700 uppercase">Comprehensive Product Narrative</label>
                 <button
                   onClick={() => handleCopy(strategy.detailedDescription, 'fullDesc')}
-                  className="text-[11px] font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1"
+                  className="text-[11px] font-semibold text-slate-500 hover:text-[#0F291E] flex items-center gap-1"
                 >
                   {copiedKey === 'fullDesc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>Copy</span>
@@ -788,7 +749,7 @@ export const ProductStrategyPage = () => {
                 value={strategy.detailedDescription}
                 onChange={(e) => setStrategy({ ...strategy, detailedDescription: e.target.value })}
                 placeholder="Click 'Regenerate Description' to generate full narrative..."
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-xl p-3 outline-none focus:border-slate-900 focus:bg-white transition-all leading-relaxed"
+                className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl p-3 outline-none focus:border-slate-900 focus:glass-panel transition-all leading-relaxed"
               />
             </div>
           </div>
@@ -805,7 +766,7 @@ export const ProductStrategyPage = () => {
             <button
               onClick={() => handleSaveSection('description')}
               disabled={saving.description || (!strategy.shortDescription.trim() && !strategy.detailedDescription.trim())}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-xs"
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-xs"
             >
               {saving.description ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Description</span>
@@ -818,16 +779,16 @@ export const ProductStrategyPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           3. UNIQUE SELLING PROPOSITIONS (USPs) SECTION (With Individual Regenerate)
          ───────────────────────────────────────────────────────────── */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-5">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF4F7] text-slate-900 flex items-center justify-center shrink-0 font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] text-[#0F291E] flex items-center justify-center shrink-0 font-bold">
               <ShieldCheck className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">03</span>
-                <h3 className="font-serif text-xl font-bold text-slate-900">Unique Selling Propositions (3 USPs)</h3>
+                <h3 className="font-serif text-xl font-bold text-[#0F291E]">Unique Selling Propositions (3 USPs)</h3>
                 {strategy.usps?.length > 0 && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     {strategy.usps.length} USPs
@@ -843,7 +804,7 @@ export const ProductStrategyPage = () => {
           <button
             onClick={() => handleRegenerate('usps')}
             disabled={regenerating.usps}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.usps ? 'animate-spin' : ''}`} />
             <span>{regenerating.usps ? 'Generating USPs...' : 'Regenerate USPs'}</span>
@@ -868,7 +829,7 @@ export const ProductStrategyPage = () => {
 
         {/* Loading Spinner overlay */}
         {regenerating.usps && (
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 animate-pulse">
+          <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin mx-auto" />
             <p className="text-xs font-medium text-slate-600">Gemini is synthesizing Unique Selling Propositions...</p>
           </div>
@@ -878,10 +839,10 @@ export const ProductStrategyPage = () => {
         {!regenerating.usps && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {strategy.usps?.map((usp, idx) => (
-              <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 flex flex-col justify-between">
+              <div key={idx} className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-2 flex flex-col justify-between">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-slate-900">{usp.title}</span>
+                    <span className="text-xs font-extrabold text-[#0F291E]">{usp.title}</span>
                     <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                       {usp.impact || 'High Impact'}
                     </span>
@@ -889,7 +850,7 @@ export const ProductStrategyPage = () => {
                   <p className="text-xs text-slate-600 leading-relaxed">{usp.description}</p>
                 </div>
 
-                <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between">
+                <div className="pt-2 border-t border-[#E5E0D8]/80 flex items-center justify-between">
                   <span className="text-[9px] font-mono text-slate-500 font-semibold">{usp.category || 'Differentiation'}</span>
                   <button
                     onClick={() => handleRemoveUsp(idx)}
@@ -904,27 +865,27 @@ export const ProductStrategyPage = () => {
         )}
 
         {/* Add Custom USP Drawer */}
-        <div className="p-4 rounded-xl bg-slate-50/60 border border-slate-200 space-y-3">
-          <span className="text-xs font-mono font-bold text-slate-900 uppercase">Add Custom USP</span>
+        <div className="p-4 rounded-xl bg-[#FAF8F5]/60 border border-[#E5E0D8] space-y-3">
+          <span className="text-xs font-mono font-bold text-[#0F291E] uppercase">Add Custom USP</span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               type="text"
               value={customUspTitle}
               onChange={(e) => setCustomUspTitle(e.target.value)}
               placeholder="USP Title (e.g. 100% On-Premise Privacy)"
-              className="bg-white border border-slate-200 text-xs text-slate-900 rounded-xl px-3 py-2 outline-none focus:border-slate-900"
+              className="glass-panel border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3 py-2 outline-none focus:border-slate-900"
             />
             <input
               type="text"
               value={customUspDesc}
               onChange={(e) => setCustomUspDesc(e.target.value)}
               placeholder="USP Rationale / Explanation"
-              className="bg-white border border-slate-200 text-xs text-slate-900 rounded-xl px-3 py-2 outline-none focus:border-slate-900"
+              className="glass-panel border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl px-3 py-2 outline-none focus:border-slate-900"
             />
           </div>
           <button
             onClick={handleAddCustomUsp}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Custom USP</span>
@@ -942,7 +903,7 @@ export const ProductStrategyPage = () => {
             <button
               onClick={() => handleSaveSection('usps')}
               disabled={saving.usps || strategy.usps?.length === 0}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-xs"
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-xs"
             >
               {saving.usps ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save USPs</span>
@@ -955,16 +916,16 @@ export const ProductStrategyPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           4. PRODUCT POSITIONING FRAMEWORK SECTION (With Individual Regenerate)
          ───────────────────────────────────────────────────────────── */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs space-y-5">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF4F7] text-slate-900 flex items-center justify-center shrink-0 font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] text-[#0F291E] flex items-center justify-center shrink-0 font-bold">
               <Target className="w-5 h-5 text-purple-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">04</span>
-                <h3 className="font-serif text-xl font-bold text-slate-900">Product Positioning Framework</h3>
+                <h3 className="font-serif text-xl font-bold text-[#0F291E]">Product Positioning Framework</h3>
                 {strategy.positioningStatement && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved
@@ -980,7 +941,7 @@ export const ProductStrategyPage = () => {
           <button
             onClick={() => handleRegenerate('positioning')}
             disabled={regenerating.positioning}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.positioning ? 'animate-spin' : ''}`} />
             <span>{regenerating.positioning ? 'Generating positioning...' : 'Regenerate Positioning'}</span>
@@ -1005,7 +966,7 @@ export const ProductStrategyPage = () => {
 
         {/* Loading Spinner overlay */}
         {regenerating.positioning && (
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2 animate-pulse">
+          <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-purple-600 animate-spin mx-auto" />
             <p className="text-xs font-medium text-slate-600">Gemini is framing strategic market positioning...</p>
           </div>
@@ -1014,7 +975,7 @@ export const ProductStrategyPage = () => {
         {/* Positioning Highlight Box & Editable Area */}
         {!regenerating.positioning && (
           <div className="space-y-4">
-            <div className="p-5 rounded-2xl bg-slate-900 text-white shadow-md space-y-2">
+            <div className="p-5 rounded-2xl bg-[#0F291E] text-white shadow-md space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
                   Positioning Statement
@@ -1037,36 +998,36 @@ export const ProductStrategyPage = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                 <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Target Segment</span>
                 <input
                   type="text"
                   value={strategy.targetSegment}
                   onChange={(e) => setStrategy({ ...strategy, targetSegment: e.target.value })}
                   placeholder="Target ICP..."
-                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 outline-none"
+                  className="w-full glass-panel border border-[#E5E0D8] rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#0F291E] outline-none"
                 />
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                 <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Key Benefit</span>
                 <input
                   type="text"
                   value={strategy.keyBenefit}
                   onChange={(e) => setStrategy({ ...strategy, keyBenefit: e.target.value })}
                   placeholder="Primary benefit..."
-                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 outline-none"
+                  className="w-full glass-panel border border-[#E5E0D8] rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#0F291E] outline-none"
                 />
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                 <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Competitive Moat</span>
                 <input
                   type="text"
                   value={strategy.competitiveMoat}
                   onChange={(e) => setStrategy({ ...strategy, competitiveMoat: e.target.value })}
                   placeholder="Defensible moat..."
-                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 outline-none"
+                  className="w-full glass-panel border border-[#E5E0D8] rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#0F291E] outline-none"
                 />
               </div>
             </div>
@@ -1084,7 +1045,7 @@ export const ProductStrategyPage = () => {
             <button
               onClick={() => handleSaveSection('positioning')}
               disabled={saving.positioning || !strategy.positioningStatement.trim()}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-xs"
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-xs"
             >
               {saving.positioning ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Positioning</span>
@@ -1094,19 +1055,19 @@ export const ProductStrategyPage = () => {
       </div>
 
       {/* Footer Navigation Bar */}
-      <div className="p-6 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
-          <h4 className="text-sm font-extrabold text-slate-900">Proceed to Saved Brand DNA Summary</h4>
-          <p className="text-xs text-slate-500">Save all product strategy data to MongoDB and view consolidated brand identity assets.</p>
+          <h4 className="text-sm font-extrabold text-[#0F291E]">Generate Your Upcoming Product Ad</h4>
+          <p className="text-xs text-slate-500">Save all strategy data and generate a launch-ready ad poster for this upcoming product.</p>
         </div>
 
         <button
           onClick={handleSaveAndContinue}
           disabled={saving.all}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-md cursor-pointer shrink-0 disabled:opacity-50"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-md cursor-pointer shrink-0 disabled:opacity-50"
         >
           <Save className="w-4 h-4 text-emerald-400" />
-          <span>Save & Continue</span>
+          <span>Save & Generate Ad</span>
           <ArrowRight className="w-4 h-4 text-white" />
         </button>
       </div>
@@ -1114,3 +1075,4 @@ export const ProductStrategyPage = () => {
     </div>
   );
 };
+

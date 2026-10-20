@@ -53,7 +53,7 @@ export const AnalyticsPage = () => {
           <span className="text-xs font-mono font-bold text-blue-600 uppercase tracking-wider">
             Performance Metrics & Velocity
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F291E] tracking-tight mt-1">
             Deep Brand Analytics
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -62,15 +62,15 @@ export const AnalyticsPage = () => {
         </div>
 
         {/* Time Filter Tabs */}
-        <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl self-start sm:self-auto shadow-2xs">
+        <div className="flex items-center gap-1 glass-panel border border-[#E5E0D8] p-1 rounded-xl self-start sm:self-auto shadow-2xs">
           {['1m', '3m', '6m', '1y'].map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
               className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
                 timeRange === range
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#0F291E] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-[#0F291E]'
               }`}
             >
               {range.toUpperCase()}
@@ -80,10 +80,10 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Hero Large Chart: Brand Score & Legal Confidence Trajectory */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
+      <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <h3 className="text-base font-bold text-[#0F291E] flex items-center gap-2">
               <Activity className="w-4 h-4 text-blue-600" />
               <span>Brand DNA Score Trajectory</span>
             </h3>
@@ -131,8 +131,8 @@ export const AnalyticsPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Customer Acquisition Bar Chart */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4">
+          <h3 className="text-sm font-bold text-[#0F291E] flex items-center gap-2">
             <Users className="w-4 h-4 text-purple-600" />
             <span>Audience Acquisition Channels</span>
           </h3>
@@ -153,9 +153,9 @@ export const AnalyticsPage = () => {
         </div>
 
         {/* Customer Persona Demographics */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4 flex flex-col justify-between">
+        <div className="p-6 rounded-2xl glass-panel border border-[#E5E0D8] shadow-2xs space-y-4 flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-1">
+            <h3 className="text-sm font-bold text-[#0F291E] flex items-center gap-2 mb-1">
               <Sparkles className="w-4 h-4 text-blue-600" />
               <span>Customer Persona Drivers</span>
             </h3>
@@ -171,12 +171,12 @@ export const AnalyticsPage = () => {
             ].map((driver, i) => (
               <div key={i} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-800">{driver.label}</span>
+                  <span className="font-semibold text-[#0F291E]/90">{driver.label}</span>
                   <span className="font-mono text-slate-500 font-bold">{driver.val}%</span>
                 </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-[#E5E0D8]">
                   <div
-                    className="h-full bg-slate-900 rounded-full transition-all duration-500"
+                    className="h-full bg-[#0F291E] rounded-full transition-all duration-500"
                     style={{ width: `${driver.val}%` }}
                   />
                 </div>
@@ -194,3 +194,4 @@ export const AnalyticsPage = () => {
     </div>
   );
 };
+
