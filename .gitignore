@@ -45,3 +45,6 @@ test/error_*.png
 generated-*.png
 testimg.js
 server/test_razorpay.js
+migrate.js
+server/migrate.js
+server/migrate-to-atlas.js
