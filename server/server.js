@@ -1,10 +1,8 @@
+import './config/env.js';
 import app from './app.js';
 import { connectDB } from './config/db.js';
 import { seedDatabaseIfEmpty } from './utils/seedData.js';
-import dotenv from 'dotenv';
 import './shipment-api-server.js';
-
-dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
