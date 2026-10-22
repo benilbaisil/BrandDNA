@@ -8,11 +8,10 @@ import { brandService } from '../../services/brandService';
 export const ProjectTable = ({ filterQuery = '' }) => {
   const { addToast } = useToast();
   const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const fetchProjects = async () => {
     try {
-      setLoading(true);
       const res = await brandService.getProjects();
       if (res && res.success && res.data) {
         setProjects(
@@ -26,10 +25,7 @@ export const ProjectTable = ({ filterQuery = '' }) => {
         );
       }
     } catch (err) {
-      setProjects([
-        { id: '1', name: 'AuraCraft AI Identity', date: '2026-08-04', status: 'Completed' },
-        { id: '2', name: 'Novaflow GTM Campaign', date: '2026-08-02', status: 'In Progress' },
-      ]);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -105,13 +101,7 @@ export const ProjectTable = ({ filterQuery = '' }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading ? (
-              <tr>
-                <td colSpan="4" className="py-8 text-center text-slate-400 text-xs font-medium">
-                  Loading projects from database...
-                </td>
-              </tr>
-            ) : filteredProjects.length === 0 ? (
+            {filteredProjects.length === 0 ? (
               <tr>
                 <td colSpan="4" className="py-8 text-center text-slate-400 text-xs font-medium">
                   No projects found in database.

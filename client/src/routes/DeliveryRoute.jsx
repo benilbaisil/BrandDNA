@@ -11,7 +11,7 @@ export const DeliveryRoute = () => {
     user?.role ||
     (function () {
       try {
-        var u = localStorage.getItem('branddna_user');
+        var u = sessionStorage.getItem('branddna_user') || localStorage.getItem('branddna_user');
         return u && u !== 'undefined' ? JSON.parse(u)?.role : undefined;
       } catch (e) {
         return undefined;
@@ -27,13 +27,7 @@ export const DeliveryRoute = () => {
     }
   }, [isAuthenticated, isDeliveryAgent, addToast]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-slate-900 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

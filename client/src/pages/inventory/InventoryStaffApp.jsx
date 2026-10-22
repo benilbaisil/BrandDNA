@@ -30,6 +30,9 @@ import {
 import { businessService } from '../../services/businessService';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
+import { DeliveryManagementTab } from '../../components/delivery/DeliveryManagementTab';
+import { storageCache } from '../../utils/storageCache';
+import { INITIAL_PRODUCTS, INITIAL_INVENTORY_TELEMETRY } from '../../constants/initialProducts';
 
 const CATEGORIES_LIST = [
   'ALL',
@@ -55,15 +58,15 @@ export const InventoryStaffApp = () => {
     return rawTab;
   })();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Real MongoDB Telemetry States
-  const [telemetry, setTelemetry] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [ledger, setLedger] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [returnsList, setReturnsList] = useState([]);
+  // Real MongoDB Telemetry States - Initialized immediately from cache/fallback for 0ms delay
+  const [telemetry, setTelemetry] = useState(() => storageCache.get('inv_telemetry', INITIAL_INVENTORY_TELEMETRY));
+  const [products, setProducts] = useState(() => storageCache.get('inv_products', INITIAL_PRODUCTS));
+  const [ledger, setLedger] = useState(() => storageCache.get('inv_ledger', []));
+  const [orders, setOrders] = useState(() => storageCache.get('all_orders', []));
+  const [returnsList, setReturnsList] = useState(() => storageCache.get('inv_returns', []));
 
   // Product & Stock View Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,39 +111,73 @@ export const InventoryStaffApp = () => {
   });
   const [submittingDamage, setSubmittingDamage] = useState(false);
 
-  // Fetch initial telemetry & real data from MongoDB
-  const fetchAllInventoryData = async () => {
-    setLoading(true);
-    try {
-      const [statsRes, prodRes, ledgerRes, ordersRes, returnsRes] = await Promise.all([
-        businessService.getInventoryDashboardStats(),
-        businessService.getProducts({ status: 'ALL' }),
-        businessService.getInventoryLedger({}),
-        businessService.getOrders(),
-        businessService.getReturns()
-      ]);
+  // Return & Refund Workflow States for Inventory Staff
+  const [rejectModalReturn, setRejectModalReturn] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [inspectionModalReturn, setInspectionModalReturn] = useState(null);
+  const [inspectionResult, setInspectionResult] = useState('Resellable'); // 'Resellable' | 'Damaged' | 'Inspection Required'
+  const [inspectionNotes, setInspectionNotes] = useState('');
+  const [refundModalReturn, setRefundModalReturn] = useState(null);
+  const [refundAmount, setRefundAmount] = useState(0);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
-      if (statsRes?.success) setTelemetry(statsRes.data);
-      if (prodRes?.success) {
-        const fetchedProds = prodRes.data?.products || [];
-        setProducts(fetchedProds);
-        // Set default selected product ID if not set
-        if (fetchedProds.length > 0) {
-          setStockOpForm((prev) => ({ ...prev, productId: prev.productId || fetchedProds[0]._id }));
-          setReceivingForm((prev) => ({ ...prev, productId: prev.productId || fetchedProds[0]._id }));
-          setDamageForm((prev) => ({ ...prev, productId: prev.productId || fetchedProds[0]._id }));
+  // Fetch initial telemetry & real data from MongoDB with decoupled Stale-While-Revalidate (SWR)
+  const fetchAllInventoryData = () => {
+    // 1. Fetch Products immediately
+    businessService.getProducts({ status: 'ALL' })
+      .then((prodRes) => {
+        if (prodRes?.success) {
+          const fetchedProds = prodRes.data?.products || [];
+          if (fetchedProds.length > 0) {
+            setProducts(fetchedProds);
+            storageCache.set('inv_products', fetchedProds);
+          }
         }
-      }
-      if (ledgerRes?.success) setLedger(ledgerRes.data?.ledger || []);
-      if (ordersRes?.success) setOrders(ordersRes.data?.orders || []);
-      if (returnsRes?.success) setReturnsList(returnsRes.data?.returns || []);
-    } catch (err) {
-      console.error('Error fetching inventory data:', err);
-      addToast('Failed to sync real inventory data from server', 'error');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      })
+      .catch((e) => console.warn('Products sync notice:', e.message));
+
+    // 2. Fetch Telemetry Stats immediately
+    businessService.getInventoryDashboardStats()
+      .then((statsRes) => {
+        if (statsRes?.success) {
+          setTelemetry(statsRes.data);
+          storageCache.set('inv_telemetry', statsRes.data);
+        }
+      })
+      .catch((e) => console.warn('Stats sync notice:', e.message));
+
+    // 3. Fetch Ledger movements immediately
+    businessService.getInventoryLedger({})
+      .then((ledgerRes) => {
+        if (ledgerRes?.success) {
+          const l = ledgerRes.data?.ledger || [];
+          setLedger(l);
+          storageCache.set('inv_ledger', l);
+        }
+      })
+      .catch((e) => console.warn('Ledger sync notice:', e.message));
+
+    // 4. Fetch Orders immediately
+    businessService.getOrders()
+      .then((ordersRes) => {
+        const oList = ordersRes.data?.orders || ordersRes.data || ordersRes.orders;
+        if (Array.isArray(oList)) {
+          setOrders(oList);
+          storageCache.set('all_orders', oList);
+        }
+      })
+      .catch((e) => console.warn('Orders sync notice:', e.message));
+
+    // 5. Fetch Returns immediately
+    businessService.getReturns()
+      .then((returnsRes) => {
+        if (returnsRes?.success) {
+          const r = returnsRes.data?.returns || [];
+          setReturnsList(r);
+          storageCache.set('inv_returns', r);
+        }
+      })
+      .catch((e) => console.warn('Returns sync notice:', e.message));
   };
 
   useEffect(() => {
@@ -329,7 +366,126 @@ export const InventoryStaffApp = () => {
     }
   };
 
-  // RETURN INSPECTION HANDLER
+  // RETURN LIFECYCLE & REFUND HANDLERS
+  const handleApproveReturn = async (returnId) => {
+    setIsProcessingAction(true);
+    try {
+      const res = await businessService.approveReturn(returnId, { note: 'Approved by inventory staff' });
+      if (res?.success) {
+        addToast('Return approved successfully! Warehouse can now receive the package.', 'success');
+        fetchAllInventoryData();
+      } else {
+        addToast(res?.message || 'Failed to approve return', 'error');
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to approve return', 'error');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleRejectReturnSubmit = async (e) => {
+    e.preventDefault();
+    if (!rejectModalReturn || !rejectionReason.trim()) {
+      addToast('Please provide a rejection reason', 'error');
+      return;
+    }
+    setIsProcessingAction(true);
+    try {
+      const res = await businessService.rejectReturn(rejectModalReturn._id, {
+        rejectionReason: rejectionReason.trim(),
+      });
+      if (res?.success) {
+        addToast('Return request rejected.', 'info');
+        setRejectModalReturn(null);
+        setRejectionReason('');
+        fetchAllInventoryData();
+      } else {
+        addToast(res?.message || 'Failed to reject return', 'error');
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to reject return', 'error');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleReceiveReturn = async (returnId) => {
+    setIsProcessingAction(true);
+    try {
+      const res = await businessService.receiveReturn(returnId, { note: 'Package received by inventory staff' });
+      if (res?.success) {
+        addToast('Return marked received at warehouse! Ready for physical inspection.', 'success');
+        fetchAllInventoryData();
+      } else {
+        addToast(res?.message || 'Failed to receive return', 'error');
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to receive return', 'error');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleInspectionSubmit = async (e) => {
+    e.preventDefault();
+    if (!inspectionModalReturn) return;
+    setIsProcessingAction(true);
+    try {
+      const res = await businessService.inspectReturn(inspectionModalReturn._id, {
+        inspectStatus: inspectionResult,
+        inspectionNotes: inspectionNotes.trim(),
+      });
+      if (res?.success) {
+        addToast(
+          inspectionResult === 'Resellable'
+            ? 'Inspected as Resellable: Stock increased in available inventory (+Stock)!'
+            : inspectionResult === 'Damaged'
+            ? 'Inspected as Damaged: Recorded in damage audit ledger without increasing sellable stock.'
+            : 'Marked as Inspection Required: Kept unavailable for sale until final review.',
+          'success'
+        );
+        setInspectionModalReturn(null);
+        setInspectionNotes('');
+        fetchAllInventoryData();
+      } else {
+        addToast(res?.message || 'Inspection failed', 'error');
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Inspection failed', 'error');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleRazorpayRefundSubmit = async (e) => {
+    e.preventDefault();
+    if (!refundModalReturn) return;
+    const amt = Number(refundAmount);
+    if (isNaN(amt) || amt <= 0) {
+      addToast('Please enter a valid positive refund amount', 'error');
+      return;
+    }
+    setIsProcessingAction(true);
+    try {
+      const res = await businessService.refundReturn(refundModalReturn._id, { amount: amt });
+      if (res?.success) {
+        addToast(
+          `Razorpay refund of ₹${amt} initiated successfully! (Refund ID: ${res.data?.refundResponse?.id || 'Processed'})`,
+          'success'
+        );
+        setRefundModalReturn(null);
+        fetchAllInventoryData();
+      } else {
+        addToast(res?.message || 'Refund processing failed', 'error');
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to initiate Razorpay refund', 'error');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
   const handleProcessReturnInspection = async (returnId, inspectStatus) => {
     try {
       const res = await businessService.processReturn(returnId, { status: 'Approved', inspectStatus });
@@ -347,10 +503,14 @@ export const InventoryStaffApp = () => {
   // Filtered Products for Products & Stock Page
   const getFilteredProducts = () => {
     return products.filter((p) => {
-      // Category Filter (Exact matching against 6 categories)
-      const pCatName = p.category?.name || p.categoryName || 'General';
-      if (selectedCategory !== 'ALL' && pCatName.toLowerCase() !== selectedCategory.toLowerCase()) {
-        return false;
+      // Category Filter (Flexible matching against categories)
+      const pCatName = p.categoryName || (typeof p.category === 'object' ? p.category?.name : '') || 'General';
+      if (selectedCategory !== 'ALL') {
+        const selLower = selectedCategory.trim().toLowerCase();
+        const pLower = pCatName.trim().toLowerCase();
+        if (pLower !== selLower && !pLower.includes(selLower) && !selLower.includes(pLower)) {
+          return false;
+        }
       }
       // Stock Status Filter
       if (selectedStockStatus === 'Low Stock' && (p.stock === 0 || p.stock > (p.reorderLevel || 10))) return false;
@@ -581,7 +741,7 @@ export const InventoryStaffApp = () => {
                   <h3 className="font-serif font-extrabold text-slate-900 text-sm flex items-center gap-2">
                     <RotateCcw className="w-4 h-4 text-emerald-700" /> Recent Returns & Damaged Stock
                   </h3>
-                  <button onClick={() => handleTabChange('returns-damaged')} className="text-xs text-emerald-700 font-bold hover:underline">
+                  <button onClick={() => handleTabChange('returns-damaged')} className="text-xs text-emerald-700 font-bold hover:underline cursor-pointer">
                     Manage Returns & Damaged →
                   </button>
                 </div>
@@ -591,8 +751,8 @@ export const InventoryStaffApp = () => {
                   <div className="divide-y divide-stone-100">
                     {returnsList.slice(0, 3).map((r) => (
                       <div key={r._id} className="py-2.5 flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-900 truncate max-w-[200px]">Return: {r.product?.name}</span>
-                        <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded-md font-bold text-[10px]">Inspect Return</span>
+                        <span className="font-bold text-slate-900 truncate max-w-[200px]">Return: {r.product?.name || r.productName}</span>
+                        <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded-md font-bold text-[10px]">{r.status}</span>
                       </div>
                     ))}
                     {telemetry?.recentDamages?.slice(0, 2).map((d) => (
@@ -603,6 +763,27 @@ export const InventoryStaffApp = () => {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Delivery Operations Dispatch Quick Card */}
+              <div className="bg-gradient-to-r from-[#0B192C] to-[#1E3E62] text-white rounded-3xl p-6 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-sky-300 flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5" /> Field Dispatch & Logistics
+                  </span>
+                  <h4 className="font-serif text-lg font-bold text-white">Delivery Management & Fleet Assignment</h4>
+                  <p className="text-xs text-slate-300 max-w-lg">
+                    Assign ready orders to Delivery Agents, monitor real-time in-transit progress, and audit completed or failed deliveries.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('delivery')}
+                  className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all shadow-xs cursor-pointer self-start sm:self-auto shrink-0 flex items-center gap-1.5"
+                >
+                  <Truck className="w-4 h-4" />
+                  <span>Open Delivery Ops</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1329,6 +1510,31 @@ export const InventoryStaffApp = () => {
                             <span className="font-mono text-[10px]">{new Date(latestEv.timestamp).toLocaleTimeString()}</span>
                           </div>
                         )}
+
+                        {/* Delivery Agent Assignment Info */}
+                        <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 font-medium">Assigned Agent:</span>
+                            {order.deliveryAgent ? (
+                              <span className="font-bold text-slate-900 bg-sky-50 text-sky-900 px-2.5 py-0.5 rounded-lg border border-sky-200">
+                                {order.deliveryAgent.fullName || 'Agent Assigned'} {order.deliveryAgent.phone ? `(${order.deliveryAgent.phone})` : ''}
+                              </span>
+                            ) : (
+                              <span className="text-amber-700 font-semibold bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
+                                Unassigned
+                              </span>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleTabChange('delivery')}
+                            className="px-3 py-1.5 rounded-xl bg-[#0F291E] hover:bg-[#1E3E62] text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                          >
+                            <Truck className="w-3.5 h-3.5" />
+                            <span>{order.deliveryAgent ? 'Manage Delivery' : 'Assign Delivery Agent'}</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Items List */}
@@ -1356,6 +1562,21 @@ export const InventoryStaffApp = () => {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* 6B. DELIVERY & DISPATCH OPERATIONS TAB */}
+        {currentTab === 'delivery' && (
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xs space-y-6">
+            <div className="border-b border-stone-100 pb-4 space-y-1">
+              <h3 className="font-serif font-extrabold text-slate-900 text-xl flex items-center gap-2">
+                <Truck className="w-6 h-6 text-emerald-700" /> Delivery Operations & Fleet Dispatch
+              </h3>
+              <p className="text-xs text-slate-500">
+                View orders ready for dispatch, assign or reassign Delivery Agents, monitor active transit in real-time, and audit delivery history.
+              </p>
+            </div>
+            <DeliveryManagementTab onOrderUpdated={fetchAllInventoryData} />
           </div>
         )}
 
@@ -1398,49 +1619,255 @@ export const InventoryStaffApp = () => {
             {/* Sub-Tab 1: Customer Returns */}
             {rdSubTab === 'returns' && (
               <div className="space-y-4">
-                <p className="text-xs text-slate-500">
-                  Inspect returned items from customers. Restock accepted usable items (+Stock) or mark damaged.
-                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <p className="text-xs text-slate-500">
+                    Review customer return requests, record warehouse receipt, inspect items (Resellable vs Damaged), and disburse Razorpay refunds.
+                  </p>
+                  <span className="text-[11px] font-mono font-bold text-slate-600 bg-stone-100 px-3 py-1 rounded-xl shrink-0">
+                    {returnsList.length} Return Request{returnsList.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
 
                 {returnsList.length === 0 ? (
-                  <div className="p-12 text-center bg-stone-50 rounded-2xl text-slate-500 space-y-2">
+                  <div className="p-12 text-center bg-stone-50 rounded-2xl text-slate-500 space-y-2 border border-stone-200/60">
                     <RotateCcw className="w-10 h-10 text-slate-300 mx-auto" />
-                    <p className="font-bold text-slate-800">No returns currently filed.</p>
+                    <p className="font-bold text-slate-800">No customer returns currently filed.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {returnsList.map((ret) => (
-                      <div key={ret._id} className="p-5 border border-stone-200 rounded-2xl bg-stone-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
-                        <div className="flex items-center gap-4">
-                          <img
-                            src={ret.product?.images?.[0] || '/images/cat_workout_essentials.jpg'}
-                            alt=""
-                            onError={(e) => { e.target.src = '/images/cat_workout_essentials.jpg'; }}
-                            className="w-12 h-12 object-contain bg-white rounded-xl p-1 border shrink-0"
-                          />
-                          <div className="space-y-0.5">
-                            <p className="font-mono font-bold text-slate-900">{ret.returnNumber || ret._id}</p>
-                            <p className="font-bold text-slate-800 text-sm">{ret.product?.name}</p>
-                            <p className="text-[10px] text-slate-500">Reason: {ret.reason} • Customer: {ret.customer?.fullName}</p>
+                    {returnsList.map((ret) => {
+                      const pImg = ret.productImage || ret.product?.images?.[0] || '/images/cat_workout_essentials.jpg';
+                      const isPending = ['RETURN_REQUESTED', 'UNDER_REVIEW', 'Pending'].includes(ret.status);
+                      const isApproved = ['APPROVED', 'Approved'].includes(ret.status);
+                      const isReceived = ret.status === 'RETURN_RECEIVED';
+                      const isInspected = ret.status === 'INSPECTED';
+                      const isRefunded = ['Processed', 'Refunded'].includes(ret.refundStatus);
+                      const isRefundEligible = (isApproved || isReceived || isInspected) && !isRefunded && ret.status !== 'REJECTED' && ret.status !== 'Rejected';
+
+                      return (
+                        <div
+                          key={ret._id}
+                          className="p-5 sm:p-6 border border-stone-200 rounded-3xl bg-white shadow-2xs space-y-4 hover:border-stone-300 transition-all"
+                        >
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-stone-100 pb-4">
+                            {/* Product & Return Context */}
+                            <div className="flex items-start sm:items-center gap-4">
+                              <div className="w-16 h-16 rounded-2xl bg-stone-50 border border-stone-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                                <img
+                                  src={pImg}
+                                  alt=""
+                                  onError={(e) => { e.target.src = '/images/cat_workout_essentials.jpg'; }}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              <div className="space-y-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-mono font-bold text-slate-900 text-sm">{ret.returnNumber}</span>
+                                  <span className="text-[10px] text-slate-400">• Order #{ret.order?.orderNumber || 'ORDER'}</span>
+                                  {ret.size && (
+                                    <span className="text-[10px] bg-sky-50 text-sky-800 font-bold px-2 py-0.5 rounded border border-sky-200">
+                                      Size: {ret.size}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="font-serif font-bold text-slate-900 text-base leading-tight truncate">
+                                  {ret.productName || ret.product?.name}
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                  Quantity: <strong className="text-slate-900">{ret.quantity}</strong> • Customer: <strong className="text-slate-800">{ret.customer?.fullName || 'Customer'}</strong> ({ret.customer?.email})
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Status Badges */}
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* Lifecycle Badge */}
+                              <span
+                                className={`px-3 py-1 rounded-full text-[11px] font-extrabold border ${
+                                  isApproved
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                    : ret.status === 'REJECTED' || ret.status === 'Rejected'
+                                    ? 'bg-rose-50 text-rose-800 border-rose-300'
+                                    : ret.status === 'UNDER_REVIEW'
+                                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                    : isInspected
+                                    ? 'bg-purple-50 text-purple-800 border-purple-300'
+                                    : isReceived
+                                    ? 'bg-sky-50 text-sky-800 border-sky-300'
+                                    : 'bg-stone-100 text-stone-700 border-stone-300'
+                                }`}
+                              >
+                                {ret.status?.replace('_', ' ')}
+                              </span>
+
+                              {/* Inspection Result Badge */}
+                              {ret.inspectStatus && ret.inspectStatus !== 'PendingInspection' && (
+                                <span
+                                  className={`px-3 py-1 rounded-full text-[11px] font-extrabold border ${
+                                    ret.inspectStatus === 'Resellable'
+                                      ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                                      : ret.inspectStatus === 'Damaged'
+                                      ? 'bg-rose-100 text-rose-950 border-rose-300'
+                                      : 'bg-amber-100 text-amber-950 border-amber-300'
+                                  }`}
+                                >
+                                  {ret.inspectStatus === 'Resellable' ? '✓ Resellable (+Stock)' : ret.inspectStatus === 'Damaged' ? '⚠ Damaged Stock' : '⏳ Inspection Required'}
+                                </span>
+                              )}
+
+                              {/* Refund Status Badge */}
+                              {isRefunded ? (
+                                <span className="px-3 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
+                                  ₹{ret.refundDetails?.amount || ret.refundAmount} Refunded via Razorpay
+                                </span>
+                              ) : ret.refundStatus === 'Denied' ? (
+                                <span className="px-3 py-1 rounded-full text-[11px] font-extrabold bg-rose-50 text-rose-800 border border-rose-200">
+                                  Refund Denied
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {/* Details Bar: Reason, 7-Day Window, Evidence */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs bg-stone-50/70 p-3.5 rounded-2xl border border-stone-200/60">
+                            <div>
+                              <span className="text-[10px] text-slate-400 block font-medium">Customer Reason</span>
+                              <strong className="text-slate-800">{ret.reason}</strong>
+                              {ret.description && (
+                                <span className="text-[11px] text-slate-500 block mt-0.5 truncate" title={ret.description}>
+                                  "{ret.description}"
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-400 block font-medium">Policy Timestamps</span>
+                              <span className="text-slate-700 block">
+                                Delivered: {ret.deliveredAt ? new Date(ret.deliveredAt).toLocaleDateString() : 'Confirmed'}
+                              </span>
+                              <span className="text-emerald-700 font-bold block text-[11px]">
+                                7-Day Deadline: {ret.returnDeadline ? new Date(ret.returnDeadline).toLocaleDateString() : 'Valid'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-400 block font-medium">Refund / Transaction Info</span>
+                              <span className="text-slate-700 block">
+                                Payment ID: <strong className="font-mono text-slate-900">{ret.order?.razorpayPaymentId || 'Razorpay'}</strong>
+                              </span>
+                              <span className="text-slate-600 block">
+                                Refund Value: <strong className="text-slate-900">₹{ret.refundAmount || (ret.quantity * (ret.unitPrice || 0))}</strong>
+                              </span>
+                              {ret.evidenceImage && (
+                                <a
+                                  href={ret.evidenceImage}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sky-600 hover:text-sky-800 font-bold text-[11px] inline-flex items-center gap-1 mt-1"
+                                >
+                                  <ExternalLink className="w-3 h-3" /> View Customer Evidence
+                                </a>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Rejection Note if Rejected */}
+                          {ret.rejectionReason && (
+                            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900">
+                              <span className="font-bold">Rejection Reason:</span> {ret.rejectionReason}
+                            </div>
+                          )}
+
+                          {/* Razorpay Refund Details if Processed */}
+                          {isRefunded && ret.refundDetails?.razorpayRefundId && (
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <span className="font-bold">Razorpay Refund ID:</span>{' '}
+                                <span className="font-mono">{ret.refundDetails.razorpayRefundId}</span>
+                              </div>
+                              <div>
+                                <span className="font-bold">Amount:</span> ₹{ret.refundDetails.amount}
+                              </div>
+                              <span className="text-[10px] text-emerald-700">
+                                Refunded on {new Date(ret.refundDetails.refundedAt).toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Interactive Action Bar according to current state */}
+                          <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-stone-100">
+                            {/* Step 1: Pending -> Approve or Reject */}
+                            {isPending && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApproveReturn(ret._id)}
+                                  disabled={isProcessingAction}
+                                  className="px-4 py-2 bg-[#0F291E] hover:bg-[#1E3E62] text-white rounded-xl text-xs font-bold cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                  Approve Return
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRejectModalReturn(ret);
+                                    setRejectionReason('');
+                                  }}
+                                  disabled={isProcessingAction}
+                                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                  Reject Return
+                                </button>
+                              </>
+                            )}
+
+                            {/* Step 2: Approved -> Record Physical Receipt */}
+                            {isApproved && (
+                              <button
+                                type="button"
+                                onClick={() => handleReceiveReturn(ret._id)}
+                                disabled={isProcessingAction}
+                                className="px-4 py-2 bg-sky-700 hover:bg-sky-800 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs active:scale-95 disabled:opacity-50"
+                              >
+                                <Package className="w-3.5 h-3.5" />
+                                <span>Record Receipt (Package Arrived)</span>
+                              </button>
+                            )}
+
+                            {/* Step 3: Received -> Inspect Product */}
+                            {(isReceived || (isInspected && ret.inspectStatus === 'Inspection Required')) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInspectionModalReturn(ret);
+                                  setInspectionResult('Resellable');
+                                  setInspectionNotes('');
+                                }}
+                                disabled={isProcessingAction}
+                                className="px-4 py-2 bg-[#0F291E] hover:bg-[#1E3E62] text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs active:scale-95 disabled:opacity-50"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Inspect Returned Product</span>
+                              </button>
+                            )}
+
+                            {/* Step 4: Refund via Razorpay button */}
+                            {isRefundEligible && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRefundModalReturn(ret);
+                                  setRefundAmount(ret.refundAmount || (ret.quantity * (ret.unitPrice || 0)));
+                                }}
+                                disabled={isProcessingAction}
+                                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-sky-700 hover:from-emerald-700 hover:to-sky-800 text-white rounded-xl text-xs font-extrabold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs active:scale-95 disabled:opacity-50"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Refund via Razorpay</span>
+                              </button>
+                            )}
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => handleProcessReturnInspection(ret._id, 'Restocked')}
-                            className="px-3.5 py-2 bg-[#0F291E] hover:bg-[#1E3E62] text-white rounded-xl font-bold cursor-pointer shadow-xs"
-                          >
-                            Accept & Restock (+Stock)
-                          </button>
-                          <button
-                            onClick={() => handleProcessReturnInspection(ret._id, 'Damaged')}
-                            className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold cursor-pointer"
-                          >
-                            Mark Damaged (No Stock Add)
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1582,6 +2009,333 @@ export const InventoryStaffApp = () => {
         )}
 
       </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          RETURN WORKFLOW MODALS FOR INVENTORY STAFF
+         ───────────────────────────────────────────────────────────── */}
+
+      {/* 1. PRODUCT INSPECTION MODAL */}
+      <AnimatePresence>
+        {inspectionModalReturn && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl relative"
+            >
+              <button
+                type="button"
+                onClick={() => setInspectionModalReturn(null)}
+                className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-900 rounded-full hover:bg-stone-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div>
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <Package className="w-3 h-3" /> Warehouse Quality Control
+                </span>
+                <h3 className="font-serif text-xl font-bold text-slate-900 mt-1">Inspect Returned Product</h3>
+                <p className="text-xs text-slate-500">
+                  Determine condition of returned item <strong>{inspectionModalReturn.returnNumber}</strong>.
+                </p>
+              </div>
+
+              {/* Product Context */}
+              <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl border border-stone-200/80 text-xs">
+                <img
+                  src={
+                    inspectionModalReturn.productImage ||
+                    inspectionModalReturn.product?.images?.[0] ||
+                    '/images/cat_workout_essentials.jpg'
+                  }
+                  alt=""
+                  onError={(e) => { e.target.src = '/images/cat_workout_essentials.jpg'; }}
+                  className="w-12 h-12 object-contain bg-white rounded-xl p-1 border shrink-0"
+                />
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-900 truncate">
+                    {inspectionModalReturn.productName || inspectionModalReturn.product?.name}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Quantity: <strong>{inspectionModalReturn.quantity} units</strong> • Reason: {inspectionModalReturn.reason}
+                  </p>
+                </div>
+              </div>
+
+              {/* Inspection Form */}
+              <form onSubmit={handleInspectionSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-2">Inspection Outcome</label>
+                  <div className="space-y-2">
+                    <label
+                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                        inspectionResult === 'Resellable'
+                          ? 'border-emerald-500 bg-emerald-50/40 text-emerald-950 font-bold'
+                          : 'border-stone-200 hover:bg-stone-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="inspectOutcome"
+                        value="Resellable"
+                        checked={inspectionResult === 'Resellable'}
+                        onChange={(e) => setInspectionResult(e.target.value)}
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <span className="block font-bold">Resellable (+Add to Available Stock)</span>
+                        <span className="text-[11px] text-slate-500 font-normal">
+                          Item is intact and in mint condition. Adds {inspectionModalReturn.quantity} unit(s) back to available inventory.
+                        </span>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                        inspectionResult === 'Damaged'
+                          ? 'border-rose-500 bg-rose-50/40 text-rose-950 font-bold'
+                          : 'border-stone-200 hover:bg-stone-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="inspectOutcome"
+                        value="Damaged"
+                        checked={inspectionResult === 'Damaged'}
+                        onChange={(e) => setInspectionResult(e.target.value)}
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <span className="block font-bold">Damaged (Record in Damaged Ledger)</span>
+                        <span className="text-[11px] text-slate-500 font-normal">
+                          Item is damaged or defective. Recorded in damage records without increasing available stock.
+                        </span>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                        inspectionResult === 'Inspection Required'
+                          ? 'border-amber-500 bg-amber-50/40 text-amber-950 font-bold'
+                          : 'border-stone-200 hover:bg-stone-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="inspectOutcome"
+                        value="Inspection Required"
+                        checked={inspectionResult === 'Inspection Required'}
+                        onChange={(e) => setInspectionResult(e.target.value)}
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <span className="block font-bold">Inspection Required (Hold Quarantine)</span>
+                        <span className="text-[11px] text-slate-500 font-normal">
+                          Needs further testing by senior technician. Keeps item unavailable for sale.
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Inspection Notes <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    rows="2"
+                    value={inspectionNotes}
+                    onChange={(e) => setInspectionNotes(e.target.value)}
+                    placeholder="e.g. Unopened box, verified serial number, signs of water damage..."
+                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-medium text-slate-800"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setInspectionModalReturn(null)}
+                    className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isProcessingAction}
+                    className="flex-1 py-2.5 bg-[#0F291E] hover:bg-[#1E3E62] text-white font-bold rounded-xl cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessingAction ? 'Recording...' : 'Confirm Inspection'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 2. RAZORPAY REFUND MODAL */}
+      <AnimatePresence>
+        {refundModalReturn && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl relative"
+            >
+              <button
+                type="button"
+                onClick={() => setRefundModalReturn(null)}
+                className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-900 rounded-full hover:bg-stone-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div>
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-sky-50 text-sky-800 border border-sky-200">
+                  <RotateCcw className="w-3 h-3 text-sky-600" /> Razorpay Payment Gateway
+                </span>
+                <h3 className="font-serif text-xl font-bold text-slate-900 mt-1">Initiate Razorpay Refund</h3>
+                <p className="text-xs text-slate-500">
+                  Issue refund back to customer's original payment method via Razorpay.
+                </p>
+              </div>
+
+              {/* Order & Payment Context */}
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2 text-xs">
+                <div className="flex justify-between border-b border-stone-200/60 pb-1.5">
+                  <span className="text-slate-500">Customer:</span>
+                  <strong className="text-slate-900">{refundModalReturn.customer?.fullName}</strong>
+                </div>
+                <div className="flex justify-between border-b border-stone-200/60 pb-1.5">
+                  <span className="text-slate-500">Order Number:</span>
+                  <strong className="font-mono text-slate-900">{refundModalReturn.order?.orderNumber || 'ORDER'}</strong>
+                </div>
+                <div className="flex justify-between border-b border-stone-200/60 pb-1.5">
+                  <span className="text-slate-500">Razorpay Payment ID:</span>
+                  <strong className="font-mono text-sky-700">{refundModalReturn.order?.razorpayPaymentId || 'N/A'}</strong>
+                </div>
+                <div className="flex justify-between border-b border-stone-200/60 pb-1.5">
+                  <span className="text-slate-500">Original Order Amount:</span>
+                  <strong className="text-slate-900">₹{refundModalReturn.order?.totalAmount?.toLocaleString('en-IN')}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Item Return Value:</span>
+                  <strong className="text-emerald-700">₹{refundModalReturn.refundAmount || (refundModalReturn.quantity * (refundModalReturn.unitPrice || 0))}</strong>
+                </div>
+              </div>
+
+              {/* Refund Form */}
+              <form onSubmit={handleRazorpayRefundSubmit} className="space-y-4 text-xs">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <label className="font-bold text-slate-700">Refund Amount (₹ INR)</label>
+                    <span className="text-[10px] text-slate-400">Supports full or partial refund</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max={refundModalReturn.order?.totalAmount || refundModalReturn.refundAmount}
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-bold text-slate-900 text-sm focus:border-[#0F291E]"
+                    required
+                  />
+                </div>
+
+                <div className="p-3 bg-sky-50/70 border border-sky-200 rounded-xl text-[11px] text-sky-900 space-y-1">
+                  <p className="font-bold">Automated Gateway Verification</p>
+                  <p className="text-sky-800">
+                    The backend verifies staff authorization, checks captured payment status on Razorpay, and saves transaction audit details.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setRefundModalReturn(null)}
+                    className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isProcessingAction || !refundAmount || Number(refundAmount) <= 0}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-sky-700 hover:from-emerald-700 hover:to-sky-800 text-white font-extrabold rounded-xl shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessingAction ? 'Calling Razorpay Gateway...' : 'Execute Razorpay Refund'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 3. REJECTION REASON MODAL */}
+      <AnimatePresence>
+        {rejectModalReturn && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative"
+            >
+              <button
+                type="button"
+                onClick={() => setRejectModalReturn(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-900"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-2 text-rose-600">
+                <ShieldAlert className="w-6 h-6" />
+                <h3 className="font-serif text-lg font-bold text-slate-900">Reject Customer Return</h3>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                Rejecting return <strong>{rejectModalReturn.returnNumber}</strong> for {rejectModalReturn.productName || 'product'}. Please provide a mandatory rejection reason for audit records.
+              </p>
+
+              <form onSubmit={handleRejectReturnSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Rejection Reason (Required)</label>
+                  <textarea
+                    rows="3"
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="e.g. Return requested after policy deadline, item altered/used, damage not covered..."
+                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-medium text-slate-800"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setRejectModalReturn(null)}
+                    className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-slate-700 font-bold rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isProcessingAction || !rejectionReason.trim()}
+                    className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessingAction ? 'Processing...' : 'Confirm Rejection'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+

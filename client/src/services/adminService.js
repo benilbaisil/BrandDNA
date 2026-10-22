@@ -16,6 +16,11 @@ export const adminService = {
     return response.data;
   },
 
+  updateUser: async (id, userData) => {
+    const response = await api.put(`/admin/users/${id}`, userData);
+    return response.data;
+  },
+
   toggleUserStatus: async (id) => {
     const response = await api.put(`/admin/users/${id}/status`);
     return response.data;

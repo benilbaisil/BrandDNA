@@ -3,6 +3,7 @@ import {
   getStats,
   getUsers,
   createUser,
+  updateUser,
   toggleUserStatus,
   deleteUser,
   getStartups,
@@ -30,6 +31,7 @@ router.use(authorize('admin'));
 router.get('/stats', getStats);
 router.get('/users', getUsers);
 router.post('/users', createUser);
+router.put('/users/:id', updateUser);
 router.put('/users/:id/status', toggleUserStatus);
 router.delete('/users/:id', deleteUser);
 

@@ -16,15 +16,15 @@ import { protect, authorize, optionalProtect } from '../middleware/authMiddlewar
 
 const router = express.Router();
 
-router.get('/', getProducts);
+router.get('/', optionalProtect, getProducts);
 router.get('/categories', getCategories);
-router.get('/:id', getProductById);
+router.get('/:id', optionalProtect, getProductById);
 
-// Inventory Product Ad Poster Endpoints
-router.get('/:id/ad-poster', getProductAdPosterController);
-router.post('/:id/generate-ad-poster', optionalProtect, generateProductAdPosterController);
-router.post('/:id/regenerate-ad-poster', optionalProtect, regenerateProductAdPosterController);
-router.post('/:id/save-ad-poster', protect, authorize('admin', 'inventory_staff', 'marketing_staff', 'customer', 'startup_owner'), saveProductAdPosterController);
+// Inventory Product Ad Poster Endpoints (Marketing Staff & Admin Only)
+router.get('/:id/ad-poster', protect, authorize('marketing_staff', 'admin'), getProductAdPosterController);
+router.post('/:id/generate-ad-poster', protect, authorize('marketing_staff', 'admin'), generateProductAdPosterController);
+router.post('/:id/regenerate-ad-poster', protect, authorize('marketing_staff', 'admin'), regenerateProductAdPosterController);
+router.post('/:id/save-ad-poster', protect, authorize('marketing_staff', 'admin'), saveProductAdPosterController);
 
 router.post('/', protect, authorize('admin', 'inventory_staff', 'marketing_staff'), createProduct);
 router.put('/:id', protect, authorize('admin', 'inventory_staff', 'marketing_staff'), updateProduct);

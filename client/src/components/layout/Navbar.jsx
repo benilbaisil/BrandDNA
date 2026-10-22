@@ -24,34 +24,27 @@ export const Navbar = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-    if (user?.role !== 'customer') {
-      navigate(getRoleRedirectPath(user?.role));
+      navigate('/login', {
+        state: {
+          from: searchQuery.trim() ? `/products?search=${encodeURIComponent(searchQuery.trim())}` : '/products',
+          message: 'Please sign in to search and browse products.',
+        },
+      });
       return;
     }
     if (searchQuery.trim()) {
-      navigate(`/customer/dashboard?search=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
     } else {
-      navigate('/customer/dashboard');
+      navigate('/products');
     }
-  };
-
-  const getNavLink = (searchParam = '') => {
-    if (!isAuthenticated) return '/login';
-    if (user?.role === 'customer') {
-      return searchParam ? `/customer/dashboard?search=${searchParam}` : '/customer/dashboard';
-    }
-    return getRoleRedirectPath(user?.role);
   };
 
   const navLinks = [
     { name: 'About', href: '/#about' },
-    { name: 'Catalog', href: getNavLink() },
-    { name: 'Special Offers', href: getNavLink('special') },
-    { name: 'Bestsellers', href: getNavLink('bestseller') },
-    { name: 'Categories', href: getNavLink() },
+    { name: 'Catalog', href: '/products' },
+    { name: 'Special Offers', href: '/products?search=special' },
+    { name: 'Bestsellers', href: '/products?search=bestseller' },
+    { name: 'Categories', href: '/#categories' },
   ];
 
   return (
@@ -105,6 +98,7 @@ export const Navbar = () => {
               <Link
                 to={getRoleRedirectPath(user?.role)}
                 className="px-4 py-2 rounded-full bg-[#0F382C] text-white font-bold text-xs hover:bg-[#08221B] transition-all shadow-xs flex items-center gap-1.5"
+                title={`Workspace (${user?.fullName || user?.role})`}
               >
                 <User className="w-3.5 h-3.5" />
                 <span>Dashboard</span>
@@ -135,7 +129,7 @@ export const Navbar = () => {
 
           {/* Cart Counter */}
           <Link
-            to={isAuthenticated ? (user?.role === 'customer' ? "/customer/dashboard?tab=cart" : getRoleRedirectPath(user?.role)) : "/login"}
+            to="/products?tab=cart"
             className="font-bold text-[#0F291E] hover:text-emerald-700 flex items-center gap-1 bg-[#FAF8F5] px-3.5 py-2 rounded-full border border-stone-200"
           >
             <ShoppingBag className="w-3.5 h-3.5 text-[#0F382C]" />
@@ -146,7 +140,7 @@ export const Navbar = () => {
         {/* Mobile menu button */}
         <div className="flex items-center gap-3 md:hidden">
           <Link
-            to={isAuthenticated ? (user?.role === 'customer' ? "/customer/dashboard?tab=cart" : getRoleRedirectPath(user?.role)) : "/login"}
+            to="/products?tab=cart"
             className="font-bold text-xs text-[#0F291E] flex items-center gap-1 bg-[#FAF8F5] px-3 py-1.5 rounded-full border border-stone-200"
           >
             <ShoppingBag className="w-3.5 h-3.5" />
@@ -193,13 +187,25 @@ export const Navbar = () => {
             ))}
 
             {isAuthenticated ? (
-              <Link
-                to={getRoleRedirectPath(user?.role)}
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full py-3 bg-[#0F382C] text-white text-center font-bold text-xs rounded-xl mt-2 block"
-              >
-                Go to Workspace ({user?.role})
-              </Link>
+              <div className="flex flex-col gap-2 pt-2">
+                <Link
+                  to={getRoleRedirectPath(user?.role)}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-3 bg-[#0F382C] text-white text-center font-bold text-xs rounded-xl block"
+                >
+                  Go to Workspace ({user?.role})
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    logout();
+                  }}
+                  className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-slate-700 text-center font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Logout
+                </button>
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <Link

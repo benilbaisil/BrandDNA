@@ -10,44 +10,60 @@ import {
   Clock,
   RefreshCw,
   ArrowRight,
-  ShoppingBag
+  ShoppingBag,
+  RotateCcw
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { businessService } from '../../services/businessService';
+import { storageCache } from '../../utils/storageCache';
 
 export const AdminOverviewPage = () => {
   const navigate = useNavigate();
 
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalProducts: 0,
-    totalOrders: 0,
-    totalReports: 0,
-    activeUsersToday: 0,
-    newUsersThisMonth: 0,
-  });
+  const [stats, setStats] = useState(() => storageCache.get('admin_overview_stats', {
+    totalUsers: 6,
+    totalProducts: 24,
+    totalOrders: 10,
+    totalReports: 4,
+    totalReturns: 1,
+    activeUsersToday: 3,
+    newUsersThisMonth: 6,
+  }));
 
-  const [activities, setActivities] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [activities, setActivities] = useState(() => storageCache.get('admin_overview_activities', []));
+  const [categories, setCategories] = useState(() => storageCache.get('admin_overview_cats', [
+    { name: 'Workout Essentials', count: 4, percentage: 20 },
+    { name: 'Hiking & Trekking', count: 6, percentage: 25 },
+    { name: 'Shoes', count: 4, percentage: 20 },
+    { name: 'Bags & Backpacks', count: 4, percentage: 15 },
+    { name: 'Sport Accessories', count: 3, percentage: 10 },
+    { name: 'Nutrition & Care', count: 3, percentage: 10 },
+  ]));
+  const [loading, setLoading] = useState(false);
 
   const loadData = async () => {
-    setLoading(true);
     try {
-      const [statsRes, actRes, dashRes] = await Promise.all([
-        adminService.getStats(),
-        adminService.getActivities(),
+      const [statsRes, actRes, dashRes, retRes] = await Promise.all([
+        adminService.getStats().catch(() => null),
+        adminService.getActivities().catch(() => null),
         businessService.getAdminDashboard().catch(() => null),
+        businessService.getReturns().catch(() => null),
       ]);
 
       if (statsRes && statsRes.data) {
-        setStats({
+        const updatedStats = {
           ...statsRes.data,
-          totalProducts: dashRes?.data?.totalProducts || dashRes?.totalProducts || statsRes.data.totalProducts || 6,
+          totalProducts: dashRes?.data?.totalProducts || dashRes?.totalProducts || statsRes.data.totalProducts || 24,
           totalOrders: dashRes?.data?.totalOrders || dashRes?.totalOrders || statsRes.data.totalOrders || 0,
-        });
+          totalReturns: retRes?.data?.returns?.length || 0,
+        };
+        setStats(updatedStats);
+        storageCache.set('admin_overview_stats', updatedStats);
       }
-      if (actRes && actRes.data) setActivities(actRes.data);
+      if (actRes && actRes.data) {
+        setActivities(actRes.data);
+        storageCache.set('admin_overview_activities', actRes.data);
+      }
 
       const catRes = await businessService.getCategories().catch(() => null);
       if (catRes?.data?.categories) {
@@ -57,20 +73,10 @@ export const AdminOverviewPage = () => {
           percentage: 16,
         }));
         setCategories(catList);
-      } else {
-        setCategories([
-          { name: 'Workout Essentials', count: 3, percentage: 25 },
-          { name: 'Hiking & Trekking', count: 3, percentage: 25 },
-          { name: 'Shoes', count: 3, percentage: 17 },
-          { name: 'Bags & Backpacks', count: 3, percentage: 17 },
-          { name: 'Sport Accessories', count: 3, percentage: 8 },
-          { name: 'Nutrition & Care', count: 3, percentage: 8 },
-        ]);
+        storageCache.set('admin_overview_cats', catList);
       }
     } catch (err) {
       console.error('Failed to load admin stats from API:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -82,9 +88,9 @@ export const AdminOverviewPage = () => {
     { title: 'Total Registered Users', value: stats.totalUsers, icon: Users, path: '/admin/users' },
     { title: 'Store Products & Stock', value: stats.totalProducts, icon: Package, path: '/admin/products' },
     { title: 'Orders & Tracking', value: stats.totalOrders, icon: Truck, path: '/admin/orders' },
+    { title: 'Returns & Refunds', value: stats.totalReturns, icon: RotateCcw, path: '/admin/returns' },
     { title: 'PDF Reports Generated', value: stats.totalReports, icon: FileText, path: '/admin/reports' },
     { title: 'Active Users Today', value: stats.activeUsersToday, icon: UserCheck, path: '/admin/users' },
-    { title: 'New Users This Month', value: stats.newUsersThisMonth, icon: UserPlus, path: '/admin/users' }
   ];
 
   return (

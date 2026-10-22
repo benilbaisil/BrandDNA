@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import { useToast } from './ToastContext';
 
@@ -23,19 +23,101 @@ export const getRoleRedirectPath = (role) => {
   }
 };
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('branddna_user');
-    try {
-      return savedUser && savedUser !== 'undefined' ? JSON.parse(savedUser) : null;
-    } catch (e) {
-      return null;
+const sanitizeUser = (raw) => {
+  try {
+    if (!raw || raw === 'undefined' || raw === 'null') return null;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (parsed && typeof parsed === 'object' && (parsed._id || parsed.id || parsed.email) && parsed.role) {
+      return parsed;
     }
-  });
-  const [token, setToken] = useState(() => localStorage.getItem('branddna_token'));
+    return null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const sanitizeToken = (raw) => {
+  if (!raw || raw === 'undefined' || raw === 'null' || typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+// Check if an active authenticated session exists in storage
+const getInitialAuth = () => {
+  try {
+    const rawUser = localStorage.getItem('branddna_user') || sessionStorage.getItem('branddna_user');
+    const rawToken = localStorage.getItem('branddna_token') || sessionStorage.getItem('branddna_token');
+    const validUser = sanitizeUser(rawUser);
+    const validToken = sanitizeToken(rawToken);
+
+    if (!validUser || !validToken) {
+      return { user: null, token: null };
+    }
+
+    return { user: validUser, token: validToken };
+  } catch (e) {
+    return { user: null, token: null };
+  }
+};
+
+export const AuthProvider = ({ children }) => {
+  const initial = getInitialAuth();
+  const [user, setUser] = useState(initial.user);
+  const [token, setToken] = useState(initial.token);
   const [loading, setLoading] = useState(false);
 
   const { addToast } = useToast();
+
+  const saveSession = (userData, userToken) => {
+    sessionStorage.setItem('branddna_active_session', 'true');
+    sessionStorage.setItem('branddna_user', JSON.stringify(userData));
+    sessionStorage.setItem('branddna_token', userToken);
+    localStorage.setItem('branddna_user', JSON.stringify(userData));
+    localStorage.setItem('branddna_token', userToken);
+    setUser(userData);
+    setToken(userToken);
+  };
+
+  const clearSession = () => {
+    sessionStorage.removeItem('branddna_active_session');
+    sessionStorage.removeItem('branddna_user');
+    sessionStorage.removeItem('branddna_token');
+    sessionStorage.clear();
+    localStorage.removeItem('branddna_user');
+    localStorage.removeItem('branddna_token');
+    setUser(null);
+    setToken(null);
+  };
+
+  // Validate session on mount so stale or revoked credentials are cleared only on verified 401
+  useEffect(() => {
+    const rawToken = localStorage.getItem('branddna_token') || sessionStorage.getItem('branddna_token');
+    if (!rawToken) {
+      return;
+    }
+
+    let isMounted = true;
+    authService.getMe()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res && res.success && res.data && res.data.user) {
+          const freshUser = res.data.user;
+          setUser(freshUser);
+          sessionStorage.setItem('branddna_user', JSON.stringify(freshUser));
+          localStorage.setItem('branddna_user', JSON.stringify(freshUser));
+        }
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        if (err?.response?.status === 401) {
+          clearSession();
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const googleLogin = async (idToken) => {
     setLoading(true);
@@ -45,16 +127,11 @@ export const AuthProvider = ({ children }) => {
         const userData = res.data.user;
         const userToken = res.data.token;
         if (userData && userToken) {
-          localStorage.setItem('branddna_user', JSON.stringify(userData));
-          localStorage.setItem('branddna_token', userToken);
-          setUser(userData);
-          setToken(userToken);
+          saveSession(userData, userToken);
           addToast(`Welcome, ${userData.fullName}! Authenticated with Google.`, 'success');
 
           const targetUrl = getRoleRedirectPath(userData.role);
-          setTimeout(() => {
-            window.location.href = targetUrl;
-          }, 300);
+          window.location.href = targetUrl;
           return true;
         }
       }
@@ -77,16 +154,11 @@ export const AuthProvider = ({ children }) => {
         const userData = res.data.user;
         const userToken = res.data.token;
         if (userData && userToken) {
-          localStorage.setItem('branddna_user', JSON.stringify(userData));
-          localStorage.setItem('branddna_token', userToken);
-          setUser(userData);
-          setToken(userToken);
+          saveSession(userData, userToken);
           addToast(`Welcome back, ${userData.fullName}!`, 'success');
           
           const targetUrl = getRoleRedirectPath(userData.role);
-          setTimeout(() => {
-            window.location.href = targetUrl;
-          }, 300);
+          window.location.href = targetUrl;
           return true;
         }
       }
@@ -112,16 +184,11 @@ export const AuthProvider = ({ children }) => {
         const newUser = res.data.user;
         const newTok = res.data.token;
         if (newUser && newTok) {
-          localStorage.setItem('branddna_user', JSON.stringify(newUser));
-          localStorage.setItem('branddna_token', newTok);
-          setUser(newUser);
-          setToken(newTok);
+          saveSession(newUser, newTok);
           addToast('Account created successfully!', 'success');
           
           const targetUrl = getRoleRedirectPath(newUser.role);
-          setTimeout(() => {
-            window.location.href = targetUrl;
-          }, 300);
+          window.location.href = targetUrl;
           return true;
         }
       }
@@ -154,6 +221,7 @@ export const AuthProvider = ({ children }) => {
         // Fallback local update
       }
 
+      sessionStorage.setItem('branddna_user', JSON.stringify(updatedUser));
       localStorage.setItem('branddna_user', JSON.stringify(updatedUser));
       setUser(updatedUser);
       addToast('Profile updated successfully!', 'success');
@@ -173,34 +241,28 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       // Ignore logout errors
     } finally {
-      setUser(null);
-      setToken(null);
-      localStorage.removeItem('branddna_user');
-      localStorage.removeItem('branddna_token');
+      clearSession();
       addToast('Logged out successfully', 'info');
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 300);
+      window.location.href = '/';
     }
   };
 
   const checkAuth = () => {
-    if (user) return true;
-    const storedTok = localStorage.getItem('branddna_token');
-    const storedUsr = localStorage.getItem('branddna_user');
-    return !!storedTok && !!storedUsr;
+    return Boolean(
+      user &&
+      (user._id || user.id || user.email) &&
+      user.role &&
+      token &&
+      token !== 'undefined' &&
+      token !== 'null'
+    );
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user: user || (() => { 
-          try { 
-            const u = localStorage.getItem('branddna_user'); 
-            return u && u !== 'undefined' ? JSON.parse(u) : null; 
-          } catch(e) { return null; } 
-        })(),
-        token: token || localStorage.getItem('branddna_token'),
+        user,
+        token,
         isAuthenticated: checkAuth(),
         loading,
         googleLogin,
@@ -218,15 +280,26 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    let user = null;
-    try {
-      const savedUser = localStorage.getItem('branddna_user');
-      user = savedUser && savedUser !== 'undefined' ? JSON.parse(savedUser) : null;
-    } catch(e) {}
+    const isActive = sessionStorage.getItem('branddna_active_session') === 'true';
+    if (!isActive) {
+      return {
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        loading: false,
+        googleLogin: async () => false,
+        login: async () => false,
+        register: async () => false,
+        updateProfile: async () => false,
+        logout: async () => {},
+      };
+    }
+    const user = sanitizeUser(sessionStorage.getItem('branddna_user') || localStorage.getItem('branddna_user'));
+    const token = sanitizeToken(sessionStorage.getItem('branddna_token') || localStorage.getItem('branddna_token'));
     return {
       user,
-      token: localStorage.getItem('branddna_token'),
-      isAuthenticated: !!user || !!localStorage.getItem('branddna_token'),
+      token,
+      isAuthenticated: Boolean(user && user.role && token),
       loading: false,
       googleLogin: async () => false,
       login: async () => false,

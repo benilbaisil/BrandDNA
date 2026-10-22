@@ -32,9 +32,9 @@ export const BrandAnalysisPage = () => {
   const showToast = (msg, type = 'success') => addToast(msg, type);
 
   // Loading States
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
-  const [hasProfile, setHasProfile] = useState(false);
+  const [hasProfile, setHasProfile] = useState(true);
   const [profileData, setProfileData] = useState(null);
 
   // Per-section Regeneration Loading States
@@ -141,7 +141,6 @@ export const BrandAnalysisPage = () => {
 
   // Initial Fetch Data
   const fetchData = async () => {
-    setLoading(true);
     try {
       // 1. Fetch Business Profile Context
       const profileRes = await startupService.getProfile();
@@ -477,14 +476,7 @@ export const BrandAnalysisPage = () => {
     { key: 'brandPersonality', label: 'Brand Personality', completed: Boolean(savedValues.brandPersonality) },
   ];
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-semibold text-slate-500">Loading Brand Analysis Workspace...</span>
-      </div>
-    );
-  }
+
 
   if (!hasProfile) {
     return (

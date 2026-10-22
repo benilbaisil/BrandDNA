@@ -5,7 +5,7 @@ import { X, Wand2, RefreshCw, Download, Image as ImageIcon } from 'lucide-react'
 
 export const AdPosterModal = ({ productId, onClose }) => {
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [posterData, setPosterData] = useState(null);
 
@@ -16,7 +16,6 @@ export const AdPosterModal = ({ productId, onClose }) => {
   }, [productId]);
 
   const fetchPoster = async () => {
-    setLoading(true);
     try {
       const res = await marketingProductService.getAdPoster(productId);
       if (res.success && res.data.poster) {
@@ -52,16 +51,7 @@ export const AdPosterModal = ({ productId, onClose }) => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 z-50 bg-[#0F291E]/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="glass-panel rounded-3xl p-8 flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <p className="font-bold text-slate-700">Loading poster data...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0F291E]/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">

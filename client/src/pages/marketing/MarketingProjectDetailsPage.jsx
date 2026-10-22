@@ -30,8 +30,17 @@ export default function MarketingProjectDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [project, setProject] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [project, setProject] = useState({
+    title: '',
+    status: 'draft',
+    brandIdentity: {},
+    customerPersonas: [],
+    marketStrategy: {},
+    contentRoadmap: {},
+    budgetPlan: {},
+    launchChecklist: {}
+  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('brandIdentity');
   
@@ -53,7 +62,6 @@ export default function MarketingProjectDetailsPage() {
 
   const fetchProject = async () => {
     try {
-      setLoading(true);
       setError(null);
       const res = await marketingProjectService.getProjectById(id);
       if (res.success && res.data.project) {
@@ -167,18 +175,7 @@ export default function MarketingProjectDetailsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin" />
-          <p className="text-slate-600 font-medium text-sm">Loading Project Intelligence Workspace...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !project) {
+  if (error) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-6">
         <div className="max-w-md w-full glass-panel p-6 rounded-2xl shadow-sm border border-[#E5E0D8] text-center">

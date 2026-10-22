@@ -13,7 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Truck,
-  Package
+  Package,
+  RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -30,6 +31,7 @@ export const AdminSidebar = ({ isCollapsed, toggleSidebar, mobileOpen, closeMobi
     { name: 'Dashboard Overview', path: '/admin/dashboard', icon: LayoutDashboard, exact: true },
     { name: 'Delivery Management', path: '/admin/delivery', icon: Truck },
     { name: 'Orders & Tracking', path: '/admin/orders', icon: Package },
+    { name: 'Return Management', path: '/admin/returns', icon: RotateCcw },
     { name: 'Products & Stock', path: '/admin/products', icon: Package },
     { name: 'Users & Staff Access', path: '/admin/users', icon: Users },
     { name: 'Reports Generator', path: '/admin/reports', icon: FileText },

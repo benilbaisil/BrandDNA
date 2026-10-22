@@ -7,27 +7,26 @@ import { brandService } from '../../services/brandService';
 export const BrandCard = () => {
   const { addToast } = useToast();
   const [copiedField, setCopiedField] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [brandData, setBrandData] = useState({
-    name: 'AuraCraft AI',
-    tagline: 'Transforming Complexity into Pure Brand Clarity.',
-    personality: 'Visionary • Authoritative • Empathetic • Sophisticated',
-    mission: 'To empower founders globally with automated, investor-grade brand strategy in minutes.',
-    vision: 'To become the operating system for next-generation startup brand intelligence.',
+    name: '',
+    tagline: '',
+    personality: '',
+    mission: '',
+    vision: '',
   });
 
   const fetchBrand = async () => {
     try {
-      setLoading(true);
       const res = await brandService.getIdentity();
       if (res && res.success && res.data?.brand) {
         const b = res.data.brand;
         setBrandData({
-          name: b.brandName || 'AuraCraft AI',
-          tagline: b.tagline || 'Transforming Complexity into Pure Brand Clarity.',
-          personality: b.personality || 'Visionary • Authoritative • Empathetic • Sophisticated',
-          mission: b.mission || 'To empower founders globally with automated, investor-grade brand strategy in minutes.',
-          vision: b.vision || 'To become the operating system for next-generation startup brand intelligence.',
+          name: b.brandName || '',
+          tagline: b.tagline || '',
+          personality: b.personality || '',
+          mission: b.mission || '',
+          vision: b.vision || '',
         });
       }
     } catch (err) {

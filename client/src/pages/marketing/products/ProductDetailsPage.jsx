@@ -28,8 +28,15 @@ export default function ProductDetailsPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
 
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState({
+    productName: '',
+    brand: {},
+    usps: [],
+    pricingSuggestion: {},
+    marketingAngles: [],
+    socialHooks: [],
+  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('strategy');
 
@@ -39,7 +46,6 @@ export default function ProductDetailsPage() {
 
   const fetchProductDetails = async () => {
     try {
-      setLoading(true);
       setError(null);
       const res = await marketingProductService.getProductById(id);
       if (res.success && res.data.product) {
@@ -70,18 +76,7 @@ export default function ProductDetailsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin" />
-          <p className="text-xs font-medium text-slate-600">Loading product strategy & marketing details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !product) {
+  if (error) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-6">
         <div className="max-w-md w-full glass-panel p-6 rounded-2xl border border-[#E5E0D8] text-center">

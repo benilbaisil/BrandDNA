@@ -32,7 +32,7 @@ export default function CreateProductPage() {
   const { addToast } = useToast();
 
   const [brands, setBrands] = useState([]);
-  const [loadingBrands, setLoadingBrands] = useState(true);
+  const [loadingBrands, setLoadingBrands] = useState(false);
 
   const [step, setStep] = useState(1); // 1: Input, 2: Review AI Strategy
 
@@ -106,7 +106,6 @@ export default function CreateProductPage() {
 
   const fetchUserBrands = async () => {
     try {
-      setLoadingBrands(true);
       const res = await brandService.getBrands();
       if (res.success && Array.isArray(res.data.brands)) {
         setBrands(res.data.brands);
@@ -272,12 +271,7 @@ export default function CreateProductPage() {
                 A Product must belong to an existing Brand saved in your database.
               </p>
 
-              {loadingBrands ? (
-                <div className="py-4 text-xs text-slate-500 flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
-                  <span>Loading available brands...</span>
-                </div>
-              ) : brands.length === 0 ? (
+              {brands.length === 0 ? (
                 /* STRICT EMPTY BRAND STATE */
                 <div className="mt-4 p-5 bg-[#FAF8F5]mber-50 border border-amber-200 rounded-xl text-center">
                   <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />

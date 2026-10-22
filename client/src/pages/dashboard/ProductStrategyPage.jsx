@@ -34,7 +34,7 @@ export const ProductStrategyPage = () => {
   const showToast = (msg, type = 'success') => addToast(msg, type);
 
   // General Loading State
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Per-section Regeneration Loading States
   const [regenerating, setRegenerating] = useState({
@@ -122,7 +122,6 @@ export const ProductStrategyPage = () => {
   }, []);
 
   const fetchStrategyData = async () => {
-    setLoading(true);
     try {
       const res = await productStrategyService.getStrategy();
       if (res.success) {
@@ -365,14 +364,7 @@ export const ProductStrategyPage = () => {
     { key: 'positioning', label: 'Positioning', completed: Boolean(strategy.positioningStatement) },
   ];
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-semibold text-slate-500 font-mono">Loading Product Strategy Workspace...</span>
-      </div>
-    );
-  }
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 text-left pb-24 font-sans">

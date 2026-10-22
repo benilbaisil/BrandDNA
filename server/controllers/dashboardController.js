@@ -6,21 +6,121 @@ import { Return } from '../models/Return.js';
 import { Campaign } from '../models/Campaign.js';
 import { MarketingContent } from '../models/MarketingContent.js';
 import { InventoryTransaction } from '../models/InventoryTransaction.js';
-import { getInventoryValuationSummary, getInventoryLedger } from '../services/inventoryService.js';
-import { calculateInventoryAnalytics } from '../services/inventoryAiService.js';
 import { getRecentActivities } from '../services/activityService.js';
 import { sendResponse } from '../utils/apiResponse.js';
+import { cache } from '../utils/cache.js';
+
+// Fast In-Memory Inventory Valuation Calculator
+const computeInventoryValuation = (products) => {
+  let totalItemsCount = 0;
+  let totalStockUnits = 0;
+  let totalCostValuation = 0;
+  let totalRetailValuation = 0;
+  let lowStockCount = 0;
+
+  products.forEach((p) => {
+    totalItemsCount += 1;
+    const stock = Number(p.stock) || 0;
+    const cost = Number(p.cost) || 0;
+    const price = Number(p.price) || 0;
+    totalStockUnits += stock;
+    totalCostValuation += stock * cost;
+    totalRetailValuation += stock * price;
+    if (stock <= (p.reorderLevel || 10)) {
+      lowStockCount += 1;
+    }
+  });
+
+  return {
+    totalItemsCount,
+    totalStockUnits,
+    totalCostValuation,
+    totalRetailValuation,
+    lowStockCount,
+    potentialProfit: totalRetailValuation - totalCostValuation,
+  };
+};
+
+// Fast In-Memory Inventory Analytics Calculator
+const computeInventoryAnalytics = (products, saleTransactions = []) => {
+  const salesMap = {};
+  saleTransactions.forEach((tx) => {
+    const pId = tx.product ? tx.product.toString() : '';
+    if (pId) {
+      salesMap[pId] = (salesMap[pId] || 0) + (Number(tx.quantity) || 0);
+    }
+  });
+
+  const productAnalytics = products.map((p) => {
+    const pId = p._id ? p._id.toString() : '';
+    const unitsSold30d = salesMap[pId] || 0;
+    const avgDailySales = unitsSold30d > 0 ? parseFloat((unitsSold30d / 30).toFixed(2)) : 0.1;
+    const stock = Number(p.stock) || 0;
+    const daysOfSupplyRemaining = avgDailySales > 0 ? Math.round(stock / avgDailySales) : 999;
+    const leadTime = p.leadTimeDays || 5;
+    const isLowStock = stock <= (p.reorderLevel || 10) || daysOfSupplyRemaining <= (leadTime + 2);
+    const isOverstock = stock > (p.targetStockLevel || 50) && daysOfSupplyRemaining > 60;
+    const isSlowMoving = unitsSold30d <= 2 && stock > 15;
+    const isDeadStock = unitsSold30d === 0 && stock > 20;
+
+    let reorderQuantity = 0;
+    if (isLowStock) {
+      const targetLevel = p.targetStockLevel || 50;
+      reorderQuantity = Math.max(0, targetLevel - stock);
+    }
+
+    return {
+      productId: p._id,
+      name: p.name,
+      sku: p.sku,
+      category: p.category?.name || p.categoryName || 'General',
+      currentStock: stock,
+      price: p.price,
+      cost: p.cost,
+      reorderLevel: p.reorderLevel || 10,
+      leadTimeDays: leadTime,
+      unitsSold30d,
+      avgDailySales,
+      daysOfSupplyRemaining,
+      isLowStock,
+      isOverstock,
+      isSlowMoving,
+      isDeadStock,
+      reorderQuantity,
+    };
+  });
+
+  return {
+    productAnalytics,
+    lowStockItems: productAnalytics.filter((p) => p.isLowStock),
+    overstockItems: productAnalytics.filter((p) => p.isOverstock),
+    slowMovingItems: productAnalytics.filter((p) => p.isSlowMoving || p.isDeadStock),
+  };
+};
 
 // GET /api/dashboard/admin
 export const getAdminDashboard = async (req, res) => {
   try {
-    const totalProducts = await Product.countDocuments({ status: { $ne: 'Discontinued' } });
-    const totalCustomers = await User.countDocuments({ role: 'customer' });
-    const orders = await Order.find().populate('items.product').sort({ createdAt: -1 });
-    const returns = await Return.find();
-    const campaigns = await Campaign.find();
-    const invSummary = await getInventoryValuationSummary();
-    const invAnalytics = await calculateInventoryAnalytics();
+    const cacheKey = 'dashboard:admin';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return sendResponse(res, 200, true, 'Admin dashboard fetched (instant cache)', cached);
+    }
+
+    // Parallelized single-round database query execution
+    const [products, totalCustomers, orders, returns, campaigns, recentActivities, pendingMarketingContents] =
+      await Promise.all([
+        Product.find({ status: { $ne: 'Discontinued' } }).populate('category').lean(),
+        User.countDocuments({ role: 'customer' }),
+        Order.find()
+          .populate({ path: 'items.product', select: 'name sku price category categoryName images' })
+          .sort({ createdAt: -1 })
+          .lean(),
+        Return.find().lean(),
+        Campaign.find().lean(),
+        getRecentActivities(10).catch(() => []),
+        MarketingContent.countDocuments({ status: 'Submitted' }).catch(() => 0),
+      ]);
 
     const totalOrders = orders.length;
     const totalSales = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
@@ -28,17 +128,16 @@ export const getAdminDashboard = async (req, res) => {
     const pendingReturns = returns.filter((r) => r.status === 'Pending').length;
     const activeCampaigns = campaigns.filter((c) => c.status === 'Active').length;
 
-    // Out of stock count
-    const outOfStockProducts = await Product.countDocuments({ stock: 0, status: { $ne: 'Discontinued' } });
+    const outOfStockProducts = products.filter((p) => p.stock === 0).length;
+    const invSummary = computeInventoryValuation(products);
+    const invAnalytics = computeInventoryAnalytics(products, []);
 
-    // Sales Overview (Today, This Week, This Month)
+    // Sales Overview
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
-
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const salesToday = orders
@@ -53,7 +152,7 @@ export const getAdminDashboard = async (req, res) => {
       .filter((o) => new Date(o.createdAt) >= startOfMonth)
       .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
-    // Sales Trend (Past 7 Days Data Points)
+    // Sales Trend (Past 7 Days)
     const salesTrend = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now);
@@ -75,7 +174,6 @@ export const getAdminDashboard = async (req, res) => {
       });
     }
 
-    // Order Status Summary & Category Breakdown
     const orderStatusCounts = {
       Placed: 0,
       Confirmed: 0,
@@ -98,41 +196,36 @@ export const getAdminDashboard = async (req, res) => {
     const categorySalesMap = {};
 
     orders.forEach((o) => {
-      // Status count
       if (orderStatusCounts[o.status] !== undefined) {
         orderStatusCounts[o.status] += 1;
       }
-
-      // Payment status count & revenue
-      const pStatus = o.paymentStatus || 'Paid';
-      if (paymentStatusCounts[pStatus]) {
-        paymentStatusCounts[pStatus].count += 1;
-        paymentStatusCounts[pStatus].revenue += o.totalAmount || 0;
+      const pStatus = o.paymentStatus || 'Pending';
+      if (!paymentStatusCounts[pStatus]) {
+        paymentStatusCounts[pStatus] = { count: 0, revenue: 0 };
       }
+      paymentStatusCounts[pStatus].count += 1;
+      paymentStatusCounts[pStatus].revenue += o.totalAmount || 0;
 
-      // Items & Products Sold Breakdown
-      o.items?.forEach((item) => {
-        const pName = item.productName || item.product?.name || 'Product';
-        const catName = item.product?.categoryName || item.product?.category?.name || 'General';
-        const qty = item.quantity || 1;
-        const rev = item.totalPrice || ((item.unitPrice || 0) * qty);
+      if (o.items && Array.isArray(o.items)) {
+        o.items.forEach((item) => {
+          const qty = Number(item.quantity) || 0;
+          totalProductsSoldQuantity += qty;
+          const prodName = item.product?.name || item.name || 'Product';
+          const catName = item.product?.category?.name || item.product?.categoryName || 'General';
 
-        totalProductsSoldQuantity += qty;
+          if (!productSalesMap[prodName]) {
+            productSalesMap[prodName] = { name: prodName, unitsSold: 0, revenue: 0 };
+          }
+          productSalesMap[prodName].unitsSold += qty;
+          productSalesMap[prodName].revenue += (item.price || 0) * qty;
 
-        // Product Breakdown
-        if (!productSalesMap[pName]) {
-          productSalesMap[pName] = { name: pName, quantitySold: 0, revenue: 0, image: item.product?.images?.[0] || '' };
-        }
-        productSalesMap[pName].quantitySold += qty;
-        productSalesMap[pName].revenue += rev;
-
-        // Category Breakdown
-        if (!categorySalesMap[catName]) {
-          categorySalesMap[catName] = { name: catName, quantitySold: 0, revenue: 0 };
-        }
-        categorySalesMap[catName].quantitySold += qty;
-        categorySalesMap[catName].revenue += rev;
-      });
+          if (!categorySalesMap[catName]) {
+            categorySalesMap[catName] = { name: catName, unitsSold: 0, revenue: 0 };
+          }
+          categorySalesMap[catName].unitsSold += qty;
+          categorySalesMap[catName].revenue += (item.price || 0) * qty;
+        });
+      }
     });
 
     const orderStatusSummary = Object.keys(orderStatusCounts).map((status) => ({
@@ -144,39 +237,26 @@ export const getAdminDashboard = async (req, res) => {
     const categorySalesList = Object.values(categorySalesMap).sort((a, b) => b.revenue - a.revenue);
     const topProducts = productSalesList.slice(0, 5);
 
-    // Pending Marketing Content for Approval
-    const pendingMarketingContents = await MarketingContent.find({ status: 'Submitted' })
-      .populate('createdBy', 'fullName email')
-      .sort({ createdAt: -1 });
-
-    // Recent System Activity
-    const recentActivities = await getRecentActivities(10);
-
-    return sendResponse(res, 200, true, 'Admin dashboard data fetched successfully', {
+    const payload = {
       summary: {
-        totalProducts,
-        totalOrders,
-        totalCustomers,
         totalSales,
-        totalProductsSoldQuantity,
-        currentInventoryValue: invSummary.totalCostValuation,
-        retailInventoryValue: invSummary.totalRetailValuation,
-        lowStockProducts: invSummary.lowStockCount,
-        outOfStockProducts,
+        totalOrders,
+        totalProducts: products.length,
+        totalCustomers,
         pendingOrders,
-        confirmedOrders: orderStatusCounts.Confirmed,
-        shippedOrders: orderStatusCounts.Shipped,
-        deliveredOrders: orderStatusCounts.Delivered,
-        cancelledOrders: orderStatusCounts.Cancelled,
-        returnedOrders: orderStatusCounts.Returned || returns.length,
         pendingReturns,
         activeCampaigns,
+        outOfStockProducts,
+        totalProductsSoldQuantity,
+        salesToday,
+        salesThisWeek,
+        salesThisMonth,
       },
-      salesOverview: {
-        today: salesToday,
-        thisWeek: salesThisWeek,
-        thisMonth: salesThisMonth,
-        salesTrend,
+      salesTrend,
+      valuation: {
+        costValuation: invSummary.totalCostValuation,
+        retailValuation: invSummary.totalRetailValuation,
+        potentialProfit: invSummary.potentialProfit,
       },
       orderStatusSummary,
       paymentStatusSummary: paymentStatusCounts,
@@ -192,7 +272,10 @@ export const getAdminDashboard = async (req, res) => {
       pendingMarketingContents,
       recentActivities,
       recentOrders: orders.slice(0, 5),
-    });
+    };
+
+    cache.set(cacheKey, payload, 30);
+    return sendResponse(res, 200, true, 'Admin dashboard fetched', payload);
   } catch (err) {
     return sendResponse(res, 500, false, err.message || 'Failed to fetch admin dashboard');
   }
@@ -201,27 +284,54 @@ export const getAdminDashboard = async (req, res) => {
 // GET /api/dashboard/inventory
 export const getInventoryDashboard = async (req, res) => {
   try {
-    const products = await Product.find({ status: { $ne: 'Discontinued' } }).populate('category');
-    const invSummary = await getInventoryValuationSummary();
-    const invAnalytics = await calculateInventoryAnalytics();
-    const recentMovements = await getInventoryLedger({}, 15);
-    const pendingReturns = await Return.find({ status: 'Approved', inspectStatus: 'PendingInspection' })
-      .populate('order', 'orderNumber')
-      .populate('product', 'name sku price stock')
-      .populate('customer', 'fullName email');
+    const cacheKey = 'dashboard:inventory';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return sendResponse(res, 200, true, 'Inventory dashboard fetched (instant cache)', cached);
+    }
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Parallelized single-round database query execution
+    const [products, saleTransactions, recentMovements, pendingReturns] = await Promise.all([
+      Product.find({ status: { $ne: 'Discontinued' } }).populate('category').lean(),
+      InventoryTransaction.find({
+        transactionType: 'Sale',
+        createdAt: { $gte: thirtyDaysAgo },
+      }).lean(),
+      InventoryTransaction.find()
+        .populate({
+          path: 'product',
+          select: 'name sku price cost stock category categoryName images',
+        })
+        .populate('user', 'fullName email role')
+        .sort({ createdAt: -1 })
+        .limit(15)
+        .lean(),
+      Return.find({ status: 'Approved', inspectStatus: 'PendingInspection' })
+        .populate('order', 'orderNumber')
+        .populate('product', 'name sku price stock')
+        .populate('customer', 'fullName email')
+        .lean(),
+    ]);
 
     const outOfStockProducts = products.filter((p) => p.stock === 0);
+    const invSummary = computeInventoryValuation(products);
+    const invAnalytics = computeInventoryAnalytics(products, saleTransactions);
 
     // Stock distribution by category
     const categoryMap = {};
     products.forEach((p) => {
-      const catName = p.category?.name || 'Uncategorized';
+      const catName = p.category?.name || p.categoryName || 'Uncategorized';
       if (!categoryMap[catName]) {
         categoryMap[catName] = { name: catName, productCount: 0, stockUnits: 0, valuation: 0 };
       }
       categoryMap[catName].productCount += 1;
-      categoryMap[catName].stockUnits += p.stock;
-      categoryMap[catName].valuation += p.stock * p.cost;
+      const stock = Number(p.stock) || 0;
+      const cost = Number(p.cost) || 0;
+      categoryMap[catName].stockUnits += stock;
+      categoryMap[catName].valuation += stock * cost;
     });
 
     const stockByCategory = Object.values(categoryMap);
@@ -240,7 +350,7 @@ export const getInventoryDashboard = async (req, res) => {
       alerts.push({ type: 'Overstock', title: `Overstock Warning: ${p.name}`, message: `Current stock (${p.currentStock}) exceeds target level.`, priority: 'Low' });
     });
 
-    return sendResponse(res, 200, true, 'Inventory dashboard fetched', {
+    const payload = {
       summary: {
         totalProducts: invSummary.totalItemsCount,
         totalStockUnits: invSummary.totalStockUnits,
@@ -256,7 +366,10 @@ export const getInventoryDashboard = async (req, res) => {
       pendingReturns,
       alerts,
       aiRecommendations: invAnalytics.productAnalytics,
-    });
+    };
+
+    cache.set(cacheKey, payload, 30);
+    return sendResponse(res, 200, true, 'Inventory dashboard fetched', payload);
   } catch (err) {
     return sendResponse(res, 500, false, err.message || 'Failed to fetch inventory dashboard');
   }
@@ -265,8 +378,16 @@ export const getInventoryDashboard = async (req, res) => {
 // GET /api/dashboard/marketing
 export const getMarketingDashboard = async (req, res) => {
   try {
-    const contents = await MarketingContent.find().populate('createdBy', 'fullName email').sort({ createdAt: -1 });
-    const campaigns = await Campaign.find().populate('createdBy', 'fullName email').sort({ createdAt: -1 });
+    const cacheKey = 'dashboard:marketing';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return sendResponse(res, 200, true, 'Marketing dashboard fetched (instant cache)', cached);
+    }
+
+    const [contents, campaigns] = await Promise.all([
+      MarketingContent.find().sort({ createdAt: -1 }).lean(),
+      Campaign.find().sort({ createdAt: -1 }).lean(),
+    ]);
 
     const totalContents = contents.length;
     const submittedContents = contents.filter((c) => c.status === 'Submitted').length;
@@ -279,7 +400,6 @@ export const getMarketingDashboard = async (req, res) => {
     const activeCampaigns = campaigns.filter((c) => c.status === 'Active').length;
     const completedCampaigns = campaigns.filter((c) => c.status === 'Completed').length;
 
-    // Generated content distribution by type
     const contentTypeMap = {};
     contents.forEach((c) => {
       const type = c.contentType || 'General';
@@ -298,7 +418,7 @@ export const getMarketingDashboard = async (req, res) => {
       { name: 'Completed', count: completedCampaigns },
     ];
 
-    return sendResponse(res, 200, true, 'Marketing dashboard fetched', {
+    const payload = {
       summary: {
         totalContents,
         submittedContents,
@@ -313,7 +433,10 @@ export const getMarketingDashboard = async (req, res) => {
       campaignStatusBreakdown,
       recentContents: contents.slice(0, 10),
       recentCampaigns: campaigns.slice(0, 5),
-    });
+    };
+
+    cache.set(cacheKey, payload, 30);
+    return sendResponse(res, 200, true, 'Marketing dashboard fetched', payload);
   } catch (err) {
     return sendResponse(res, 500, false, err.message || 'Failed to fetch marketing dashboard');
   }
@@ -323,17 +446,40 @@ export const getMarketingDashboard = async (req, res) => {
 export const getCustomerDashboard = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
-    const user = await User.findById(userId).select('-password');
-    const orders = await Order.find({ customer: userId }).populate('items.product').sort({ createdAt: -1 });
-    const returns = await Return.find({ customer: userId }).populate('product', 'name price images').sort({ createdAt: -1 });
+    const cacheKey = `dashboard:customer:${userId}`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return sendResponse(res, 200, true, 'Customer dashboard fetched (instant cache)', cached);
+    }
 
+    const [user, userOrders, userReturns] = await Promise.all([
+      User.findById(userId).select('-password').lean(),
+      Order.find({ customer: userId })
+        .populate({ path: 'items.product', select: 'name sku price images categoryName brand sizes' })
+        .sort({ createdAt: -1 })
+        .lean(),
+      Return.find(req.user?.role === 'customer' ? { customer: userId } : {})
+        .populate('product', 'name price images')
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
+
+    let orders = userOrders;
+    if (orders.length === 0 && req.user?.role !== 'customer') {
+      orders = await Order.find()
+        .populate({ path: 'items.product', select: 'name sku price images categoryName brand sizes' })
+        .sort({ createdAt: -1 })
+        .lean();
+    }
+
+    const returns = userReturns;
     const totalOrders = orders.length;
     const pendingOrders = orders.filter((o) => o.status === 'Placed' || o.status === 'Confirmed' || o.status === 'Packed' || o.status === 'Shipped').length;
     const deliveredOrders = orders.filter((o) => o.status === 'Delivered').length;
     const cancelledOrders = orders.filter((o) => o.status === 'Cancelled').length;
     const totalReturns = returns.length;
 
-    return sendResponse(res, 200, true, 'Customer dashboard fetched', {
+    const payload = {
       profile: user,
       summary: {
         totalOrders,
@@ -344,7 +490,10 @@ export const getCustomerDashboard = async (req, res) => {
       },
       recentOrders: orders,
       returns,
-    });
+    };
+
+    cache.set(cacheKey, payload, 30);
+    return sendResponse(res, 200, true, 'Customer dashboard fetched', payload);
   } catch (err) {
     return sendResponse(res, 500, false, err.message || 'Failed to fetch customer dashboard');
   }

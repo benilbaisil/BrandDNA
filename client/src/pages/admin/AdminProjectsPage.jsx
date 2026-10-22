@@ -25,7 +25,7 @@ import { useToast } from '../../context/ToastContext';
 export const AdminProjectsPage = () => {
   const { addToast } = useToast();
   const [projectsList, setProjectsList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedProjects, setExpandedProjects] = useState({});
   const [selectedModalProject, setSelectedModalProject] = useState(null);
@@ -117,12 +117,7 @@ export const AdminProjectsPage = () => {
       </div>
 
       {/* Projects Cards Showcase */}
-      {loading ? (
-        <div className="p-12 text-center text-xs text-slate-400 glass-panel rounded-3xl border border-[#D6E6EC] shadow-2xs flex items-center justify-center gap-2">
-          <RefreshCw className="w-4 h-4 animate-spin text-[#0F291E]" />
-          <span>Loading project records and saved brand identity analysis...</span>
-        </div>
-      ) : filteredProjects.length === 0 ? (
+      {filteredProjects.length === 0 ? (
         <div className="p-12 text-center text-xs text-slate-400 glass-panel rounded-3xl border border-[#D6E6EC] shadow-2xs">
           No user saved brand projects found in database.
         </div>

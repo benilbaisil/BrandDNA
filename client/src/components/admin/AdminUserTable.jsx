@@ -9,21 +9,16 @@ export const AdminUserTable = ({ searchQuery = '' }) => {
   const { addToast } = useToast();
   const [localQuery, setLocalQuery] = useState('');
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const fetchUsers = async () => {
     try {
-      setLoading(true);
       const res = await adminService.getUsers();
       if (res && res.success && res.data) {
         setUsers(res.data);
       }
     } catch (err) {
-      // Fallback data if offline
-      setUsers([
-        { id: '1', name: 'Sarah Founder', email: 'sarah@company.com', role: 'startup_owner', projects: 4, date: '2026-08-01', status: 'Active' },
-        { id: '2', name: 'Alex Product', email: 'alex@startup.io', role: 'startup_owner', projects: 2, date: '2026-07-28', status: 'Active' },
-      ]);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -115,13 +110,7 @@ export const AdminUserTable = ({ searchQuery = '' }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading ? (
-              <tr>
-                <td colSpan="6" className="py-8 text-center text-slate-400 text-xs font-medium">
-                  Loading users from database...
-                </td>
-              </tr>
-            ) : filteredUsers.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <tr>
                 <td colSpan="6" className="py-8 text-center text-slate-400 text-xs font-medium">
                   No matching users found in database.

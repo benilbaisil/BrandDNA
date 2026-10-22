@@ -24,9 +24,19 @@ export default function BrandDetailsPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
 
-  const [brand, setBrand] = useState(null);
+  const [brand, setBrand] = useState({
+    brandName: '',
+    industry: '',
+    tagline: '',
+    mission: '',
+    vision: '',
+    brandStory: '',
+    logoConcept: '',
+    brandPositioning: '',
+    brandUSP: '',
+  });
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -39,7 +49,6 @@ export default function BrandDetailsPage() {
 
   const fetchBrandDetails = async () => {
     try {
-      setLoading(true);
       setError(null);
       const res = await brandService.getBrandById(id);
       if (res.success && res.data.brand) {
@@ -99,18 +108,7 @@ export default function BrandDetailsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin" />
-          <p className="text-xs font-medium text-slate-600">Loading brand details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !brand) {
+  if (error) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-6">
         <div className="max-w-md w-full glass-panel p-6 rounded-2xl border border-[#E5E0D8] text-center">

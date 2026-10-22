@@ -8,8 +8,20 @@ export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const addToast = useCallback((message, type = 'success', duration = 4000) => {
+    let finalMessage = '';
+    let finalType = type;
+    let finalTitle = '';
+
+    if (typeof message === 'object' && message !== null) {
+      finalType = message.type || type || 'info';
+      finalTitle = message.title || '';
+      finalMessage = typeof message.message === 'string' ? message.message : (message.title || JSON.stringify(message));
+    } else {
+      finalMessage = typeof message === 'string' ? message : String(message ?? '');
+    }
+
     const id = `${Date.now().toString(36)}-${Math.floor(performance.now() * 1000).toString(36)}`;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message: finalMessage, title: finalTitle, type: finalType }]);
 
     if (duration > 0) {
       setTimeout(() => {
@@ -45,7 +57,10 @@ export const ToastProvider = ({ children }) => {
                 {toast.type === 'info' && (
                   <Info className="w-5 h-5 text-blue-600 shrink-0" />
                 )}
-                <span>{toast.message}</span>
+                <div className="flex flex-col text-left">
+                  {toast.title && <span className="font-bold text-xs leading-snug">{toast.title}</span>}
+                  <span className="text-xs">{toast.message}</span>
+                </div>
               </div>
               <button
                 onClick={() => removeToast(toast.id)}

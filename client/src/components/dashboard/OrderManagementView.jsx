@@ -24,7 +24,7 @@ import { useToast } from '../../context/ToastContext';
 export const OrderManagementView = ({ allowStatusUpdates = true }) => {
   const { addToast } = useToast();
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [retryingId, setRetryingId] = useState(null);
 
@@ -40,7 +40,6 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const fetchOrders = async () => {
-    setLoading(true);
     try {
       const params = {};
       if (searchQuery) params.search = searchQuery;
@@ -217,12 +216,7 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
 
       {/* Orders & Shipments Monitoring Table */}
       <div className="glass-panel rounded-2xl border border-[#E5E0D8]/80 shadow-xs overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-slate-400 text-xs space-y-3">
-            <div className="w-8 h-8 border-3 border-[#0F382C] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="font-semibold text-slate-600">Querying live orders and shipment statuses...</p>
-          </div>
-        ) : displayedOrders.length === 0 ? (
+        {displayedOrders.length === 0 ? (
           <div className="p-12 text-center text-slate-400 text-xs space-y-3">
             <Package className="w-12 h-12 text-slate-300 mx-auto" />
             <p className="font-bold text-slate-700 text-sm">No Customer Orders Found</p>

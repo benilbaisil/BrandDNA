@@ -4,6 +4,7 @@ import { createRazorpayOrder, verifyRazorpaySignature, generateRazorpaySignature
 import { recordStockMovement } from '../services/inventoryService.js';
 import { logActivity } from '../services/activityService.js';
 import { createShipmentForOrder } from '../services/shipmentService.js';
+import { validateAddress, validateAndNormalizePhone } from '../validators/contactValidator.js';
 import { sendResponse } from '../utils/apiResponse.js';
 
 /**
@@ -20,8 +21,19 @@ export const createPaymentOrder = async (req, res) => {
       return sendResponse(res, 400, false, 'Order items are required');
     }
 
-    if (!shippingAddress || !shippingAddress.street || !shippingAddress.city) {
+    if (!shippingAddress) {
       return sendResponse(res, 400, false, 'Valid shipping address is required');
+    }
+
+    const addrRes = validateAddress(shippingAddress);
+    if (!addrRes.isValid) {
+      const firstErr = Object.values(addrRes.errors)[0];
+      return sendResponse(res, 400, false, firstErr || 'Invalid shipping address provided', addrRes.errors);
+    }
+
+    const phoneRes = validateAndNormalizePhone(shippingAddress.phone || req.user?.phone || '');
+    if (!phoneRes.isValid) {
+      return sendResponse(res, 400, false, phoneRes.error || 'Valid phone number is required');
     }
 
     let totalAmount = 0;
@@ -194,20 +206,25 @@ export const verifyPayment = async (req, res) => {
 
     const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
+    const addrRes = validateAddress(shippingAddress);
+    const phoneRes = validateAndNormalizePhone(shippingAddress?.phone || req.user?.phone || '');
+
+    const sanitizedShippingAddress = {
+      fullName: shippingAddress?.fullName?.trim() || req.user?.fullName || 'Customer',
+      street: addrRes.isValid ? addrRes.sanitized.street : (shippingAddress?.street?.trim() || 'Central Road'),
+      city: addrRes.isValid ? addrRes.sanitized.city : (shippingAddress?.city?.trim() || 'Bangalore'),
+      state: addrRes.isValid ? addrRes.sanitized.state : (shippingAddress?.state?.trim() || 'Karnataka'),
+      zipCode: addrRes.isValid ? addrRes.sanitized.zipCode : (shippingAddress?.zipCode?.trim() || '560001'),
+      phone: phoneRes.isValid ? phoneRes.normalized : (shippingAddress?.phone?.trim() || '+919876543210'),
+    };
+
     // Create paid order in database
     const order = await Order.create({
       orderNumber,
       customer: customerId,
       items: formattedItems,
       totalAmount,
-      shippingAddress: shippingAddress || {
-        fullName: req.user?.fullName || 'Customer',
-        street: 'Default Address',
-        city: 'City',
-        state: 'State',
-        zipCode: '000000',
-        phone: req.user?.phone || '0000000000',
-      },
+      shippingAddress: sanitizedShippingAddress,
       paymentMethod: 'razorpay',
       paymentStatus: 'Paid',
       status: 'Placed',

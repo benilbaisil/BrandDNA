@@ -22,7 +22,7 @@ import { exportReportToPDF } from '../../utils/pdfExport';
 export const AdminStartupsPage = () => {
   const { addToast } = useToast();
   const [startupsList, setStartupsList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStartup, setSelectedStartup] = useState(null);
   const [modalMode, setModalMode] = useState(null); // 'view_profile' | 'view_analysis' | 'delete'
@@ -110,12 +110,7 @@ export const AdminStartupsPage = () => {
 
       {/* Startups Table */}
       <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-4">
-        {loading ? (
-          <div className="py-12 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin text-[#0F291E]" />
-            <span>Loading startup profile records from database...</span>
-          </div>
-        ) : filteredStartups.length === 0 ? (
+        {filteredStartups.length === 0 ? (
           <div className="py-12 text-center text-xs text-slate-400">
             No startup profile records found in database.
           </div>

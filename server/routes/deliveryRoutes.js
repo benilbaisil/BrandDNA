@@ -26,16 +26,16 @@ const router = express.Router();
 router.get('/tracking/:orderId', protect, getDeliveryTracking);
 
 // ==========================================
-// ADMIN ONLY ROUTES
+// ADMIN & INVENTORY STAFF DELIVERY OPERATIONS
 // ==========================================
 router.post('/admin/agents', protect, authorize('admin'), createDeliveryAgent);
-router.get('/admin/agents', protect, authorize('admin'), getDeliveryAgents);
-router.get('/admin/agents/:id', protect, authorize('admin'), getDeliveryAgentById);
+router.get('/admin/agents', protect, authorize('admin', 'inventory_staff'), getDeliveryAgents);
+router.get('/admin/agents/:id', protect, authorize('admin', 'inventory_staff'), getDeliveryAgentById);
 router.put('/admin/agents/:id', protect, authorize('admin'), updateDeliveryAgent);
 router.patch('/admin/agents/:id/status', protect, authorize('admin'), toggleDeliveryAgentStatus);
 
-router.post('/admin/orders/:orderId/assign', protect, authorize('admin'), assignDeliveryAgent);
-router.post('/admin/orders/:orderId/reassign', protect, authorize('admin'), reassignDeliveryAgent);
+router.post('/admin/orders/:orderId/assign', protect, authorize('admin', 'inventory_staff'), assignDeliveryAgent);
+router.post('/admin/orders/:orderId/reassign', protect, authorize('admin', 'inventory_staff'), reassignDeliveryAgent);
 
 // ==========================================
 // DELIVERY AGENT ROUTES

@@ -26,7 +26,7 @@ export const AdPosterGeneratorSection = () => {
   const { addToast } = useToast();
 
   const [products, setProducts] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -57,7 +57,6 @@ export const AdPosterGeneratorSection = () => {
   }, []);
 
   const fetchSavedProducts = async () => {
-    setLoadingProducts(true);
     setError(null);
     try {
       const res = await marketingProductService.getProducts();
@@ -244,11 +243,7 @@ export const AdPosterGeneratorSection = () => {
         </div>
       )}
 
-      {loadingProducts ? (
-        <div className="py-12 text-center text-xs text-slate-400 animate-pulse">
-          Loading saved product strategies from database...
-        </div>
-      ) : products.length === 0 ? (
+      {products.length === 0 ? (
         /* Empty State */
         <div className="py-12 text-center border-2 border-dashed border-[#E5E0D8] rounded-3xl bg-[#FAF8F5]/50 space-y-4 max-w-lg mx-auto">
           <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">

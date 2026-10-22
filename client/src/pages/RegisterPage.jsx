@@ -21,6 +21,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { useToast } from '../context/ToastContext';
+import { validatePhoneNumber } from '../utils/validation';
 
 // Zod Schema Validation
 const registerSchema = z
@@ -35,8 +36,8 @@ const registerSchema = z
       .string()
       .optional()
       .refine(
-        (val) => !val || /^[+]?[\d\s\-().]{7,15}$/.test(val),
-        'Please enter a valid phone number'
+        (val) => !val || validatePhoneNumber(val).isValid,
+        'Please enter a valid phone number (e.g. 9876543210 or +919876543210)'
       ),
     password: z
       .string()
@@ -103,8 +104,13 @@ export const RegisterPage = () => {
     try {
       // Strip confirmPassword before sending to server
       const { confirmPassword, ...payload } = data;
-      // Remove empty phone before sending
-      if (!payload.phone) delete payload.phone;
+      // Normalize phone before sending
+      if (payload.phone && payload.phone.trim()) {
+        const phoneRes = validatePhoneNumber(payload.phone);
+        payload.phone = phoneRes.normalized || payload.phone.trim();
+      } else {
+        delete payload.phone;
+      }
 
       const success = await registerUser(payload);
       if (!success) {

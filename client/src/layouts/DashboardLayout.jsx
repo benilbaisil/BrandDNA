@@ -67,14 +67,14 @@ export const DashboardLayout = () => {
       </div>
 
       {/* Floating AI Assistant Widget Button & Chat Drawer */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
         <AnimatePresence>
           {chatWidgetOpen && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="mb-4 w-80 sm:w-96 bg-white border border-stone-200 rounded-3xl shadow-2xl overflow-hidden"
+              className="mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white border border-stone-200 rounded-3xl shadow-2xl overflow-hidden"
             >
               <div className="p-4 bg-[#08221B] text-white flex items-center justify-between border-b border-emerald-900/60">
                 <div className="flex items-center gap-2.5">

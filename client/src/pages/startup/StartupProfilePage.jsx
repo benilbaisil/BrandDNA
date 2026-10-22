@@ -144,7 +144,7 @@ const FieldLabel = ({ children, required }) => (
 export const StartupProfilePage = () => {
   const { addToast } = useToast();
   const [profileExists, setProfileExists] = useState(false);
-  const [fetching, setFetching]           = useState(true);
+  const [fetching, setFetching]           = useState(false);
   const [saving, setSaving]               = useState(false);
   const [deleting, setDeleting]           = useState(false);
 
@@ -182,7 +182,6 @@ export const StartupProfilePage = () => {
   // ── Fetch existing profile ────────────────────────────────────────────────
 
   const loadProfile = async () => {
-    setFetching(true);
     try {
       const res = await startupService.getProfile();
       if (res.success && res.data) {
@@ -275,16 +274,7 @@ export const StartupProfilePage = () => {
     }
   };
 
-  // ── Loading ────────────────────────────────────────────────────────────────
 
-  if (fetching) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-semibold text-slate-500">Loading your profile...</span>
-      </div>
-    );
-  }
 
   // ── Render ────────────────────────────────────────────────────────────────
 

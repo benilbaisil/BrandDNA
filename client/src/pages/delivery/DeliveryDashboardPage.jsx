@@ -30,6 +30,17 @@ import { deliveryService } from '../../services/deliveryService';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
+import { storageCache } from '../../utils/storageCache';
+
+const DEFAULT_AGENT_STATS = {
+  todaysDeliveries: 0,
+  pendingDeliveries: 0,
+  deliveredToday: 0,
+  totalDelivered: 0,
+  failedDeliveries: 0,
+  completionRate: 100,
+  availabilityStatus: 'Available',
+};
 
 export const DeliveryDashboardPage = () => {
   const { user, logout } = useAuth();
@@ -37,19 +48,11 @@ export const DeliveryDashboardPage = () => {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('assigned'); // 'assigned', 'history', 'profile'
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Stats & Data
-  const [stats, setStats] = useState({
-    todaysDeliveries: 0,
-    pendingDeliveries: 0,
-    deliveredToday: 0,
-    totalDelivered: 0,
-    failedDeliveries: 0,
-    completionRate: 100,
-    availabilityStatus: 'Available',
-  });
-  const [assignedOrders, setAssignedOrders] = useState([]);
+  // Stats & Data - Initialized immediately from cache for 0ms delay
+  const [stats, setStats] = useState(() => storageCache.get('agent_stats', DEFAULT_AGENT_STATS));
+  const [assignedOrders, setAssignedOrders] = useState(() => storageCache.get('agent_assigned_orders', []));
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -68,7 +71,6 @@ export const DeliveryDashboardPage = () => {
   const [submittingAction, setSubmittingAction] = useState(false);
 
   const fetchAgentData = async () => {
-    setLoading(true);
     try {
       const [statsRes, ordersRes] = await Promise.all([
         deliveryService.getAgentStats(),
@@ -77,13 +79,15 @@ export const DeliveryDashboardPage = () => {
 
       if (statsRes?.success && statsRes?.data) {
         setStats(statsRes.data);
+        storageCache.set('agent_stats', statsRes.data);
       }
 
       if (ordersRes?.success && ordersRes?.data?.orders) {
         setAssignedOrders(ordersRes.data.orders);
+        storageCache.set('agent_assigned_orders', ordersRes.data.orders);
       }
     } catch (err) {
-      addToast(err.message || 'Failed to load delivery dashboard', 'error');
+      console.warn('Silent revalidation error in delivery dashboard:', err);
     } finally {
       setLoading(false);
     }
@@ -465,11 +469,7 @@ export const DeliveryDashboardPage = () => {
         {/* TAB 1: ASSIGNED DELIVERIES */}
         {activeTab === 'assigned' && (
           <div className="space-y-4">
-            {loading ? (
-              <div className="p-12 text-center text-slate-400 font-semibold bg-white rounded-3xl border border-[#D6E6EC]">
-                Loading assigned deliveries...
-              </div>
-            ) : activeDeliveriesList.length === 0 ? (
+            {activeDeliveriesList.length === 0 ? (
               <div className="p-12 text-center bg-white rounded-3xl border border-[#D6E6EC] space-y-3">
                 <Package className="w-12 h-12 text-slate-300 mx-auto" />
                 <h3 className="font-serif text-lg font-bold text-slate-800">No Active Deliveries Assigned</h3>

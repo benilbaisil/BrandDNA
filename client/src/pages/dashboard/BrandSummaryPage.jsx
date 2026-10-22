@@ -28,7 +28,7 @@ import { useToast } from '../../context/ToastContext';
 export const BrandSummaryPage = () => {
   const [identity, setIdentity] = useState(null);
   const [productStrategy, setProductStrategy] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [copiedSection, setCopiedSection] = useState(null);
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -41,7 +41,6 @@ export const BrandSummaryPage = () => {
   }, []);
 
   const fetchData = async () => {
-    setLoading(true);
     try {
       const [brandRes, stratRes] = await Promise.all([
         brandService.getIdentity().catch(() => null),
@@ -104,14 +103,7 @@ export const BrandSummaryPage = () => {
     addToast('Full Brand & Product Strategy Summary copied to clipboard!', 'success');
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-semibold text-slate-500 font-mono">Loading Saved Brand & Product DNA...</span>
-      </div>
-    );
-  }
+
 
   const hasAnySaved = Boolean(
     identity?.brandName ||

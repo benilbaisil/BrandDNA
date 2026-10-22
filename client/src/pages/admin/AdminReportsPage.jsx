@@ -21,24 +21,25 @@ import { businessService } from '../../services/businessService';
 import { adminService } from '../../services/adminService';
 import { useToast } from '../../context/ToastContext';
 import { exportBusinessReportToPDF, exportBusinessDataToCSV } from '../../utils/pdfExport';
+import { storageCache } from '../../utils/storageCache';
+import { INITIAL_PRODUCTS } from '../../constants/initialProducts';
 
 export const AdminReportsPage = () => {
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // Selected Report Category Tab: 'sales' | 'inventory' | 'shipment' | 'users' | 'marketing' | 'master'
   const [activeReportTab, setActiveReportTab] = useState('sales');
   const [dateRange, setDateRange] = useState('ALL'); // 'ALL' | 'TODAY' | '7DAYS' | '30DAYS'
 
-  // Data loaded from MongoDB
-  const [orders, setOrders] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [users, setUsers] = useState([]);
+  // Data loaded from MongoDB - Initialized immediately for 0ms delay
+  const [orders, setOrders] = useState(() => storageCache.get('all_orders', []));
+  const [products, setProducts] = useState(() => storageCache.get('all_products', INITIAL_PRODUCTS));
+  const [users, setUsers] = useState(() => storageCache.get('admin_users_list', []));
   const [marketingList, setMarketingList] = useState([]);
 
   const fetchAllReportData = async () => {
-    setLoading(true);
     try {
       const [ordersRes, prodsRes, usersRes] = await Promise.all([
         businessService.getOrders(),
@@ -46,13 +47,24 @@ export const AdminReportsPage = () => {
         adminService.getUsers().catch(() => ({ data: [] }))
       ]);
 
-      if (ordersRes?.success) setOrders(ordersRes.data?.orders || []);
-      if (prodsRes?.success) setProducts(prodsRes.data?.products || []);
-      if (usersRes?.data) setUsers(usersRes.data || []);
+      if (ordersRes?.success) {
+        const oList = ordersRes.data?.orders || [];
+        setOrders(oList);
+        storageCache.set('all_orders', oList);
+      }
+      if (prodsRes?.success) {
+        const pList = prodsRes.data?.products || [];
+        setProducts(pList);
+        storageCache.set('all_products', pList);
+      }
+      if (usersRes?.data) {
+        const uList = usersRes.data || [];
+        setUsers(uList);
+        storageCache.set('admin_users_list', uList);
+      }
     } catch (err) {
       console.error('Error fetching admin report data:', err);
-      addToast('Failed to load live database telemetry for reports', 'error');
-    } fontally: {
+    } finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -521,13 +533,7 @@ export const AdminReportsPage = () => {
           </button>
         </div>
 
-        {loading ? (
-          <div className="p-12 text-center text-xs text-slate-400 space-y-2">
-            <RefreshCw className="w-6 h-6 animate-spin text-emerald-600 mx-auto" />
-            <p>Querying report data from MongoDB...</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
+        <div className="overflow-x-auto">
             {activeReportTab === 'sales' && (
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
@@ -652,7 +658,6 @@ export const AdminReportsPage = () => {
               </table>
             )}
           </div>
-        )}
       </div>
 
     </div>

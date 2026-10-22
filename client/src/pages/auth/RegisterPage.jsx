@@ -8,7 +8,7 @@ import * as z from 'zod';
 import { Eye, EyeOff, User, Mail, Lock, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useAuth, getRoleRedirectPath } from '../../context/AuthContext';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
-import { isValidPhoneNumber } from 'libphonenumber-js';
+import { validatePhoneNumber } from '../../utils/validation';
 
 const registerSchema = z
   .object({
@@ -22,13 +22,10 @@ const registerSchema = z
       .min(1, 'Phone number is required')
       .refine(
         (val) => {
-          try {
-            return isValidPhoneNumber(val);
-          } catch (e) {
-            return false;
-          }
+          const res = validatePhoneNumber(val);
+          return res.isValid;
         },
-        'Please enter a valid phone number including country code'
+        'Please enter a valid phone number (e.g. 9876543210 or +919876543210)'
       ),
     role: z.string().optional().default('customer'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -63,9 +60,14 @@ export const RegisterPage = () => {
   });
 
   const onSubmit = async (data) => {
-    const success = await registerUser(data);
+    const phoneRes = validatePhoneNumber(data.phone);
+    const payload = {
+      ...data,
+      phone: phoneRes.normalized || data.phone,
+    };
+    const success = await registerUser(payload);
     if (success) {
-      const savedUser = localStorage.getItem('branddna_user');
+      const savedUser = sessionStorage.getItem('branddna_user') || localStorage.getItem('branddna_user');
       const parsedUser = (savedUser && savedUser !== 'undefined') ? JSON.parse(savedUser) : null;
       const target = getRoleRedirectPath(parsedUser?.role);
       navigate(target, { replace: true });

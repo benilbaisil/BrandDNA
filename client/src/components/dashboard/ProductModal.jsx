@@ -172,7 +172,7 @@ export const ProductModal = ({ isOpen, onClose, editingProduct = null, onSuccess
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0F291E]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-[#E5E0D8] max-w-xl w-full shadow-2xl space-y-5 text-left my-8">
+      <div className="glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-[#E5E0D8] max-w-xl w-full shadow-2xl space-y-5 text-left my-8">
         <div className="flex items-center justify-between border-b border-stone-100 pb-3">
           <h3 className="font-serif text-xl font-bold text-[#0F291E]">
             {editingProduct ? 'Edit Product Details' : 'Add New Product to Shop'}
@@ -400,7 +400,7 @@ export const ProductModal = ({ isOpen, onClose, editingProduct = null, onSuccess
                 <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
               </label>
             </div>
-            <div className="flex gap-3 items-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
               <div className="w-20 h-20 rounded-xl glass-panel border border-stone-300 overflow-hidden shrink-0 flex items-center justify-center relative shadow-2xs">
                 {productForm.image ? (
                   <img

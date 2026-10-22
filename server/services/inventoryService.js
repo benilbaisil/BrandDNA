@@ -1,5 +1,7 @@
 import { Product } from '../models/Product.js';
 import { InventoryTransaction } from '../models/InventoryTransaction.js';
+import { User } from '../models/User.js';
+import { Category } from '../models/Category.js';
 
 /**
  * Perform Stock Movement Transaction and recalculate stock
@@ -12,6 +14,7 @@ export const recordStockMovement = async ({
   referenceId = null,
   userId = null,
   notes = '',
+  adjustStock = true, // When false (e.g. returned damaged items), record damage audit ledger without changing available stock
 }) => {
   const product = await Product.findById(productId);
   if (!product) {
@@ -23,24 +26,26 @@ export const recordStockMovement = async ({
 
   const qty = Number(quantity);
 
-  switch (transactionType) {
-    case 'Purchase':
-    case 'Return': // Restocked return
-      newStock = previousStock + qty;
-      break;
-    case 'Sale':
-    case 'Damage':
-      newStock = Math.max(0, previousStock - qty);
-      break;
-    case 'Adjustment':
-      newStock = Math.max(0, previousStock + qty); // positive or negative adjustment
-      break;
-    default:
-      throw new Error(`Invalid inventory transaction type: ${transactionType}`);
-  }
+  if (adjustStock) {
+    switch (transactionType) {
+      case 'Purchase':
+      case 'Return': // Restocked return increases available sellable stock
+        newStock = previousStock + qty;
+        break;
+      case 'Sale':
+      case 'Damage': // Warehouse damaged stock deduction
+        newStock = Math.max(0, previousStock - qty);
+        break;
+      case 'Adjustment':
+        newStock = Math.max(0, previousStock + qty); // positive or negative adjustment
+        break;
+      default:
+        throw new Error(`Invalid inventory transaction type: ${transactionType}`);
+    }
 
-  product.stock = newStock;
-  await product.save();
+    product.stock = newStock;
+    await product.save();
+  }
 
   const transaction = await InventoryTransaction.create({
     product: productId,
@@ -69,14 +74,15 @@ export const getInventoryLedger = async (filters = {}, limit = 200) => {
     })
     .populate('user', 'fullName email role')
     .sort({ createdAt: -1 })
-    .limit(limit);
+    .limit(limit)
+    .lean();
 };
 
 /**
  * Calculate total inventory valuation and summary statistics
  */
 export const getInventoryValuationSummary = async () => {
-  const products = await Product.find({ status: { $ne: 'Discontinued' } });
+  const products = await Product.find({ status: { $ne: 'Discontinued' } }).select('stock cost price reorderLevel').lean();
 
   let totalItemsCount = 0;
   let totalStockUnits = 0;

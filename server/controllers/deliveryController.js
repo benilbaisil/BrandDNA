@@ -3,6 +3,8 @@ import { Order } from '../models/Order.js';
 import { DeliveryTracking } from '../models/DeliveryTracking.js';
 import { sendResponse } from '../utils/apiResponse.js';
 import { logActivity } from '../services/activityService.js';
+import { validateAndNormalizePhone, validateAddress } from '../validators/contactValidator.js';
+import { cache } from '../utils/cache.js';
 
 // Helper to record a delivery tracking timeline event
 const recordDeliveryEvent = async ({
@@ -60,23 +62,48 @@ const recordDeliveryEvent = async ({
 // POST /api/admin/delivery-agents
 export const createDeliveryAgent = async (req, res) => {
   try {
-    const { fullName, email, phone, password, vehicleNumber, vehicleType, status } = req.body;
+    const { fullName, email, phone, address, password, vehicleNumber, vehicleType, status } = req.body;
 
     if (!fullName || !email || !password) {
       return sendResponse(res, 400, false, 'Name, email, and password are required');
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (fullName.trim().length < 2) {
+      return sendResponse(res, 400, false, 'Full name must be at least 2 characters');
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return sendResponse(res, 400, false, 'User with this email already exists');
     }
 
+    let normalizedPhone = '';
+    if (phone && phone.trim()) {
+      const phoneRes = validateAndNormalizePhone(phone);
+      if (!phoneRes.isValid) {
+        return sendResponse(res, 400, false, phoneRes.error);
+      }
+      normalizedPhone = phoneRes.normalized;
+    }
+
+    let sanitizedAddress = { street: '', city: '', state: '', zipCode: '', country: 'India' };
+    if (address) {
+      const addrRes = validateAddress(address);
+      if (!addrRes.isValid) {
+        const firstErr = Object.values(addrRes.errors)[0];
+        return sendResponse(res, 400, false, firstErr || 'Invalid address provided', addrRes.errors);
+      }
+      sanitizedAddress = addrRes.sanitized;
+    }
+
     const agent = await User.create({
-      fullName,
-      email: email.toLowerCase(),
-      phone: phone || '',
+      fullName: fullName.trim(),
+      email: cleanEmail,
+      phone: normalizedPhone,
+      address: sanitizedAddress,
       password,
-      vehicleNumber: vehicleNumber || '',
+      vehicleNumber: (vehicleNumber || '').trim(),
       vehicleType: vehicleType || 'Bike',
       role: 'delivery_agent',
       status: status || 'Active',
@@ -96,6 +123,7 @@ export const createDeliveryAgent = async (req, res) => {
       fullName: agent.fullName,
       email: agent.email,
       phone: agent.phone,
+      address: agent.address,
       vehicleNumber: agent.vehicleNumber,
       vehicleType: agent.vehicleType,
       role: agent.role,
@@ -112,22 +140,36 @@ export const createDeliveryAgent = async (req, res) => {
 // GET /api/admin/delivery-agents
 export const getDeliveryAgents = async (req, res) => {
   try {
-    const agents = await User.find({
-      role: { $in: ['delivery_agent', 'DELIVERY_AGENT'] },
-    }).sort({ createdAt: -1 });
+    const cacheKey = 'delivery:agents';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return sendResponse(res, 200, true, 'Delivery agents retrieved successfully (instant cache)', cached);
+    }
 
-    // Fetch active assignments count for each agent
+    const rawAgents = await User.find({
+      role: { $in: ['delivery_agent', 'DELIVERY_AGENT'] },
+      status: { $ne: 'Deleted' },
+    }).sort({ createdAt: -1 }).lean();
+
+    // Strictly enforce ONLY Tom and Rahul as active delivery agents
+    const agents = rawAgents.filter((a) => {
+      const name = (a.fullName || '').toLowerCase();
+      return name.includes('tom') || name.includes('rahul');
+    });
+
+    // Fetch active assignments count for each agent in parallel
     const agentsWithStats = await Promise.all(
       agents.map(async (agent) => {
-        const activeCount = await Order.countDocuments({
-          deliveryAgent: agent._id,
-          status: { $in: ['Assigned to Agent', 'ACCEPTED', 'Picked Up', 'Out for Delivery', 'ASSIGNED_TO_AGENT', 'PICKED_UP', 'OUT_FOR_DELIVERY'] },
-        });
-
-        const completedCount = await Order.countDocuments({
-          deliveryAgent: agent._id,
-          status: { $in: ['Delivered', 'DELIVERED'] },
-        });
+        const [activeCount, completedCount] = await Promise.all([
+          Order.countDocuments({
+            deliveryAgent: agent._id,
+            status: { $in: ['Assigned to Agent', 'ACCEPTED', 'Picked Up', 'Out for Delivery', 'ASSIGNED_TO_AGENT', 'PICKED_UP', 'OUT_FOR_DELIVERY'] },
+          }),
+          Order.countDocuments({
+            deliveryAgent: agent._id,
+            status: { $in: ['Delivered', 'DELIVERED'] },
+          }),
+        ]);
 
         return {
           _id: agent._id,
@@ -145,7 +187,9 @@ export const getDeliveryAgents = async (req, res) => {
       })
     );
 
-    return sendResponse(res, 200, true, 'Delivery agents retrieved successfully', { agents: agentsWithStats });
+    const payload = { agents: agentsWithStats };
+    cache.set(cacheKey, payload, 30);
+    return sendResponse(res, 200, true, 'Delivery agents retrieved successfully', payload);
   } catch (err) {
     return sendResponse(res, 500, false, err.message || 'Failed to fetch delivery agents');
   }
@@ -191,21 +235,59 @@ export const getDeliveryAgentById = async (req, res) => {
 // PUT /api/admin/delivery-agents/:id
 export const updateDeliveryAgent = async (req, res) => {
   try {
-    const { fullName, email, phone, password, vehicleNumber, vehicleType, status } = req.body;
+    const { fullName, email, phone, address, password, vehicleNumber, vehicleType, status } = req.body;
     const agent = await User.findById(req.params.id);
 
     if (!agent || (agent.role !== 'delivery_agent' && agent.role !== 'DELIVERY_AGENT')) {
       return sendResponse(res, 404, false, 'Delivery agent not found');
     }
 
-    if (fullName) agent.fullName = fullName;
-    if (email) agent.email = email.toLowerCase();
-    if (phone !== undefined) agent.phone = phone;
-    if (vehicleNumber !== undefined) agent.vehicleNumber = vehicleNumber;
+    if (fullName) {
+      if (fullName.trim().length < 2) {
+        return sendResponse(res, 400, false, 'Full name must be at least 2 characters');
+      }
+      agent.fullName = fullName.trim();
+    }
+
+    if (email) {
+      const cleanEmail = email.toLowerCase().trim();
+      if (cleanEmail !== agent.email) {
+        const existing = await User.findOne({ email: cleanEmail, _id: { $ne: agent._id } });
+        if (existing) {
+          return sendResponse(res, 400, false, 'User with this email already exists');
+        }
+        agent.email = cleanEmail;
+      }
+    }
+
+    if (phone !== undefined) {
+      if (phone && phone.trim()) {
+        const phoneRes = validateAndNormalizePhone(phone);
+        if (!phoneRes.isValid) {
+          return sendResponse(res, 400, false, phoneRes.error);
+        }
+        agent.phone = phoneRes.normalized;
+      } else {
+        agent.phone = '';
+      }
+    }
+
+    if (address !== undefined) {
+      if (address && (address.street || address.city || address.zipCode)) {
+        const addrRes = validateAddress(address);
+        if (!addrRes.isValid) {
+          const firstErr = Object.values(addrRes.errors)[0];
+          return sendResponse(res, 400, false, firstErr || 'Invalid address provided', addrRes.errors);
+        }
+        agent.address = addrRes.sanitized;
+      }
+    }
+
+    if (vehicleNumber !== undefined) agent.vehicleNumber = (vehicleNumber || '').trim();
     if (vehicleType !== undefined) agent.vehicleType = vehicleType;
     if (status) agent.status = status;
-    if (password && password.trim() !== '') {
-      agent.password = password;
+    if (password && password.trim().length >= 6) {
+      agent.password = password.trim();
     }
 
     await agent.save();
@@ -217,6 +299,7 @@ export const updateDeliveryAgent = async (req, res) => {
         fullName: agent.fullName,
         email: agent.email,
         phone: agent.phone,
+        address: agent.address,
         vehicleNumber: agent.vehicleNumber,
         vehicleType: agent.vehicleType,
         status: agent.status,
@@ -255,7 +338,7 @@ export const toggleDeliveryAgentStatus = async (req, res) => {
 export const assignDeliveryAgent = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { deliveryAgentId } = req.body;
+    const deliveryAgentId = req.body.deliveryAgentId || req.body.agentId;
 
     if (!deliveryAgentId) {
       return sendResponse(res, 400, false, 'Delivery Agent ID is required');
@@ -317,7 +400,7 @@ export const assignDeliveryAgent = async (req, res) => {
 export const reassignDeliveryAgent = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { deliveryAgentId } = req.body;
+    const deliveryAgentId = req.body.deliveryAgentId || req.body.agentId;
 
     const order = await Order.findById(orderId);
     if (!order) {
@@ -386,6 +469,12 @@ export const getAssignedOrders = async (req, res) => {
     const agentId = req.user?._id || req.user?.id;
     const { status } = req.query;
 
+    const cacheKey = `delivery:assigned:${agentId}:${status || ''}`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return sendResponse(res, 200, true, 'Assigned deliveries retrieved (instant cache)', cached);
+    }
+
     const filter = { deliveryAgent: agentId };
 
     if (status && status !== 'ALL') {
@@ -395,9 +484,12 @@ export const getAssignedOrders = async (req, res) => {
     const orders = await Order.find(filter)
       .populate('customer', 'fullName email phone')
       .populate('items.product')
-      .sort({ updatedAt: -1 });
+      .sort({ updatedAt: -1 })
+      .lean();
 
-    return sendResponse(res, 200, true, 'Assigned deliveries retrieved', { orders });
+    const payload = { orders };
+    cache.set(cacheKey, payload, 30);
+    return sendResponse(res, 200, true, 'Assigned deliveries retrieved', payload);
   } catch (err) {
     return sendResponse(res, 500, false, err.message || 'Failed to fetch assigned deliveries');
   }
@@ -671,7 +763,11 @@ export const toggleAgentAvailability = async (req, res) => {
 export const getAgentDashboardStats = async (req, res) => {
   try {
     const agentId = req.user?._id || req.user?.id;
-    const agentUser = await User.findById(agentId);
+    const cacheKey = `delivery:stats:${agentId}`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return sendResponse(res, 200, true, 'Agent dashboard stats retrieved (instant cache)', cached);
+    }
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -679,51 +775,52 @@ export const getAgentDashboardStats = async (req, res) => {
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
 
-    // Today's Deliveries: assigned to agent today or pending active today
-    const todaysDeliveries = await Order.countDocuments({
-      deliveryAgent: agentId,
-      updatedAt: { $gte: startOfDay, $lte: endOfDay },
-    });
-
-    // Pending Deliveries: currently assigned, accepted, picked up, or out for delivery
-    const pendingDeliveries = await Order.countDocuments({
-      deliveryAgent: agentId,
-      status: {
-        $in: [
-          'Assigned to Agent',
-          'ACCEPTED',
-          'Picked Up',
-          'Out for Delivery',
-          'ASSIGNED_TO_AGENT',
-          'PICKED_UP',
-          'OUT_FOR_DELIVERY',
-        ],
-      },
-    });
-
-    // Delivered Today
-    const deliveredToday = await Order.countDocuments({
-      deliveryAgent: agentId,
-      status: { $in: ['Delivered', 'DELIVERED'] },
-      deliveredAt: { $gte: startOfDay, $lte: endOfDay },
-    });
-
-    // Total All-Time Delivered
-    const totalDelivered = await Order.countDocuments({
-      deliveryAgent: agentId,
-      status: { $in: ['Delivered', 'DELIVERED'] },
-    });
-
-    // Failed Deliveries
-    const failedDeliveries = await Order.countDocuments({
-      deliveryAgent: agentId,
-      status: { $in: ['Delivery Failed', 'DELIVERY_FAILED'] },
-    });
+    const [
+      agentUser,
+      todaysDeliveries,
+      pendingDeliveries,
+      deliveredToday,
+      totalDelivered,
+      failedDeliveries
+    ] = await Promise.all([
+      User.findById(agentId).select('availabilityStatus').lean(),
+      Order.countDocuments({
+        deliveryAgent: agentId,
+        updatedAt: { $gte: startOfDay, $lte: endOfDay },
+      }),
+      Order.countDocuments({
+        deliveryAgent: agentId,
+        status: {
+          $in: [
+            'Assigned to Agent',
+            'ACCEPTED',
+            'Picked Up',
+            'Out for Delivery',
+            'ASSIGNED_TO_AGENT',
+            'PICKED_UP',
+            'OUT_FOR_DELIVERY',
+          ],
+        },
+      }),
+      Order.countDocuments({
+        deliveryAgent: agentId,
+        status: { $in: ['Delivered', 'DELIVERED'] },
+        deliveredAt: { $gte: startOfDay, $lte: endOfDay },
+      }),
+      Order.countDocuments({
+        deliveryAgent: agentId,
+        status: { $in: ['Delivered', 'DELIVERED'] },
+      }),
+      Order.countDocuments({
+        deliveryAgent: agentId,
+        status: { $in: ['Delivery Failed', 'DELIVERY_FAILED'] },
+      })
+    ]);
 
     const totalProcessed = totalDelivered + failedDeliveries;
     const completionRate = totalProcessed > 0 ? Math.round((totalDelivered / totalProcessed) * 100) : 100;
 
-    return sendResponse(res, 200, true, 'Agent dashboard stats retrieved', {
+    const payload = {
       todaysDeliveries,
       pendingDeliveries,
       deliveredToday,
@@ -731,7 +828,10 @@ export const getAgentDashboardStats = async (req, res) => {
       failedDeliveries,
       completionRate,
       availabilityStatus: agentUser?.availabilityStatus || 'Available',
-    });
+    };
+
+    cache.set(cacheKey, payload, 30);
+    return sendResponse(res, 200, true, 'Agent dashboard stats retrieved', payload);
   } catch (err) {
     return sendResponse(res, 500, false, err.message || 'Failed to fetch dashboard stats');
   }

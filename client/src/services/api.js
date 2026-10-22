@@ -13,8 +13,11 @@ const api = axios.create({
 // Request Interceptor: Attach JWT Bearer Token if available
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('branddna_token');
+    const token = localStorage.getItem('branddna_token') || sessionStorage.getItem('branddna_token');
     if (token) {
+      if (config.headers?.set) {
+        config.headers.set('Authorization', `Bearer ${token}`);
+      }
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -27,6 +30,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
+      sessionStorage.clear();
       localStorage.removeItem('branddna_token');
       localStorage.removeItem('branddna_user');
       if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/register')) {

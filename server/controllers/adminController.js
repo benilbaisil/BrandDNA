@@ -2,6 +2,7 @@ import {
   getAdminStatsService,
   getAdminUsersService,
   createAdminUserService,
+  updateAdminUserService,
   toggleUserStatusService,
   deleteUserService,
   getAdminStartupsService,
@@ -18,10 +19,16 @@ import {
   updateAdminSettingsService,
 } from '../services/adminService.js';
 import { sendResponse } from '../utils/apiResponse.js';
+import { cache } from '../utils/cache.js';
 
 export const getStats = async (req, res) => {
   try {
+    const cached = cache.get('admin:stats');
+    if (cached) {
+      return sendResponse(res, 200, true, 'Admin stats retrieved (instant cache)', cached);
+    }
     const stats = await getAdminStatsService();
+    cache.set('admin:stats', stats, 30);
     return sendResponse(res, 200, true, 'Admin stats retrieved', stats);
   } catch (err) {
     return sendResponse(res, 500, false, err.message);
@@ -30,7 +37,12 @@ export const getStats = async (req, res) => {
 
 export const getUsers = async (req, res) => {
   try {
+    const cached = cache.get('admin:users');
+    if (cached) {
+      return sendResponse(res, 200, true, 'Users retrieved (instant cache)', cached);
+    }
     const users = await getAdminUsersService();
+    cache.set('admin:users', users, 30);
     return sendResponse(res, 200, true, 'Users retrieved', users);
   } catch (err) {
     return sendResponse(res, 500, false, err.message);
@@ -40,7 +52,22 @@ export const getUsers = async (req, res) => {
 export const createUser = async (req, res) => {
   try {
     const user = await createAdminUserService(req.body);
-    return sendResponse(res, 201, true, 'User created', user);
+    cache.del('admin:users');
+    cache.del('admin:stats');
+    cache.invalidatePrefix('delivery:agents');
+    return sendResponse(res, 201, true, 'Staff account created successfully', user);
+  } catch (err) {
+    return sendResponse(res, 400, false, err.message);
+  }
+};
+
+export const updateUser = async (req, res) => {
+  try {
+    const user = await updateAdminUserService(req.params.id, req.body);
+    cache.del('admin:users');
+    cache.del('admin:stats');
+    cache.invalidatePrefix('delivery:agents');
+    return sendResponse(res, 200, true, 'User account updated successfully', user);
   } catch (err) {
     return sendResponse(res, 400, false, err.message);
   }
@@ -49,6 +76,9 @@ export const createUser = async (req, res) => {
 export const toggleUserStatus = async (req, res) => {
   try {
     const user = await toggleUserStatusService(req.params.id);
+    cache.del('admin:users');
+    cache.del('admin:stats');
+    cache.invalidatePrefix('delivery:agents');
     return sendResponse(res, 200, true, 'User status updated', user);
   } catch (err) {
     return sendResponse(res, 400, false, err.message);
@@ -58,6 +88,9 @@ export const toggleUserStatus = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const result = await deleteUserService(req.params.id);
+    cache.del('admin:users');
+    cache.del('admin:stats');
+    cache.invalidatePrefix('delivery:agents');
     return sendResponse(res, 200, true, 'User deleted', result);
   } catch (err) {
     return sendResponse(res, 400, false, err.message);

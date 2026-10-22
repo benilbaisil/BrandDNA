@@ -125,7 +125,7 @@ const FieldLabel = ({ children, required }) => (
 export const DashboardPage = () => {
   const { addToast } = useToast();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving]   = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
 
@@ -240,16 +240,7 @@ export const DashboardPage = () => {
     }
   };
 
-  // ── Loading ─────────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-semibold text-slate-500">Loading your business profile...</span>
-      </div>
-    );
-  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
 

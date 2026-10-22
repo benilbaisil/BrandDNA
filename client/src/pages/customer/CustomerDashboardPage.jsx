@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag,
@@ -44,15 +44,25 @@ import {
   Activity,
   Droplets,
   Layers,
-  KeyRound
+  KeyRound,
+  Menu
 } from 'lucide-react';
 import { businessService } from '../../services/businessService';
 import { deliveryService } from '../../services/deliveryService';
 import { paymentService } from '../../services/paymentService';
 import { useToast } from '../../context/ToastContext';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, getRoleRedirectPath } from '../../context/AuthContext';
 import { Footer } from '../../components/layout/Footer';
 import { getDefaultSizesForCategory } from '../../constants/sizes';
+import {
+  validatePhoneNumber,
+  validateStreet,
+  validateCity,
+  validateState,
+  validatePinCode,
+} from '../../utils/validation';
+import { storageCache } from '../../utils/storageCache';
+import { INITIAL_PRODUCTS } from '../../constants/initialProducts';
 
 // Official 6 Store Categories with AI Images and Exactly 3 Sub-products
 const STORE_OFFICIAL_CATEGORIES = [
@@ -118,18 +128,21 @@ export const CustomerDashboardPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [loading, setLoading] = useState(true);
+  // Storefront loading state - Initialized immediately from cache/fallback for 0ms delay
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('catalogue'); // 'catalogue' | 'cart' | 'orders'
 
-  const [dashboardData, setDashboardData] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [dashboardData, setDashboardData] = useState(() => storageCache.get('cust_dashboard', null));
+  const [products, setProducts] = useState(() => storageCache.get('all_products', INITIAL_PRODUCTS));
+  const [categories, setCategories] = useState(() => storageCache.get('all_categories', STORE_OFFICIAL_CATEGORIES));
   const [cart, setCart] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Search, Filter & Sort for Catalogue
   const [catalogueSearch, setCatalogueSearch] = useState('');
+  const [specialFilterMode, setSpecialFilterMode] = useState(''); // '' | 'special' | 'bestseller'
   const [selectedCatFilter, setSelectedCatFilter] = useState('ALL');
   const [selectedSubFilter, setSelectedSubFilter] = useState('');
   const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'price_low' | 'price_high'
@@ -142,21 +155,74 @@ export const CustomerDashboardPage = () => {
   const [confirmedOrderModal, setConfirmedOrderModal] = useState(null);
   const [razorpayTestModalData, setRazorpayTestModalData] = useState(null);
 
-  // Checkout shipping address
+  // Checkout shipping address (live customer address input)
   const [address, setAddress] = useState({
     fullName: user?.fullName || '',
-    street: user ? '12 Marine Drive, Suite 402' : '',
-    city: user ? 'Kochi' : '',
-    state: user ? 'Kerala' : '',
-    zipCode: user ? '682011' : '',
-    phone: user ? '+91 98765 43210' : '',
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: 'India',
+    phone: user?.phone || '',
   });
+
+  const [addressErrors, setAddressErrors] = useState({});
+  const [addressTouched, setAddressTouched] = useState({});
+
+  const validateAddressField = (field, value, currentAddr = address) => {
+    let error = null;
+    if (field === 'fullName') {
+      if (!value || !value.trim()) error = 'Full name is required';
+      else if (value.trim().length < 2) error = 'Full name must be at least 2 characters';
+    } else if (field === 'street') {
+      error = validateStreet(value);
+    } else if (field === 'city') {
+      error = validateCity(value);
+    } else if (field === 'state') {
+      error = validateState(value);
+    } else if (field === 'zipCode') {
+      error = validatePinCode(value, currentAddr.country || 'India');
+    } else if (field === 'phone') {
+      if (!value || !value.trim()) {
+        error = 'Phone number is required';
+      } else {
+        const pRes = validatePhoneNumber(value);
+        if (!pRes.isValid) error = pRes.error;
+      }
+    }
+
+    setAddressErrors((prev) => {
+      const updated = { ...prev };
+      if (error) updated[field] = error;
+      else delete updated[field];
+      return updated;
+    });
+    return error;
+  };
+
+  const handleAddressChange = (field, value) => {
+    const updated = { ...address, [field]: value };
+    setAddress(updated);
+    if (addressTouched[field]) {
+      validateAddressField(field, value, updated);
+    }
+  };
+
+  const handleAddressBlur = (field) => {
+    setAddressTouched((prev) => ({ ...prev, [field]: true }));
+    validateAddressField(field, address[field], address);
+  };
 
   // Modal States
   const [selectedProductDetails, setSelectedProductDetails] = useState(null);
   const [quickViewSelectedSize, setQuickViewSelectedSize] = useState('');
-  const [selectedOrderForReturn, setSelectedOrderForReturn] = useState(null);
-  const [returnReason, setReturnReason] = useState('Product damaged during transit');
+  const [customerReturns, setCustomerReturns] = useState([]);
+  const [selectedProductForReturn, setSelectedProductForReturn] = useState(null);
+  const [returnQuantity, setReturnQuantity] = useState(1);
+  const [returnReason, setReturnReason] = useState('Wrong product');
+  const [returnDescription, setReturnDescription] = useState('');
+  const [returnEvidenceImage, setReturnEvidenceImage] = useState('');
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
   const [selectedTrackingOrder, setSelectedTrackingOrder] = useState(null);
   const [trackingHistory, setTrackingHistory] = useState([]);
   const [customerOtp, setCustomerOtp] = useState(null);
@@ -166,39 +232,97 @@ export const CustomerDashboardPage = () => {
   const profile = dashboardData?.profile || {};
   const recentOrders = dashboardData?.recentOrders || [];
 
-  // Fetch dynamic customer storefront data exclusively from backend API
-  const fetchCustomerData = async () => {
-    setLoading(true);
-    try {
-      if (isAuthenticated) {
-        try {
-          const res = await businessService.getCustomerDashboard();
-          if (res && res.success && res.data) {
-            setDashboardData(res.data);
-          }
-          const wishRes = await businessService.getWishlist();
-          if (wishRes?.success && wishRes?.data?.wishlist) {
-            setWishlist(wishRes.data.wishlist.map(p => p._id));
-          }
-        } catch (err) {
-          console.warn('Skipping authenticated customer telemetry for guest.');
+  // Fetch dynamic customer storefront data independently in the background (non-blocking SWR)
+  const fetchCustomerData = () => {
+    const storedToken = localStorage.getItem('branddna_token') || sessionStorage.getItem('branddna_token');
+    const isAuth = isAuthenticated || !!storedToken;
+
+    // 1. Live products background refresh
+    businessService.getProducts()
+      .then((prodRes) => {
+        const fetchedProducts = prodRes?.data?.products || prodRes?.products;
+        if (Array.isArray(fetchedProducts) && fetchedProducts.length > 0) {
+          setProducts(fetchedProducts);
+          storageCache.set('all_products', fetchedProducts);
         }
-      }
+      })
+      .catch(() => {});
 
-      const prodRes = await businessService.getProducts();
-      if (prodRes?.data?.products) {
-        setProducts(prodRes.data.products);
-      }
+    // 2. Categories background refresh
+    businessService.getCategories()
+      .then((catRes) => {
+        if (catRes?.data?.categories && catRes.data.categories.length > 0) {
+          setCategories(catRes.data.categories);
+          storageCache.set('all_categories', catRes.data.categories);
+        }
+      })
+      .catch(() => {});
 
-      const catRes = await businessService.getCategories();
-      if (catRes?.data?.categories) {
-        setCategories(catRes.data.categories);
-      }
+    // 3. User Telemetry background refresh (dashboard, wishlist, returns)
+    if (isAuth) {
+      businessService.getCustomerDashboard()
+        .then((dashRes) => {
+          if (dashRes?.success && dashRes?.data) {
+            setDashboardData(dashRes.data);
+            storageCache.set('cust_dashboard', dashRes.data);
+          }
+        })
+        .catch(() => {});
 
+      businessService.getWishlist()
+        .then((wishRes) => {
+          if (wishRes?.success && wishRes?.data?.wishlist) {
+            setWishlist(wishRes.data.wishlist.map((p) => p._id));
+          }
+        })
+        .catch(() => {});
+
+      businessService.getReturns()
+        .then((retRes) => {
+          if (retRes?.data?.returns) {
+            setCustomerReturns(retRes.data.returns);
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
+  // Submit product return request
+  const handleCreateReturn = async (e) => {
+    e.preventDefault();
+    if (!selectedProductForReturn) return;
+    setIsSubmittingReturn(true);
+    try {
+      const payload = {
+        orderId: selectedProductForReturn.order._id,
+        productId: selectedProductForReturn.item.product?._id || selectedProductForReturn.item.product,
+        quantity: Number(returnQuantity),
+        reason: returnReason,
+        description: returnDescription.trim(),
+        evidenceImage: returnEvidenceImage.trim(),
+      };
+      const res = await businessService.createReturn(payload);
+      if (res?.success) {
+        addToast(
+          `Return ${res.data?.returnDoc?.returnNumber || ''} created successfully under 7-day policy.`,
+          'success'
+        );
+        setSelectedProductForReturn(null);
+        setReturnQuantity(1);
+        setReturnReason('Wrong product');
+        setReturnDescription('');
+        setReturnEvidenceImage('');
+        fetchCustomerData();
+      } else {
+        addToast(res?.message || 'Could not submit return request', 'error');
+      }
     } catch (err) {
-      console.error('Error loading BrandDNA customer data:', err);
+      addToast(
+        err?.response?.data?.message || err.message || 'Failed to submit return request',
+        'error'
+      );
     } finally {
-      setLoading(false);
+      setIsSubmittingReturn(false);
     }
   };
 
@@ -229,10 +353,25 @@ export const CustomerDashboardPage = () => {
     if (cat) {
       setSelectedCatFilter(cat);
       setCataloguePage(1);
+    } else {
+      setSelectedCatFilter('ALL');
     }
     if (q) {
-      setCatalogueSearch(q);
+      const qLower = q.toLowerCase().trim();
+      if (qLower === 'special') {
+        setSpecialFilterMode('special');
+        setCatalogueSearch('');
+      } else if (qLower === 'bestseller') {
+        setSpecialFilterMode('bestseller');
+        setCatalogueSearch('');
+      } else {
+        setCatalogueSearch(q);
+        setSpecialFilterMode('');
+      }
       setCataloguePage(1);
+    } else {
+      setCatalogueSearch('');
+      setSpecialFilterMode('');
     }
     if (tab) {
       setActiveTab(tab);
@@ -349,10 +488,30 @@ export const CustomerDashboardPage = () => {
       addToast('Your cart is empty', 'error');
       return;
     }
-    if (!address.fullName || !address.street || !address.city || !address.phone) {
-      addToast('Please complete all shipping address fields before placing order', 'error');
+
+    // Live validation across all required shipping fields
+    const errors = {};
+    ['fullName', 'street', 'city', 'state', 'zipCode', 'phone'].forEach((field) => {
+      const err = validateAddressField(field, address[field], address);
+      if (err) errors[field] = err;
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setAddressErrors(errors);
+      addToast('Please complete all valid shipping address details before checkout', 'error');
       return;
     }
+
+    const phoneRes = validatePhoneNumber(address.phone);
+    const cleanShippingAddress = {
+      fullName: address.fullName.trim(),
+      street: address.street.trim(),
+      city: address.city.trim(),
+      state: address.state.trim(),
+      zipCode: address.zipCode.trim(),
+      country: address.country || 'India',
+      phone: phoneRes.normalized || address.phone.trim(),
+    };
 
     const orderItems = cart.map((item) => ({
       productId: item.product._id,
@@ -363,63 +522,63 @@ export const CustomerDashboardPage = () => {
     try {
       setIsProcessingPayment(true);
       const isLoaded = await loadRazorpayScript();
-        if (!isLoaded) {
-          addToast('Razorpay Checkout SDK failed to load. Please check your network connection.', 'error');
-          setIsProcessingPayment(false);
-          return;
-        }
+      if (!isLoaded) {
+        addToast('Razorpay Checkout SDK failed to load. Please check your network connection.', 'error');
+        setIsProcessingPayment(false);
+        return;
+      }
 
-        const orderRes = await paymentService.createPaymentOrder({
-          items: orderItems,
-          shippingAddress: address,
+      const orderRes = await paymentService.createPaymentOrder({
+        items: orderItems,
+        shippingAddress: cleanShippingAddress,
+      });
+
+      if (!orderRes?.success || !orderRes?.data) {
+        addToast(orderRes?.message || 'Failed to create Razorpay payment order', 'error');
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      const { razorpayOrderId, amount, currency, keyId } = orderRes.data;
+
+      // If backend returned a mock order due to invalid keys, simulate checkout
+      if (razorpayOrderId && razorpayOrderId.startsWith('order_test_')) {
+        setRazorpayTestModalData({
+          razorpayOrderId,
+          amount,
+          orderItems,
+          shippingAddress: cleanShippingAddress,
         });
+        setIsProcessingPayment(false);
+        return;
+      }
 
-        if (!orderRes?.success || !orderRes?.data) {
-          addToast(orderRes?.message || 'Failed to create Razorpay payment order', 'error');
-          setIsProcessingPayment(false);
-          return;
-        }
-
-        const { razorpayOrderId, amount, currency, keyId } = orderRes.data;
-
-        // If backend returned a mock order due to invalid keys, simulate checkout
-        if (razorpayOrderId && razorpayOrderId.startsWith('order_test_')) {
-          setRazorpayTestModalData({
-            razorpayOrderId,
-            amount,
-            orderItems,
-            shippingAddress: address
-          });
-          setIsProcessingPayment(false);
-          return;
-        }
-
-        const options = {
-          key: keyId || '',
-          amount: amount,
-          currency: currency || 'INR',
-          name: 'BrandDNA Store',
-          description: 'Secure Checkout Payment',
-          image: products[0]?.images?.[0] || '/images/cat_workout_essentials.jpg',
-          ...(razorpayOrderId ? { order_id: razorpayOrderId } : {}),
-          prefill: {
-            name: address.fullName || profile?.fullName || user?.fullName || '',
-            email: user?.email || '',
-            contact: address.phone || '',
-          },
-          theme: {
-            color: '#0B192C',
-          },
-          handler: async function (response) {
-            try {
-              setIsProcessingPayment(true);
-              const verifyRes = await paymentService.verifyPayment({
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id || razorpayOrderId,
-                razorpay_signature: response.razorpay_signature,
-                items: orderItems,
-                shippingAddress: address,
-              });
+      const options = {
+        key: keyId || '',
+        amount: amount,
+        currency: currency || 'INR',
+        name: 'BrandDNA Store',
+        description: 'Secure Checkout Payment',
+        image: products[0]?.images?.[0] || '/images/cat_workout_essentials.jpg',
+        ...(razorpayOrderId ? { order_id: razorpayOrderId } : {}),
+        prefill: {
+          name: cleanShippingAddress.fullName || profile?.fullName || user?.fullName || '',
+          email: user?.email || '',
+          contact: cleanShippingAddress.phone || '',
+        },
+        theme: {
+          color: '#0B192C',
+        },
+        handler: async function (response) {
+          try {
+            setIsProcessingPayment(true);
+            const verifyRes = await paymentService.verifyPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id || razorpayOrderId,
+              razorpay_signature: response.razorpay_signature,
+              items: orderItems,
+              shippingAddress: cleanShippingAddress,
+            });
 
               if (verifyRes?.success && verifyRes?.data?.order) {
                 addToast('Razorpay Payment Successful & Verified!', 'success');
@@ -508,51 +667,29 @@ export const CustomerDashboardPage = () => {
     }
   };
 
-  const handleCreateReturn = async (e) => {
-    e.preventDefault();
-    if (!selectedOrderForReturn || !returnReason) {
-      addToast('Please select an order and provide a return reason', 'error');
-      return;
-    }
-
-    try {
-      const item = selectedOrderForReturn.items?.[0];
-      const res = await businessService.createReturn({
-        orderId: selectedOrderForReturn._id,
-        productId: item?.product?._id || item?.product,
-        quantity: item?.quantity || 1,
-        reason: returnReason,
-      });
-
-      if (res?.success) {
-        addToast('Return request submitted for processing!', 'success');
-        setSelectedOrderForReturn(null);
-        fetchCustomerData();
-      }
-    } catch (err) {
-      addToast(err.response?.data?.message || 'Failed to submit return request', 'error');
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#060D1A] flex flex-col items-center justify-center gap-3 font-sans text-white">
-        <div className="w-12 h-12 border-4 border-sky-400 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Loading BrandDNA Luxury Storefront...</p>
-      </div>
-    );
-  }
-
   // Filter & Sort Catalogue dynamically against MongoDB products & subcategory filters
   let filteredProducts = products.filter((p) => {
     if (p.status && p.status !== 'Active') return false;
 
-    const searchLower = (catalogueSearch || selectedSubFilter).toLowerCase().trim();
-    const matchesSearch = !searchLower ||
-      p.name?.toLowerCase().includes(searchLower) ||
-      p.description?.toLowerCase().includes(searchLower) ||
-      (p.brand && p.brand.toLowerCase().includes(searchLower)) ||
-      (p.sku && p.sku.toLowerCase().includes(searchLower));
+    // Special Offers filter: items with discount
+    if (specialFilterMode === 'special' || catalogueSearch.trim().toLowerCase() === 'special') {
+      const isDiscounted = (p.discountPrice && p.discountPrice > 0 && p.discountPrice > p.price);
+      if (!isDiscounted) return false;
+    }
+
+    // Bestsellers filter: items in stock
+    if (specialFilterMode === 'bestseller' || catalogueSearch.trim().toLowerCase() === 'bestseller') {
+      if (p.stock <= 0) return false;
+    }
+
+    const isPresetKeyword = (catalogueSearch.trim().toLowerCase() === 'special' || catalogueSearch.trim().toLowerCase() === 'bestseller');
+    const effectiveSearch = isPresetKeyword ? '' : (catalogueSearch || selectedSubFilter).toLowerCase().trim();
+
+    const matchesSearch = !effectiveSearch ||
+      p.name?.toLowerCase().includes(effectiveSearch) ||
+      p.description?.toLowerCase().includes(effectiveSearch) ||
+      (p.brand && p.brand.toLowerCase().includes(effectiveSearch)) ||
+      (p.sku && p.sku.toLowerCase().includes(effectiveSearch));
 
     if (selectedCatFilter === 'ALL') return matchesSearch;
 
@@ -611,55 +748,62 @@ export const CustomerDashboardPage = () => {
       {/* ─────────────────────────────────────────────────────────────
           1. TOP MIDNIGHT NAVY ANNOUNCEMENT BANNER & NAVIGATION
          ───────────────────────────────────────────────────────────── */}
-      <div className="bg-[#060D1A] text-sky-300 text-[11px] font-mono tracking-widest uppercase py-2.5 px-4 text-center border-b border-slate-800 flex items-center justify-center gap-2">
-        <Zap className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
-        <span>Free Express Delivery on Orders Over ₹1,499 | 100% Authentic BrandDNA Guarantee</span>
+      <div className="bg-[#060D1A] text-sky-300 text-[10px] sm:text-[11px] font-mono tracking-widest uppercase py-2 sm:py-2.5 px-3 sm:px-4 text-center border-b border-slate-800 flex items-center justify-center gap-1.5 sm:gap-2">
+        <Zap className="w-3.5 h-3.5 text-sky-400 animate-pulse shrink-0" />
+        <span className="leading-snug">Free Express Delivery on Orders Over ₹1,499 | 100% Authentic BrandDNA Guarantee</span>
       </div>
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-100 shadow-2xs transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between">
 
           {/* Brand Logo - BrandDNA */}
           <div className="flex items-center gap-8">
             <button
-              onClick={() => { setActiveTab('catalogue'); setSelectedCatFilter('ALL'); setCatalogueSearch(''); setSelectedSubFilter(''); }}
-              className="flex items-center gap-3 group cursor-pointer"
+              onClick={() => { setActiveTab('catalogue'); setSelectedCatFilter('ALL'); setCatalogueSearch(''); setSpecialFilterMode(''); setSelectedSubFilter(''); }}
+              className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-2xl bg-[#0B192C] text-white flex items-center justify-center font-bold shadow-md group-hover:scale-105 transition-transform border border-sky-700/40">
-                <Dna className="w-5 h-5 text-sky-300" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#0B192C] text-white flex items-center justify-center font-bold shadow-md group-hover:scale-105 transition-transform border border-sky-700/40 shrink-0">
+                <Dna className="w-4 h-4 sm:w-5 sm:h-5 text-sky-300" />
               </div>
               <div className="flex flex-col text-left">
-                <span className="font-serif font-extrabold text-2xl tracking-tight text-[#0B192C] flex items-center gap-1">
-                  BrandDNA<span className="text-sky-500 font-sans text-3xl leading-none">.</span>
+                <span className="font-serif font-extrabold text-xl sm:text-2xl tracking-tight text-[#0B192C] flex items-center gap-1">
+                  BrandDNA<span className="text-sky-500 font-sans text-2xl sm:text-3xl leading-none">.</span>
                 </span>
-                <span className="text-[9px] font-mono font-bold tracking-widest text-slate-400 uppercase leading-none">
+                <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-slate-400 uppercase leading-none">
                   Performance Store
                 </span>
               </div>
             </button>
           </div>
 
-          {/* Center Navbar Links */}
-          <nav className="hidden md:flex items-center gap-8 text-xs font-bold tracking-widest uppercase text-slate-700">
+          {/* Center Navbar Links (Desktop & Tablet) */}
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-xs font-bold tracking-widest uppercase text-slate-700">
+            <Link to="/" className="hover:text-[#0B192C] transition-colors cursor-pointer">
+              Home
+            </Link>
             <button
-              onClick={() => { setActiveTab('catalogue'); setSelectedCatFilter('ALL'); setCatalogueSearch(''); setSelectedSubFilter(''); }}
-              className={`hover:text-[#0B192C] transition-colors cursor-pointer ${activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch ? 'text-[#0B192C] underline underline-offset-8 decoration-2 font-extrabold' : ''}`}
+              id="nav-catalog-btn"
+              onClick={() => { setActiveTab('catalogue'); setSelectedCatFilter('ALL'); setCatalogueSearch(''); setSpecialFilterMode(''); setSelectedSubFilter(''); }}
+              className={`hover:text-[#0B192C] transition-colors cursor-pointer ${activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch && !specialFilterMode ? 'text-[#0B192C] underline underline-offset-8 decoration-2 font-extrabold' : ''}`}
             >
               Catalog
             </button>
             <button
-              onClick={() => { setActiveTab('catalogue'); setCatalogueSearch('special'); }}
-              className={`hover:text-[#0B192C] transition-colors cursor-pointer ${catalogueSearch === 'special' ? 'text-[#0B192C] underline underline-offset-8 decoration-2 font-extrabold' : ''}`}
+              id="nav-special-offers-btn"
+              onClick={() => { setActiveTab('catalogue'); setSpecialFilterMode('special'); setCatalogueSearch(''); }}
+              className={`hover:text-[#0B192C] transition-colors cursor-pointer ${specialFilterMode === 'special' ? 'text-[#0B192C] underline underline-offset-8 decoration-2 font-extrabold' : ''}`}
             >
               Special Offers
             </button>
             <button
-              onClick={() => { setActiveTab('catalogue'); setCatalogueSearch('bestseller'); }}
-              className={`hover:text-[#0B192C] transition-colors cursor-pointer ${catalogueSearch === 'bestseller' ? 'text-[#0B192C] underline underline-offset-8 decoration-2 font-extrabold' : ''}`}
+              id="nav-bestsellers-btn"
+              onClick={() => { setActiveTab('catalogue'); setSpecialFilterMode('bestseller'); setCatalogueSearch(''); }}
+              className={`hover:text-[#0B192C] transition-colors cursor-pointer ${specialFilterMode === 'bestseller' ? 'text-[#0B192C] underline underline-offset-8 decoration-2 font-extrabold' : ''}`}
             >
               Bestsellers
             </button>
             <button
+              id="nav-my-orders-btn"
               onClick={() => {
                 if (requireLogin('view your orders')) return;
                 setActiveTab('orders');
@@ -679,14 +823,14 @@ export const CustomerDashboardPage = () => {
             </button>
           </nav>
 
-          {/* Right Action Icons & Cart */}
-          <div className="flex items-center gap-5 text-xs font-bold">
+          {/* Right Action Icons, Cart & Mobile Menu Toggle */}
+          <div className="flex items-center gap-2 sm:gap-4 text-xs font-bold">
             <button
               onClick={() => setIsCartOpen(true)}
-              className="px-4 py-2.5 rounded-full bg-[#0B192C] hover:bg-[#1E3E62] text-white transition-all cursor-pointer flex items-center gap-2 shadow-md hover:scale-105"
+              className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-full bg-[#0B192C] hover:bg-[#1E3E62] text-white transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 shadow-md hover:scale-105"
             >
               <ShoppingCart className="w-3.5 h-3.5 text-sky-300" />
-              <span>Cart</span>
+              <span className="hidden xs:inline">Cart</span>
               <span className="font-mono bg-white/20 px-2 py-0.5 rounded-full text-[10px] text-white">
                 {cartItemCount}
               </span>
@@ -694,14 +838,24 @@ export const CustomerDashboardPage = () => {
 
             {/* Auth / Guest User Actions */}
             {isAuthenticated ? (
-              <div className="flex items-center gap-2 pl-2 border-l border-stone-200">
-                <div className="w-9 h-9 rounded-full bg-[#0B192C] text-white font-bold text-xs flex items-center justify-center border border-sky-600/40">
+              <div className="flex items-center gap-1.5 sm:gap-2 pl-2 border-l border-stone-200">
+                {user?.role && user?.role !== 'customer' && (
+                  <Link
+                    to={getRoleRedirectPath(user?.role)}
+                    className="px-3 py-1.5 rounded-full bg-[#E8F5E9] hover:bg-[#C4E1D4] text-[#0F382C] border border-[#A5D6A7] font-bold text-xs transition-all flex items-center gap-1 shadow-xs mr-1"
+                    title={`Go to your ${user?.role} workspace`}
+                  >
+                    <span>Workspace</span>
+                  </Link>
+                )}
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0B192C] text-white font-bold text-xs flex items-center justify-center border border-sky-600/40">
                   {(user?.fullName || profile?.fullName || 'U')[0].toUpperCase()}
                 </div>
                 <span className="hidden lg:inline text-xs font-bold text-slate-800">
                   {user?.fullName || profile?.fullName || 'Customer'}
                 </span>
                 <button
+                  id="nav-logout-btn"
                   onClick={logout}
                   className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                   title="Sign Out"
@@ -710,7 +864,7 @@ export const CustomerDashboardPage = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 pl-2 border-l border-stone-200">
+              <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-stone-200">
                 <button
                   onClick={() => navigate('/login')}
                   className="px-3.5 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-slate-800 font-bold text-xs transition-all cursor-pointer font-medium"
@@ -725,8 +879,141 @@ export const CustomerDashboardPage = () => {
                 </button>
               </div>
             )}
+
+            {/* Mobile Navigation Drawer Hamburger Toggle Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl text-slate-800 hover:bg-stone-100 transition-colors cursor-pointer"
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
+
+        {/* MOBILE NAVIGATION DRAWER */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden bg-white/98 backdrop-blur-md border-b border-stone-200 overflow-hidden shadow-xl"
+            >
+              <div className="px-5 py-4 space-y-2 text-xs font-bold uppercase tracking-wider text-slate-700">
+                <Link
+                  to="/"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between hover:bg-stone-100 text-slate-800"
+                >
+                  <span>Home</span>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-60" />
+                </Link>
+                <button
+                  onClick={() => {
+                    setActiveTab('catalogue');
+                    setSelectedCatFilter('ALL');
+                    setCatalogueSearch('');
+                    setSpecialFilterMode('');
+                    setSelectedSubFilter('');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${
+                    activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch && !specialFilterMode
+                      ? 'bg-[#0B192C] text-white'
+                      : 'hover:bg-stone-100 text-slate-800'
+                  }`}
+                >
+                  <span>Catalog</span>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('catalogue');
+                    setSpecialFilterMode('special');
+                    setCatalogueSearch('');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${
+                    specialFilterMode === 'special'
+                      ? 'bg-[#0B192C] text-white'
+                      : 'hover:bg-stone-100 text-slate-800'
+                  }`}
+                >
+                  <span>Special Offers</span>
+                  <Flame className="w-3.5 h-3.5 text-rose-500" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('catalogue');
+                    setSpecialFilterMode('bestseller');
+                    setCatalogueSearch('');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${
+                    specialFilterMode === 'bestseller'
+                      ? 'bg-[#0B192C] text-white'
+                      : 'hover:bg-stone-100 text-slate-800'
+                  }`}
+                >
+                  <span>Bestsellers</span>
+                  <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (requireLogin('view your orders')) return;
+                    setActiveTab('orders');
+                  }}
+                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${
+                    activeTab === 'orders'
+                      ? 'bg-[#0B192C] text-white'
+                      : 'hover:bg-stone-100 text-slate-800'
+                  }`}
+                >
+                  <span>My Orders {isAuthenticated ? `(${recentOrders.length})` : ''}</span>
+                  <Package className="w-3.5 h-3.5 text-sky-500" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (requireLogin('view your wishlist')) return;
+                    setActiveTab('wishlist');
+                  }}
+                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${
+                    activeTab === 'wishlist'
+                      ? 'bg-rose-500 text-white'
+                      : 'hover:bg-stone-100 text-rose-600'
+                  }`}
+                >
+                  <span>Wishlist {isAuthenticated ? `(${wishlist.length})` : ''}</span>
+                  <Heart className="w-3.5 h-3.5" />
+                </button>
+
+                {!isAuthenticated && (
+                  <div className="pt-3 border-t border-stone-100 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => { setMobileMenuOpen(false); navigate('/login'); }}
+                      className="py-2.5 rounded-xl bg-stone-100 text-slate-800 font-bold text-center text-xs"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => { setMobileMenuOpen(false); navigate('/register'); }}
+                      className="py-2.5 rounded-xl bg-[#0B192C] text-white font-bold text-center text-xs"
+                    >
+                      Register
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
 
@@ -736,47 +1023,53 @@ export const CustomerDashboardPage = () => {
         {/* ─────────────────────────────────────────────────────────────
             2. ULTRA-PREMIUM MIDNIGHT NAVY AI HERO EDITORIAL BANNER
            ───────────────────────────────────────────────────────────── */}
-        {activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch && (
-          <section className="relative rounded-3xl overflow-hidden shadow-2xl bg-[#060D1A] text-white min-h-[460px] sm:min-h-[500px] flex items-center p-8 sm:p-12 border border-slate-800">
+        {activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch && !specialFilterMode && (
+          <section className="relative rounded-3xl overflow-hidden shadow-2xl bg-[#060D1A] text-white min-h-[380px] sm:min-h-[460px] md:min-h-[500px] flex items-center p-6 sm:p-10 md:p-12 border border-slate-800">
             {/* AI Generated High-Fashion Background */}
             <img
               src="/images/branddna_hero_lifestyle.jpg"
               alt="BrandDNA Premium Lifestyle Hero"
               className="absolute inset-0 w-full h-full object-cover object-center opacity-40 mix-blend-luminosity scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#060D1A] via-[#060D1A]/80 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#060D1A] via-[#060D1A]/85 sm:via-[#060D1A]/80 to-transparent" />
 
             {/* Content Box */}
-            <div className="relative z-10 max-w-2xl space-y-5">
+            <div className="relative z-10 max-w-2xl space-y-4 sm:space-y-5">
               <div className="flex items-center gap-2">
                 <span className="px-3.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest bg-sky-500/20 text-sky-300 border border-sky-400/30 backdrop-blur-md flex items-center gap-1.5">
                   <Award className="w-3.5 h-3.5 text-sky-400" /> 2026 BrandDNA Performance Collection
                 </span>
               </div>
 
-              <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] tracking-tight">
+              <h1 className="font-serif text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight sm:leading-[1.1] tracking-tight">
                 Engineered for Excellence. Crafted for Life.
               </h1>
 
-              <p className="text-sm sm:text-base text-stone-300 font-medium leading-relaxed max-w-xl">
+              <p className="text-xs sm:text-sm md:text-base text-stone-300 font-medium leading-relaxed max-w-xl">
                 Explore elite sports equipment, athletic footwear, and outdoor gear curated specifically from your live BrandDNA catalog.
               </p>
 
-              <div className="flex flex-wrap items-center gap-4 pt-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 sm:pt-3">
                 <button
                   onClick={() => {
                     const el = document.getElementById('catalog-grid-section');
                     el?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="px-7 py-3.5 rounded-full bg-sky-400 hover:bg-sky-300 text-[#060D1A] font-extrabold text-xs transition-all shadow-xl hover:scale-105 cursor-pointer flex items-center gap-2"
+                  className="px-6 sm:px-7 py-3 sm:py-3.5 rounded-full bg-sky-400 hover:bg-sky-300 text-[#060D1A] font-extrabold text-xs transition-all shadow-xl hover:scale-105 cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span>Explore Full Storefront</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
                 <button
-                  onClick={() => setCatalogueSearch('special')}
-                  className="px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-md border border-white/20 transition-all cursor-pointer flex items-center gap-2"
+                  onClick={() => {
+                    setActiveTab('catalogue');
+                    setSpecialFilterMode('special');
+                    setCatalogueSearch('');
+                    const el = document.getElementById('catalog-grid-section');
+                    el?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="px-5 sm:px-6 py-3 sm:py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-md border border-white/20 transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span>View Special Offers</span>
                   <ArrowUpRight className="w-4 h-4 text-sky-300" />
@@ -784,15 +1077,15 @@ export const CustomerDashboardPage = () => {
               </div>
 
               {/* Badges Bar */}
-              <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-800 max-w-lg text-[11px] font-mono font-semibold text-stone-300">
-                <div className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-sky-400" /> 100% Authentic Stock
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 pt-5 sm:pt-6 border-t border-slate-800 max-w-lg text-[10px] sm:text-[11px] font-mono font-semibold text-stone-300">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-sky-400 shrink-0" /> <span>100% Authentic Stock</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <CreditCard className="w-4 h-4 text-sky-400" /> Razorpay Verified
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-sky-400 shrink-0" /> <span>Razorpay Verified</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Truck className="w-4 h-4 text-sky-400" /> Live Order Tracking
+                <div className="flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-sky-400 shrink-0" /> <span>Live Order Tracking</span>
                 </div>
               </div>
             </div>
@@ -803,7 +1096,7 @@ export const CustomerDashboardPage = () => {
         {/* ─────────────────────────────────────────────────────────────
             3. ULTRA-PREMIUM 6 OFFICIAL STORE CATEGORIES (WITH AI IMAGERY)
            ───────────────────────────────────────────────────────────── */}
-        {activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch && (
+        {activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch && !specialFilterMode && (
           <section className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-4 gap-2">
               <div>
@@ -872,7 +1165,7 @@ export const CustomerDashboardPage = () => {
         {/* ─────────────────────────────────────────────────────────────
             4. DYNAMIC SPECIAL OFFER & BESTSELLER SPLIT SHOWCASE CARDS
            ───────────────────────────────────────────────────────────── */}
-        {activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch && featuredSpecialOfferProduct && (
+        {activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch && !specialFilterMode && featuredSpecialOfferProduct && (
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
             {/* LEFT BANNER: SPECIAL OFFER */}
@@ -1072,34 +1365,82 @@ export const CustomerDashboardPage = () => {
               )}
             </div>
 
+            {/* Special Mode Announcement Banners */}
+            {specialFilterMode === 'special' && (
+              <div className="bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-sky-500/10 border border-amber-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shrink-0">
+                    <Flame className="w-5 h-5 fill-current" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-xs sm:text-sm">Special Promotional Offers</h3>
+                    <p className="text-[11px] text-slate-500">Showing discounted & promotional gear from our live catalog ({filteredProducts.length} available).</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setSpecialFilterMode(''); setCatalogueSearch(''); }}
+                  className="px-3.5 py-1.5 bg-[#0B192C] hover:bg-[#1E3E62] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
+                >
+                  Show All Products
+                </button>
+              </div>
+            )}
+
+            {specialFilterMode === 'bestseller' && (
+              <div className="bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-emerald-500/10 border border-sky-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold shadow-md shrink-0">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-xs sm:text-sm">Top Bestsellers & Featured Gear</h3>
+                    <p className="text-[11px] text-slate-500">Popular athletic equipment and performance gear ({filteredProducts.length} items in stock).</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setSpecialFilterMode(''); setCatalogueSearch(''); }}
+                  className="px-3.5 py-1.5 bg-[#0B192C] hover:bg-[#1E3E62] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
+                >
+                  Show All Products
+                </button>
+              </div>
+            )}
+
             {/* Search, Filter & Sort Control Bar */}
-            <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs shadow-2xs">
-              <div className="relative flex-1 max-w-md">
+            <div className="bg-stone-50 rounded-2xl p-3 sm:p-4 border border-stone-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 text-xs shadow-2xs">
+              <div className="relative flex-1 max-w-md w-full">
                 <input
                   type="text"
                   value={catalogueSearch}
-                  onChange={(e) => { setCatalogueSearch(e.target.value); setCataloguePage(1); }}
+                  onChange={(e) => {
+                    setCatalogueSearch(e.target.value);
+                    setSpecialFilterMode('');
+                    setCataloguePage(1);
+                  }}
                   placeholder="Search products by brand, title, description or SKU..."
                   className="w-full bg-white border border-stone-200 text-slate-900 rounded-xl px-3.5 py-2.5 pl-9 outline-none focus:border-[#0B192C] font-medium shadow-2xs"
                 />
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 {catalogueSearch && (
                   <button
-                    onClick={() => setCatalogueSearch('')}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-700"
+                    onClick={() => {
+                      setCatalogueSearch('');
+                      setSpecialFilterMode('');
+                    }}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-700 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                 <select
                   value={selectedCatFilter}
                   onChange={(e) => { setSelectedCatFilter(e.target.value); setCataloguePage(1); setSelectedSubFilter(''); }}
-                  className="bg-white border border-stone-200 text-slate-800 rounded-xl px-3.5 py-2.5 outline-none font-medium cursor-pointer shadow-2xs"
+                  className="bg-white border border-stone-200 text-slate-800 rounded-xl px-2.5 sm:px-3.5 py-2.5 outline-none font-medium cursor-pointer shadow-2xs w-full text-xs"
                 >
-                  <option value="ALL">All 6 Categories</option>
+                  <option value="ALL">All Categories</option>
                   {STORE_OFFICIAL_CATEGORIES.map((c) => (
                     <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
@@ -1108,7 +1449,7 @@ export const CustomerDashboardPage = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => { setSortBy(e.target.value); setCataloguePage(1); }}
-                  className="bg-white border border-stone-200 text-slate-800 rounded-xl px-3.5 py-2.5 outline-none font-medium cursor-pointer shadow-2xs"
+                  className="bg-white border border-stone-200 text-slate-800 rounded-xl px-2.5 sm:px-3.5 py-2.5 outline-none font-medium cursor-pointer shadow-2xs w-full text-xs"
                 >
                   <option value="newest">Newest First</option>
                   <option value="price_low">Price: Low to High</option>
@@ -1118,16 +1459,33 @@ export const CustomerDashboardPage = () => {
             </div>
 
             {/* Dynamic Product Cards Grid (Ultra-Premium Boutique Cards) */}
-            {paginatedProducts.length === 0 ? (
+            {loading && paginatedProducts.length === 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[1, 2, 3, 4, 5, 6].map((sk) => (
+                  <div key={sk} className="bg-white rounded-[32px] border border-stone-200/80 p-6 space-y-4 animate-pulse">
+                    <div className="h-64 bg-slate-100 rounded-2xl" />
+                    <div className="h-5 bg-slate-200 rounded w-3/4" />
+                    <div className="h-4 bg-slate-100 rounded w-1/2" />
+                    <div className="h-10 bg-slate-200 rounded-2xl" />
+                  </div>
+                ))}
+              </div>
+            ) : paginatedProducts.length === 0 ? (
               <div className="bg-stone-50 rounded-3xl p-16 text-center border border-stone-200 text-xs text-slate-500 space-y-4 shadow-2xs">
                 <Package className="w-12 h-12 text-slate-300 mx-auto" />
                 <p className="font-serif text-base font-bold text-slate-800">No products match your search or filter selection.</p>
                 <p className="text-xs text-slate-500">Try clearing your category filter or searching for another item.</p>
                 <button
-                  onClick={() => { setSelectedCatFilter('ALL'); setCatalogueSearch(''); setSelectedSubFilter(''); }}
+                  onClick={() => {
+                    setSelectedCatFilter('ALL');
+                    setCatalogueSearch('');
+                    setSpecialFilterMode('');
+                    setSelectedSubFilter('');
+                    fetchCustomerData();
+                  }}
                   className="px-6 py-2.5 bg-[#0B192C] hover:bg-[#1E3E62] text-white rounded-full font-bold text-xs cursor-pointer shadow-md transition-all"
                 >
-                  Clear All Filters
+                  Clear All Filters & Reload
                 </button>
               </div>
             ) : (
@@ -1149,6 +1507,7 @@ export const CustomerDashboardPage = () => {
                   return (
                     <div
                       key={product._id}
+                      id={`product-card-${product._id}`}
                       className="bg-white rounded-[32px] border border-stone-200/90 hover:border-[#1E3E62] shadow-sm hover:shadow-[0_25px_60px_-15px_rgba(11,25,44,0.22)] hover:-translate-y-2 transition-all duration-500 ease-out flex flex-col justify-between group relative overflow-hidden"
                     >
                       <div>
@@ -1329,7 +1688,19 @@ export const CustomerDashboardPage = () => {
               </button>
             </div>
 
-            {recentOrders.length === 0 ? (
+            {loading && recentOrders.length === 0 ? (
+              <div className="space-y-6">
+                {[1, 2, 3].map((sk) => (
+                  <div key={sk} className="bg-white rounded-3xl border border-stone-200/80 p-6 sm:p-8 space-y-4 animate-pulse">
+                    <div className="flex justify-between items-center pb-4 border-b border-stone-100">
+                      <div className="h-5 bg-slate-200 rounded w-1/4" />
+                      <div className="h-6 bg-slate-200 rounded w-1/6" />
+                    </div>
+                    <div className="h-20 bg-slate-100 rounded-2xl" />
+                  </div>
+                ))}
+              </div>
+            ) : recentOrders.length === 0 ? (
               <div className="bg-stone-50 rounded-2xl p-12 text-center border border-stone-200 text-xs text-slate-500 space-y-3">
                 <Package className="w-10 h-10 text-slate-300 mx-auto" />
                 <p className="font-bold text-slate-700 text-sm">No orders placed yet.</p>
@@ -1347,14 +1718,15 @@ export const CustomerDashboardPage = () => {
                   return (
                     <div
                       key={order._id}
+                      id={`order-card-${order._id}`}
                       className="bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-sm p-6 sm:p-8 space-y-7 hover:shadow-md transition-shadow duration-300"
                     >
                       {/* Order Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-5">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono font-black text-slate-900 text-base tracking-tight">{order.orderNumber || order._id}</span>
-                            <span className={`px-3 py-0.5 rounded-full text-[11px] font-extrabold shadow-2xs ${order.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <span className="font-mono font-black text-slate-900 text-sm sm:text-base tracking-tight break-all">{order.orderNumber || order._id}</span>
+                            <span className={`px-3 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold shadow-2xs ${order.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
                               {order.paymentStatus || 'Paid'} via {order.paymentMethod?.toUpperCase() || 'RAZORPAY'}
                             </span>
                           </div>
@@ -1364,42 +1736,36 @@ export const CustomerDashboardPage = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4 self-start sm:self-auto">
-                          <div className="text-right">
+                        <div className="flex items-center justify-between sm:justify-end gap-4 self-stretch sm:self-auto">
+                          <div className="text-left sm:text-right">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Order Total</span>
-                            <span className="text-2xl font-black text-slate-900 tracking-tight">₹{order.totalAmount?.toLocaleString('en-IN')}</span>
+                            <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">₹{order.totalAmount?.toLocaleString('en-IN')}</span>
                           </div>
-                          <button
-                            onClick={() => setSelectedOrderForReturn(order)}
-                            className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border border-stone-200/80 active:scale-95"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" /> Return Item
-                          </button>
                         </div>
                       </div>
 
                       {/* Premium Live Tracking Timeline & Action Bar */}
-                      <div className="bg-gradient-to-br from-slate-50 via-stone-50 to-slate-100/60 rounded-3xl p-6 border border-stone-200/80 shadow-2xs space-y-4">
+                      <div className="bg-gradient-to-br from-slate-50 via-stone-50 to-slate-100/60 rounded-3xl p-4 sm:p-6 border border-stone-200/80 shadow-2xs space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-bold text-slate-900">
                           <div className="flex items-center gap-2">
                             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="uppercase tracking-widest text-[11px] font-black text-slate-800">Automatic Shipment Tracking</span>
                             {order.trackingNumber && (
-                              <span className="font-mono bg-stone-200/80 px-2.5 py-0.5 rounded-md text-[10px] text-slate-700">
+                              <span className="font-mono bg-stone-200/80 px-2 py-0.5 rounded-md text-[10px] text-slate-700 truncate max-w-[130px] sm:max-w-none">
                                 {order.trackingNumber}
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-indigo-900 bg-sky-100/90 px-3.5 py-1 rounded-full text-[11px] font-extrabold border border-sky-300/80 shadow-2xs flex items-center gap-1.5">
-                              <Truck className="w-3.5 h-3.5 text-sky-600" />
-                              Courier: <span className="text-slate-900">{order.shipmentProvider || 'SwiftExpress Courier'}</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-indigo-900 bg-sky-100/90 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-extrabold border border-sky-300/80 shadow-2xs flex items-center gap-1.5">
+                              <Truck className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                              <span>{order.shipmentProvider || 'SwiftExpress Courier'}</span>
                               <span className="text-slate-400">|</span>
-                              Status: <span className="text-emerald-700">{order.shipmentStatusText || order.shipmentStatus || 'ORDER_PLACED'}</span>
+                              <span className="text-emerald-700">{order.shipmentStatusText || order.shipmentStatus || 'ORDER_PLACED'}</span>
                             </span>
                             <button
                               onClick={() => handleOpenTrackModal(order)}
-                              className="px-4 py-1.5 bg-[#0B192C] hover:bg-[#1E3E62] text-white rounded-full text-[11px] font-extrabold cursor-pointer flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+                              className="px-3.5 sm:px-4 py-1.5 bg-[#0B192C] hover:bg-[#1E3E62] text-white rounded-full text-[11px] font-extrabold cursor-pointer flex items-center gap-1.5 shadow-md transition-all active:scale-95"
                             >
                               <Truck className="w-3.5 h-3.5 text-sky-300" />
                               <span>Track Order</span>
@@ -1478,12 +1844,108 @@ export const CustomerDashboardPage = () => {
                                   </div>
                                 </div>
 
-                                {/* Line Total */}
-                                <div className="flex sm:flex-col items-baseline sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-stone-100 pt-3 sm:pt-0 shrink-0">
-                                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Price</span>
-                                  <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                                    ₹{totalItemPrice?.toLocaleString('en-IN')}
-                                  </span>
+                                {/* Line Total & Per-Product Return Action */}
+                                <div className="flex flex-col sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-stone-100 pt-3 sm:pt-0 gap-3 shrink-0">
+                                  <div className="flex sm:flex-col items-baseline sm:items-end justify-between sm:justify-center">
+                                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Price</span>
+                                    <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                                      ₹{totalItemPrice?.toLocaleString('en-IN')}
+                                    </span>
+                                  </div>
+
+                                  {/* Product-Level Return Policy & Eligibility Display */}
+                                  {(() => {
+                                    const isDelivered =
+                                      order.status === 'Delivered' ||
+                                      order.status === 'DELIVERED' ||
+                                      order.shipmentStatusText?.toUpperCase() === 'DELIVERED' ||
+                                      order.shipmentStatus?.toUpperCase() === 'DELIVERED';
+
+                                    // Rule: Do not show return options for unpaid, cancelled, undelivered, or ineligible orders
+                                    if (!isDelivered || order.paymentStatus !== 'Paid') {
+                                      return null;
+                                    }
+
+                                    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+                                    const deliveryTimestamp = order.deliveredAt ? new Date(order.deliveredAt).getTime() : null;
+                                    const returnDeadline = deliveryTimestamp ? new Date(deliveryTimestamp + SEVEN_DAYS_MS) : null;
+                                    const now = Date.now();
+                                    const isExpired = !deliveryTimestamp || now > (deliveryTimestamp + SEVEN_DAYS_MS);
+
+                                    // If 7 days expired or no valid delivery timestamp
+                                    if (isExpired) {
+                                      return (
+                                        <div className="flex flex-col sm:items-end gap-1">
+                                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-stone-100 text-stone-600 border border-stone-200">
+                                            Return period expired (7 days)
+                                          </span>
+                                          {order.deliveredAt && (
+                                            <span className="text-[10px] text-stone-400 font-medium">
+                                              Delivered: {new Date(order.deliveredAt).toLocaleDateString()}
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+
+                                    const prodId = (item.product?._id || item.product).toString();
+                                    const itemReturns = customerReturns.filter(
+                                      (r) =>
+                                        (r.order?._id || r.order)?.toString() === order._id.toString() &&
+                                        (r.product?._id || r.product)?.toString() === prodId &&
+                                        !['REJECTED', 'Rejected'].includes(r.status)
+                                    );
+
+                                    const alreadyReturnedQty = itemReturns.reduce((sum, r) => sum + (r.quantity || 0), 0);
+                                    const remainingReturnable = Math.max(0, item.quantity - alreadyReturnedQty);
+                                    const latestReturn = itemReturns[itemReturns.length - 1];
+
+                                    if (remainingReturnable <= 0) {
+                                      return (
+                                        <div className="flex flex-col sm:items-end gap-1">
+                                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs">
+                                            <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+                                            <span>Return {latestReturn?.status?.replace('_', ' ') || 'Requested'}</span>
+                                            <span className="text-amber-700 font-mono">({latestReturn?.quantity || item.quantity} unit{item.quantity > 1 ? 's' : ''})</span>
+                                          </span>
+                                          {latestReturn?.refundStatus === 'Processed' && (
+                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                                              Refund Processed: ₹{latestReturn?.refundDetails?.amount || latestReturn?.refundAmount}
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+
+                                    return (
+                                      <div className="flex flex-col sm:items-end gap-1">
+                                        <button
+                                          onClick={() => {
+                                            setSelectedProductForReturn({
+                                              order,
+                                              item,
+                                              remainingReturnable,
+                                              deliveredAt: order.deliveredAt,
+                                              returnDeadline,
+                                            });
+                                            setReturnQuantity(1);
+                                          }}
+                                          className="px-3.5 py-2 bg-[#0B192C] hover:bg-[#1E3E62] text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs hover:shadow active:scale-95"
+                                        >
+                                          <RotateCcw className="w-3.5 h-3.5 text-sky-300" />
+                                          <span>Return Product</span>
+                                        </button>
+                                        <span className="text-[10px] text-slate-400 font-medium">
+                                          Window ends: {returnDeadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                        </span>
+                                        {alreadyReturnedQty > 0 && (
+                                          <span className="text-[10px] text-amber-700 font-medium">
+                                            ({alreadyReturnedQty} returned, {remainingReturnable} remaining)
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             );
@@ -1722,35 +2184,109 @@ export const CustomerDashboardPage = () => {
                         <Truck className="w-4 h-4 text-slate-700" /> Shipping Details
                       </h3>
                       <div className="space-y-2 text-xs">
-                        <input
-                          type="text"
-                          value={address.fullName}
-                          onChange={(e) => setAddress({ ...address, fullName: e.target.value })}
-                          placeholder="Full Name"
-                          className="w-full bg-white border border-stone-200 rounded-lg p-2 outline-none font-medium"
-                        />
-                        <input
-                          type="text"
-                          value={address.street}
-                          onChange={(e) => setAddress({ ...address, street: e.target.value })}
-                          placeholder="Street Address"
-                          className="w-full bg-white border border-stone-200 rounded-lg p-2 outline-none font-medium"
-                        />
+                        <div>
+                          <input
+                            type="text"
+                            value={address.fullName}
+                            onChange={(e) => handleAddressChange('fullName', e.target.value)}
+                            onBlur={() => handleAddressBlur('fullName')}
+                            placeholder="Full Name *"
+                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                              addressErrors.fullName ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                            }`}
+                          />
+                          {addressErrors.fullName && (
+                            <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.fullName}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            value={address.street}
+                            onChange={(e) => handleAddressChange('street', e.target.value)}
+                            onBlur={() => handleAddressBlur('street')}
+                            placeholder="Street Address (min 5 characters) *"
+                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                              addressErrors.street ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                            }`}
+                          />
+                          {addressErrors.street && (
+                            <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.street}</p>
+                          )}
+                        </div>
+
                         <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            value={address.city}
-                            onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                            placeholder="City"
-                            className="bg-white border border-stone-200 rounded-lg p-2 outline-none font-medium"
-                          />
-                          <input
-                            type="text"
-                            value={address.phone}
-                            onChange={(e) => setAddress({ ...address, phone: e.target.value })}
-                            placeholder="Phone"
-                            className="bg-white border border-stone-200 rounded-lg p-2 outline-none font-medium"
-                          />
+                          <div>
+                            <input
+                              type="text"
+                              value={address.city}
+                              onChange={(e) => handleAddressChange('city', e.target.value)}
+                              onBlur={() => handleAddressBlur('city')}
+                              placeholder="City *"
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                                addressErrors.city ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
+                            />
+                            {addressErrors.city && (
+                              <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.city}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <input
+                              type="text"
+                              value={address.state}
+                              onChange={(e) => handleAddressChange('state', e.target.value)}
+                              onBlur={() => handleAddressBlur('state')}
+                              placeholder="State *"
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                                addressErrors.state ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
+                            />
+                            {addressErrors.state && (
+                              <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.state}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <input
+                              type="text"
+                              maxLength={6}
+                              value={address.zipCode}
+                              onChange={(e) => handleAddressChange('zipCode', e.target.value)}
+                              onBlur={() => handleAddressBlur('zipCode')}
+                              placeholder="PIN Code (6 digits) *"
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                                addressErrors.zipCode ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
+                            />
+                            {addressErrors.zipCode && (
+                              <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.zipCode}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <input
+                              type="text"
+                              value={address.phone}
+                              onChange={(e) => handleAddressChange('phone', e.target.value)}
+                              onBlur={() => handleAddressBlur('phone')}
+                              placeholder="Phone (e.g. 9876543210) *"
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                                addressErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
+                            />
+                            {addressErrors.phone ? (
+                              <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.phone}</p>
+                            ) : address.phone && !addressErrors.phone && addressTouched.phone ? (
+                              <p className="text-[10px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Valid phone
+                              </p>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
 
@@ -1789,8 +2325,8 @@ export const CustomerDashboardPage = () => {
 
                     <button
                       onClick={handlePlaceOrder}
-                      disabled={isProcessingPayment}
-                      className="w-full py-3 bg-[#0B192C] hover:bg-[#1E3E62] disabled:bg-slate-400 text-white font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                      disabled={isProcessingPayment || Object.keys(addressErrors).length > 0}
+                      className="w-full py-3 bg-[#0B192C] hover:bg-[#1E3E62] disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
                     >
                       {isProcessingPayment ? (
                         <>
@@ -2100,50 +2636,178 @@ export const CustomerDashboardPage = () => {
 
 
       {/* ─────────────────────────────────────────────────────────────
-          11. RETURN REQUEST MODAL
+          11. STRICT 7-DAY PRODUCT RETURN REQUEST MODAL
          ───────────────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {selectedOrderForReturn && (
+        {selectedProductForReturn && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative"
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto"
             >
               <button
-                onClick={() => setSelectedOrderForReturn(null)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-900"
+                onClick={() => setSelectedProductForReturn(null)}
+                className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-900 rounded-full hover:bg-stone-100 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
 
-              <h3 className="font-serif text-lg font-bold text-slate-900">Request Item Return</h3>
-              <p className="text-xs text-slate-500">
-                Submit a return request for Order #{selectedOrderForReturn.orderNumber || selectedOrderForReturn._id}
-              </p>
+              {/* Modal Header */}
+              <div>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <RotateCcw className="w-3 h-3 text-emerald-600" /> 7-Day Return Policy
+                </span>
+                <h3 className="font-serif text-xl font-bold text-slate-900 mt-1">Request Product Return</h3>
+                <p className="text-xs text-slate-500">
+                  Return eligible items within 7 calendar days of confirmed delivery.
+                </p>
+              </div>
 
+              {/* Product & Order Context Pedestal */}
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-3">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl bg-white border border-stone-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                    <img
+                      src={
+                        selectedProductForReturn.item.productImage ||
+                        selectedProductForReturn.item.product?.images?.[0] ||
+                        '/images/cat_workout_essentials.jpg'
+                      }
+                      alt=""
+                      onError={(e) => { e.target.src = '/images/cat_workout_essentials.jpg'; }}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="font-serif font-bold text-slate-900 text-sm truncate">
+                      {selectedProductForReturn.item.productName || selectedProductForReturn.item.product?.name}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Order: <span className="font-mono font-bold text-slate-800">{selectedProductForReturn.order.orderNumber || selectedProductForReturn.order._id}</span>
+                    </p>
+                    {selectedProductForReturn.item.size && (
+                      <span className="inline-block text-[10px] bg-sky-50 text-sky-800 font-bold px-2 py-0.5 rounded border border-sky-200">
+                        Size: {selectedProductForReturn.item.size}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Delivery & 7-Day Deadline Information */}
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-200/60 text-[11px]">
+                  <div>
+                    <span className="text-slate-400 block font-medium">Delivered Date</span>
+                    <strong className="text-slate-800 font-bold">
+                      {selectedProductForReturn.deliveredAt
+                        ? new Date(selectedProductForReturn.deliveredAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                        : 'Confirmed Delivery'}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-medium">Return Deadline</span>
+                    <strong className="text-emerald-700 font-bold">
+                      {selectedProductForReturn.returnDeadline
+                        ? new Date(selectedProductForReturn.returnDeadline).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                        : '7 days from delivery'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Return Form */}
               <form onSubmit={handleCreateReturn} className="space-y-4 text-xs">
+                {/* Quantity to Return */}
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Reason for Return</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700">Quantity to Return</label>
+                    <span className="text-[11px] text-slate-400">
+                      Max eligible: <strong>{selectedProductForReturn.remainingReturnable}</strong>
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max={selectedProductForReturn.remainingReturnable}
+                    value={returnQuantity}
+                    onChange={(e) => setReturnQuantity(Math.max(1, Math.min(selectedProductForReturn.remainingReturnable, Number(e.target.value))))}
+                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-bold text-slate-900 focus:border-[#0B192C]"
+                    required
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">
+                    Refund estimate: ₹{returnQuantity * (selectedProductForReturn.item.unitPrice || 0)} (via original payment method)
+                  </span>
+                </div>
+
+                {/* Return Reason */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Return Reason</label>
                   <select
                     value={returnReason}
                     onChange={(e) => setReturnReason(e.target.value)}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 outline-none font-medium"
+                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-bold text-slate-900 focus:border-[#0B192C]"
                   >
-                    <option value="Product damaged during transit">Product damaged during transit</option>
-                    <option value="Wrong item delivered">Wrong item delivered</option>
-                    <option value="Defective or not working">Defective or not working</option>
-                    <option value="Quality not as expected">Quality not as expected</option>
+                    <option value="Wrong product">Wrong product</option>
+                    <option value="Damaged product">Damaged product</option>
+                    <option value="Defective product">Defective product</option>
+                    <option value="Incorrect size">Incorrect size</option>
+                    <option value="Product not as expected">Product not as expected</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
+                {/* Optional Description */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Description <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={returnDescription}
+                    onChange={(e) => setReturnDescription(e.target.value)}
+                    placeholder="Provide details about the issue or reason for returning this item..."
+                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-medium text-slate-800 focus:border-[#0B192C]"
+                  />
+                </div>
+
+                {/* Optional Evidence Image / Photo URL */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Product Image / Evidence URL <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={returnEvidenceImage}
+                    onChange={(e) => setReturnEvidenceImage(e.target.value)}
+                    placeholder="https://... photo link of product or defect"
+                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-medium text-slate-800 focus:border-[#0B192C]"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <div className="pt-2">
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 bg-[#0B192C] hover:bg-[#1E3E62] text-white font-bold rounded-xl"
+                    disabled={isSubmittingReturn}
+                    className="w-full py-3 bg-[#0B192C] hover:bg-[#1E3E62] text-white font-extrabold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                   >
-                    Submit Return Request
+                    {isSubmittingReturn ? (
+                      <span>Verifying & Submitting...</span>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-4 h-4" />
+                        <span>Submit Return Request</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

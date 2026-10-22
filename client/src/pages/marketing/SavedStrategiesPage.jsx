@@ -23,7 +23,7 @@ export const SavedStrategiesPage = () => {
   const navigate = useNavigate();
   const { addToast } = useToast();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
   const [selectedPosterId, setSelectedPosterId] = useState(null);
@@ -33,7 +33,6 @@ export const SavedStrategiesPage = () => {
   }, []);
 
   const fetchSavedStrategies = async () => {
-    setLoading(true);
     try {
       const res = await marketingProductService.getProducts();
       if (res?.success && Array.isArray(res?.data?.products)) {
@@ -98,12 +97,7 @@ export const SavedStrategiesPage = () => {
         </div>
 
         {/* Main List */}
-        {loading ? (
-          <div className="py-16 text-center space-y-3">
-            <div className="w-8 h-8 border-2 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs font-semibold text-slate-500 font-mono">Loading saved strategies from MongoDB...</p>
-          </div>
-        ) : products.length === 0 ? (
+        {products.length === 0 ? (
           <div className="glass-panel p-12 text-center rounded-3xl border-2 border-dashed border-[#E5E0D8] space-y-4">
             <BookmarkCheck className="w-12 h-12 text-slate-300 mx-auto" />
             <div>

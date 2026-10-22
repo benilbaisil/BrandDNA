@@ -50,7 +50,7 @@ export const CustomerPersonaPage = () => {
   const { addToast } = useToast();
   const showToast = (msg, type = 'success') => addToast(msg, type);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -83,7 +83,6 @@ export const CustomerPersonaPage = () => {
   }, []);
 
   const fetchPersonaData = async () => {
-    setLoading(true);
     try {
       const res = await personaService.getPersonas();
       if (res && res.success) {
@@ -156,14 +155,7 @@ export const CustomerPersonaPage = () => {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-semibold text-slate-500 font-mono">Retrieving Customer Persona Context...</span>
-      </div>
-    );
-  }
+
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 text-left pb-24 font-sans">

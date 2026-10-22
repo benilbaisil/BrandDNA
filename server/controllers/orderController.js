@@ -8,7 +8,9 @@ import {
   syncShipmentToOrder,
   retryShipmentCreation,
 } from '../services/shipmentService.js';
+import { validateAddress, validateAndNormalizePhone } from '../validators/contactValidator.js';
 import { sendResponse } from '../utils/apiResponse.js';
+import { cache } from '../utils/cache.js';
 
 // GET /api/orders
 export const getOrders = async (req, res) => {
@@ -16,6 +18,12 @@ export const getOrders = async (req, res) => {
     const userId = req.user?._id || req.user?.id;
     const role = req.user?.role;
     const { search, status, paymentStatus, startDate, endDate } = req.query;
+
+    const cacheKey = `orders:${role}:${role === 'customer' ? userId : 'all'}:${search || ''}:${status || ''}:${paymentStatus || ''}`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return sendResponse(res, 200, true, 'Orders retrieved successfully (instant cache)', cached);
+    }
 
     const filter = {};
 
@@ -44,8 +52,10 @@ export const getOrders = async (req, res) => {
 
     let orders = await Order.find(filter)
       .populate('customer', 'fullName email phone')
-      .populate('items.product')
-      .sort({ createdAt: -1 });
+      .populate('deliveryAgent', 'fullName email phone vehicleNumber vehicleType status availabilityStatus')
+      .populate({ path: 'items.product', select: 'name sku price images categoryName brand sizes' })
+      .sort({ createdAt: -1 })
+      .lean();
 
     // Search by Order ID, Customer Name, Customer Email, or Shipping Contact
     if (search && search.trim() !== '') {
@@ -59,7 +69,9 @@ export const getOrders = async (req, res) => {
       });
     }
 
-    return sendResponse(res, 200, true, 'Orders retrieved successfully', { orders });
+    const payload = { orders };
+    cache.set(cacheKey, payload, 20);
+    return sendResponse(res, 200, true, 'Orders retrieved successfully', payload);
   } catch (err) {
     return sendResponse(res, 500, false, err.message || 'Failed to fetch orders');
   }
@@ -111,8 +123,19 @@ export const createOrder = async (req, res) => {
       return sendResponse(res, 400, false, 'Order items are required');
     }
 
-    if (!shippingAddress || !shippingAddress.street || !shippingAddress.city) {
+    if (!shippingAddress) {
       return sendResponse(res, 400, false, 'Valid shipping address is required');
+    }
+
+    const addrRes = validateAddress(shippingAddress);
+    if (!addrRes.isValid) {
+      const firstErr = Object.values(addrRes.errors)[0];
+      return sendResponse(res, 400, false, firstErr || 'Invalid shipping address provided', addrRes.errors);
+    }
+
+    const phoneRes = validateAndNormalizePhone(shippingAddress.phone || req.user?.phone || '');
+    if (!phoneRes.isValid) {
+      return sendResponse(res, 400, false, phoneRes.error || 'Valid phone number is required');
     }
 
     const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
@@ -143,12 +166,21 @@ export const createOrder = async (req, res) => {
       });
     }
 
+    const sanitizedShippingAddress = {
+      fullName: shippingAddress?.fullName?.trim() || req.user?.fullName || 'Customer',
+      street: addrRes.sanitized.street,
+      city: addrRes.sanitized.city,
+      state: addrRes.sanitized.state,
+      zipCode: addrRes.sanitized.zipCode,
+      phone: phoneRes.normalized,
+    };
+
     const order = await Order.create({
       orderNumber,
       customer: customerId,
       items: formattedItems,
       totalAmount,
-      shippingAddress,
+      shippingAddress: sanitizedShippingAddress,
       paymentMethod: paymentMethod || 'razorpay',
       paymentStatus: 'Paid',
       status: 'Placed',
@@ -183,6 +215,10 @@ export const createOrder = async (req, res) => {
       .populate('customer', 'fullName email phone')
       .populate('items.product');
 
+    // Invalidate cached orders and dashboard metrics on mutation
+    cache.invalidatePrefix('orders');
+    cache.invalidatePrefix('dashboard');
+
     return sendResponse(res, 201, true, 'Order placed successfully and inventory updated', { order: populatedOrder });
   } catch (err) {
     return sendResponse(res, 400, false, err.message || 'Failed to place order');
@@ -215,6 +251,10 @@ export const updateOrderStatus = async (req, res) => {
       entityType: 'Order',
       entityId: order._id,
     });
+
+    // Invalidate cached orders and dashboard metrics on mutation
+    cache.invalidatePrefix('orders');
+    cache.invalidatePrefix('dashboard');
 
     return sendResponse(res, 200, true, `Order status updated to ${status}`, { order });
   } catch (err) {

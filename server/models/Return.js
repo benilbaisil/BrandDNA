@@ -23,32 +23,123 @@ const returnSchema = new mongoose.Schema(
       ref: 'Product',
       required: true,
     },
+    productName: {
+      type: String,
+      default: '',
+    },
+    productImage: {
+      type: String,
+      default: '',
+    },
+    size: {
+      type: String,
+      default: '',
+    },
     quantity: {
       type: Number,
       required: true,
       min: 1,
     },
+    unitPrice: {
+      type: Number,
+      default: 0,
+    },
+    refundAmount: {
+      type: Number,
+      default: 0,
+    },
     reason: {
       type: String,
       required: [true, 'Return reason is required'],
     },
+    description: {
+      type: String,
+      default: '',
+    },
+    evidenceImage: {
+      type: String,
+      default: '',
+    },
     status: {
       type: String,
-      enum: ['Pending', 'Approved', 'Rejected'],
-      default: 'Pending',
+      enum: [
+        'RETURN_REQUESTED',
+        'UNDER_REVIEW',
+        'APPROVED',
+        'REJECTED',
+        'RETURN_RECEIVED',
+        'INSPECTED',
+        'Pending',
+        'Approved',
+        'Rejected',
+      ],
+      default: 'RETURN_REQUESTED',
+    },
+    rejectionReason: {
+      type: String,
+      default: '',
     },
     inspectStatus: {
       type: String,
-      enum: ['PendingInspection', 'Restocked', 'Damaged'],
+      enum: [
+        'PendingInspection',
+        'Resellable',
+        'Damaged',
+        'Inspection Required',
+        'Restocked',
+        'Pending',
+      ],
       default: 'PendingInspection',
+    },
+    inspectionNotes: {
+      type: String,
+      default: '',
+    },
+    inspectedAt: {
+      type: Date,
+      default: null,
+    },
+    inspectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    isStockAdjusted: {
+      type: Boolean,
+      default: false,
     },
     refundStatus: {
       type: String,
-      enum: ['Pending', 'Processed', 'Denied'],
+      enum: ['Pending', 'Processed', 'Denied', 'Refunded', 'Failed'],
       default: 'Pending',
     },
+    refundDetails: {
+      razorpayRefundId: { type: String, default: null },
+      amount: { type: Number, default: 0 },
+      status: { type: String, default: null },
+      refundedAt: { type: Date, default: null },
+      error: { type: String, default: null },
+      notes: { type: mongoose.Schema.Types.Mixed, default: {} },
+    },
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
+    returnDeadline: {
+      type: Date,
+      default: null,
+    },
+    statusHistory: [
+      {
+        status: { type: String, required: true },
+        changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        note: { type: String, default: '' },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );
 
 export const Return = mongoose.models.Return || mongoose.model('Return', returnSchema);
+

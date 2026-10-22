@@ -33,12 +33,12 @@ export const registerSchema = z.object({
       (val) => {
         if (!val) return true;
         try {
-          return isValidPhoneNumber(val);
+          return isValidPhoneNumber(val, 'IN') || isValidPhoneNumber(val);
         } catch (e) {
           return false;
         }
       },
-      'Please enter a valid phone number including country code (e.g. +1...)'
+      'Please enter a valid phone number (e.g. 9876543210 or +91...)'
     ),
   password: z
     .string()

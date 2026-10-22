@@ -25,7 +25,7 @@ export default function ProductsListPage() {
   const [products, setProducts] = useState([]);
   const [brands, setBrands] = useState([]);
   const [selectedBrandFilter, setSelectedBrandFilter] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -35,7 +35,6 @@ export default function ProductsListPage() {
 
   const fetchInitialData = async () => {
     try {
-      setLoading(true);
       setError(null);
       
       const [prodRes, brandRes] = await Promise.all([
@@ -155,12 +154,7 @@ export default function ProductsListPage() {
         </div>
 
         {/* Content Area */}
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center text-center">
-            <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mb-3" />
-            <p className="text-xs text-slate-600 font-medium">Loading saved products from database...</p>
-          </div>
-        ) : error ? (
+        {error ? (
           <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center text-rose-700 text-xs">
             <AlertCircle className="w-8 h-8 text-rose-500 mx-auto mb-2" />
             <p className="font-semibold mb-2">{error}</p>

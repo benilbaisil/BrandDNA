@@ -8,6 +8,7 @@ import { BrandIdentity } from '../models/BrandIdentity.js';
 import { ProductStrategy } from '../models/ProductStrategy.js';
 import { CustomerPersona } from '../models/CustomerPersona.js';
 import { Order } from '../models/Order.js';
+import { validateAndNormalizePhone, validateAddress } from '../validators/contactValidator.js';
 
 export const getAdminStatsService = async () => {
   const startOfMonth = new Date();
@@ -39,31 +40,214 @@ export const getAdminStatsService = async () => {
 };
 
 export const getAdminUsersService = async () => {
-  const users = await User.find().sort({ createdAt: -1 });
+  const users = await User.find().select('-password').sort({ createdAt: -1 });
   return users.map((u) => ({
     id: u._id,
+    _id: u._id,
     name: u.fullName,
+    fullName: u.fullName,
     email: u.email,
+    phone: u.phone || '',
+    address: u.address || { street: '', city: '', state: '', zipCode: '', country: 'India' },
     role: u.role,
     status: u.status || 'Active',
+    vehicleNumber: u.vehicleNumber || '',
+    vehicleType: u.vehicleType || '',
+    availabilityStatus: u.availabilityStatus || 'Available',
     date: u.createdAt ? u.createdAt.toISOString().split('T')[0] : '',
     lastActive: u.updatedAt ? u.updatedAt.toISOString().split('T')[0] : '',
   }));
 };
 
 export const createAdminUserService = async (userData) => {
-  const { fullName, email, password, role } = userData;
-  const existing = await User.findOne({ email });
-  if (existing) {
-    throw new Error('User with this email already exists');
-  }
-  const newUser = await User.create({
+  const {
     fullName,
     email,
     password,
-    role: role || 'customer',
+    phone,
+    address,
+    role,
+    status,
+    vehicleNumber,
+    vehicleType,
+  } = userData;
+
+  if (!fullName || typeof fullName !== 'string' || fullName.trim().length < 2) {
+    throw new Error('Full name must be at least 2 characters');
+  }
+
+  if (!email || !email.includes('@')) {
+    throw new Error('Please enter a valid email address');
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  const existing = await User.findOne({ email: cleanEmail });
+  if (existing) {
+    throw new Error('A user with this email address already exists');
+  }
+
+  if (!password || password.length < 6) {
+    throw new Error('Password must be at least 6 characters');
+  }
+
+  const allowedRoles = ['inventory_staff', 'marketing_staff', 'delivery_agent', 'customer', 'admin'];
+  const targetRole = role || 'inventory_staff';
+  if (!allowedRoles.includes(targetRole)) {
+    throw new Error(`Invalid role. Must be one of: ${allowedRoles.join(', ')}`);
+  }
+
+  let normalizedPhone = '';
+  if (phone && phone.trim()) {
+    const phoneRes = validateAndNormalizePhone(phone);
+    if (!phoneRes.isValid) {
+      throw new Error(phoneRes.error);
+    }
+    normalizedPhone = phoneRes.normalized;
+  }
+
+  let sanitizedAddress = { street: '', city: '', state: '', zipCode: '', country: 'India' };
+  if (address) {
+    const addrRes = validateAddress(address);
+    if (!addrRes.isValid) {
+      const firstErr = Object.values(addrRes.errors)[0];
+      throw new Error(firstErr || 'Invalid address provided');
+    }
+    sanitizedAddress = addrRes.sanitized;
+  }
+
+  const newUser = await User.create({
+    fullName: fullName.trim(),
+    email: cleanEmail,
+    password,
+    phone: normalizedPhone,
+    address: sanitizedAddress,
+    role: targetRole,
+    status: status === 'Disabled' ? 'Disabled' : 'Active',
+    vehicleNumber: targetRole === 'delivery_agent' ? (vehicleNumber || '').trim() : '',
+    vehicleType: targetRole === 'delivery_agent' ? (vehicleType || 'Bike') : '',
   });
-  return newUser;
+
+  return {
+    id: newUser._id,
+    _id: newUser._id,
+    fullName: newUser.fullName,
+    name: newUser.fullName,
+    email: newUser.email,
+    phone: newUser.phone,
+    address: newUser.address,
+    role: newUser.role,
+    status: newUser.status,
+    vehicleNumber: newUser.vehicleNumber,
+    vehicleType: newUser.vehicleType,
+    date: newUser.createdAt ? newUser.createdAt.toISOString().split('T')[0] : '',
+  };
+};
+
+export const updateAdminUserService = async (id, userData) => {
+  const user = await User.findById(id);
+  if (!user) {
+    throw new Error('User account not found');
+  }
+
+  const {
+    fullName,
+    email,
+    password,
+    phone,
+    address,
+    role,
+    status,
+    vehicleNumber,
+    vehicleType,
+  } = userData;
+
+  if (fullName !== undefined) {
+    if (!fullName || typeof fullName !== 'string' || fullName.trim().length < 2) {
+      throw new Error('Full name must be at least 2 characters');
+    }
+    user.fullName = fullName.trim();
+  }
+
+  if (email !== undefined) {
+    const cleanEmail = email.toLowerCase().trim();
+    if (cleanEmail !== user.email) {
+      const existing = await User.findOne({ email: cleanEmail, _id: { $ne: id } });
+      if (existing) {
+        throw new Error('A user with this email address already exists');
+      }
+      user.email = cleanEmail;
+    }
+  }
+
+  if (role !== undefined) {
+    const allowedRoles = ['inventory_staff', 'marketing_staff', 'delivery_agent', 'customer', 'admin'];
+    if (!allowedRoles.includes(role)) {
+      throw new Error(`Invalid role. Must be one of: ${allowedRoles.join(', ')}`);
+    }
+    user.role = role;
+  }
+
+  if (status !== undefined) {
+    if (!['Active', 'Disabled'].includes(status)) {
+      throw new Error("Status must be either 'Active' or 'Disabled'");
+    }
+    user.status = status;
+  }
+
+  if (phone !== undefined) {
+    if (phone && phone.trim()) {
+      const phoneRes = validateAndNormalizePhone(phone);
+      if (!phoneRes.isValid) {
+        throw new Error(phoneRes.error);
+      }
+      user.phone = phoneRes.normalized;
+    } else {
+      user.phone = '';
+    }
+  }
+
+  if (address !== undefined) {
+    if (address && (address.street || address.city || address.zipCode)) {
+      const addrRes = validateAddress(address);
+      if (!addrRes.isValid) {
+        const firstErr = Object.values(addrRes.errors)[0];
+        throw new Error(firstErr || 'Invalid address provided');
+      }
+      user.address = addrRes.sanitized;
+    } else if (address === null || address === '') {
+      user.address = { street: '', city: '', state: '', zipCode: '', country: 'India' };
+    }
+  }
+
+  if (vehicleNumber !== undefined) {
+    user.vehicleNumber = (vehicleNumber || '').trim();
+  }
+
+  if (vehicleType !== undefined) {
+    user.vehicleType = (vehicleType || '').trim();
+  }
+
+  if (password && password.trim().length >= 6) {
+    user.password = password.trim();
+  }
+
+  await user.save();
+
+  return {
+    id: user._id,
+    _id: user._id,
+    fullName: user.fullName,
+    name: user.fullName,
+    email: user.email,
+    phone: user.phone,
+    address: user.address,
+    role: user.role,
+    status: user.status,
+    vehicleNumber: user.vehicleNumber,
+    vehicleType: user.vehicleType,
+    date: user.createdAt ? user.createdAt.toISOString().split('T')[0] : '',
+    lastActive: user.updatedAt ? user.updatedAt.toISOString().split('T')[0] : '',
+  };
 };
 
 export const toggleUserStatusService = async (id) => {

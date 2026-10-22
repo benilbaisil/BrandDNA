@@ -160,12 +160,44 @@ export const businessService = {
   },
 
   // Returns
-  getReturns: async () => {
-    const res = await api.get('/returns');
+  getReturns: async (params = {}) => {
+    const res = await api.get('/returns', { params });
+    return res.data;
+  },
+  getReturnById: async (id) => {
+    const res = await api.get(`/returns/${id}`);
+    return res.data;
+  },
+  getOrderReturnEligibility: async (orderId) => {
+    const res = await api.get(`/returns/eligibility/${orderId}`);
     return res.data;
   },
   createReturn: async (data) => {
     const res = await api.post('/returns', data);
+    return res.data;
+  },
+  reviewReturn: async (id, data = {}) => {
+    const res = await api.put(`/returns/${id}/review`, data);
+    return res.data;
+  },
+  approveReturn: async (id, data = {}) => {
+    const res = await api.put(`/returns/${id}/approve`, data);
+    return res.data;
+  },
+  rejectReturn: async (id, data) => {
+    const res = await api.put(`/returns/${id}/reject`, data);
+    return res.data;
+  },
+  receiveReturn: async (id, data = {}) => {
+    const res = await api.put(`/returns/${id}/receive`, data);
+    return res.data;
+  },
+  inspectReturn: async (id, data) => {
+    const res = await api.put(`/returns/${id}/inspect`, data);
+    return res.data;
+  },
+  refundReturn: async (id, data = {}) => {
+    const res = await api.post(`/returns/${id}/refund`, data);
     return res.data;
   },
   processReturn: async (id, data) => {

@@ -18,6 +18,7 @@ import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminReportsPage } from './pages/admin/AdminReportsPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminProfilePage } from './pages/admin/AdminProfilePage';
+import { AdminReturnsPage } from './pages/admin/AdminReturnsPage';
 import { OrderManagementView } from './components/dashboard/OrderManagementView';
 import { InventoryDashboardPage } from './pages/inventory/InventoryDashboardPage';
 import { CustomerDashboardPage } from './pages/customer/CustomerDashboardPage';
@@ -62,7 +63,7 @@ const AuthenticatedFallback = () => {
   let role = user?.role;
   if (!role) {
     try {
-      const u = localStorage.getItem('branddna_user');
+      const u = sessionStorage.getItem('branddna_user') || localStorage.getItem('branddna_user');
       role = u && u !== 'undefined' ? JSON.parse(u)?.role : undefined;
     } catch(e) {}
   }
@@ -78,6 +79,16 @@ export default function App() {
             {/* Public Landing Page */}
             <Route path="/" element={<MainLayout />}>
               <Route index element={<HomePage />} />
+            </Route>
+
+            {/* Protected Customer Storefront & Product Catalogue Routes (Login Required) */}
+            <Route element={<CustomerRoute />}>
+              <Route path="/products" element={<CustomerDashboardPage />} />
+              <Route path="/catalog" element={<CustomerDashboardPage />} />
+              <Route path="/product/:id" element={<CustomerProductDetailPage />} />
+              <Route path="/customer/product/:id" element={<CustomerProductDetailPage />} />
+              <Route path="/customer/dashboard" element={<CustomerDashboardPage />} />
+              <Route path="/customer" element={<Navigate to="/products" replace />} />
             </Route>
 
             {/* Public Auth Routes */}
@@ -98,6 +109,7 @@ export default function App() {
                 <Route path="/admin/products" element={<ProductManagementPage />} />
                 <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/reports" element={<AdminReportsPage />} />
+                <Route path="/admin/returns" element={<AdminReturnsPage />} />
                 <Route path="/admin/settings" element={<AdminSettingsPage />} />
                 <Route path="/admin/profile" element={<AdminProfilePage />} />
                 <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
@@ -117,15 +129,6 @@ export default function App() {
                 <Route path="/inventory/products" element={<Navigate to="/inventory/dashboard?tab=products" replace />} />
                 <Route path="/inventory" element={<Navigate to="/inventory/dashboard" replace />} />
               </Route>
-            </Route>
-
-            {/* Protected Customer Routes */}
-            <Route element={<CustomerRoute />}>
-              <Route path="/customer/dashboard" element={<CustomerDashboardPage />} />
-              <Route path="/customer/product/:id" element={<CustomerProductDetailPage />} />
-              <Route path="/products" element={<CustomerDashboardPage />} />
-              <Route path="/product/:id" element={<CustomerProductDetailPage />} />
-              <Route path="/customer" element={<Navigate to="/customer/dashboard" replace />} />
             </Route>
 
             {/* Protected Strategy & Marketing Staff Routes */}

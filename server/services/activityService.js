@@ -12,11 +12,9 @@ export const logActivity = async ({
 }) => {
   try {
     await Activity.create({
-      action,
-      details,
+      title: action || 'System Event',
       user: user || null,
-      entityType,
-      entityId,
+      type: 'BRAND_GENERATE',
     });
   } catch (err) {
     console.warn('Activity logging notice:', err.message);

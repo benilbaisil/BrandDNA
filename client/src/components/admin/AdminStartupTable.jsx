@@ -7,20 +7,16 @@ import { adminService } from '../../services/adminService';
 export const AdminStartupTable = () => {
   const { addToast } = useToast();
   const [startups, setStartups] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const fetchStartups = async () => {
     try {
-      setLoading(true);
       const res = await adminService.getStartups();
       if (res && res.success && res.data) {
         setStartups(res.data);
       }
     } catch (err) {
-      setStartups([
-        { id: '1', name: 'AuraCraft AI', industry: 'HealthTech & AI Diagnostics', owner: 'Sarah Founder', date: '2026-08-01', status: 'Completed' },
-        { id: '2', name: 'Novaflow Cloud', industry: 'DevOps & Cloud Orchestration', owner: 'Alex Product', date: '2026-07-28', status: 'In Progress' },
-      ]);
+      setStartups([]);
     } finally {
       setLoading(false);
     }
@@ -67,13 +63,7 @@ export const AdminStartupTable = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading ? (
-              <tr>
-                <td colSpan="6" className="py-8 text-center text-slate-400 text-xs font-medium">
-                  Loading startups from database...
-                </td>
-              </tr>
-            ) : startups.length === 0 ? (
+            {startups.length === 0 ? (
               <tr>
                 <td colSpan="6" className="py-8 text-center text-slate-400 text-xs font-medium">
                   No startup profiles found in database.

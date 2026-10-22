@@ -12,7 +12,7 @@ import { ProductModal } from './ProductModal';
 export const ProductCatalog = () => {
   const { addToast } = useToast();
   const [productsList, setProductsList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
@@ -20,7 +20,6 @@ export const ProductCatalog = () => {
   const [editingProduct, setEditingProduct] = useState(null);
 
   const fetchProducts = async () => {
-    setLoading(true);
     try {
       const res = await businessService.getProducts({ status: 'ALL' });
       if (res?.data?.products) {
@@ -127,11 +126,7 @@ export const ProductCatalog = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 font-medium">
-              {loading ? (
-                 <tr>
-                 <td colSpan={7} className="p-10 text-center text-slate-400">Loading products...</td>
-               </tr>
-              ) : filteredProducts.length === 0 ? (
+              {filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-10 text-center text-slate-400">
                     No products found matching criteria. Click '+ Add Product' to add one.

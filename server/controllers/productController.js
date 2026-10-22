@@ -2,6 +2,7 @@ import { Product } from '../models/Product.js';
 import { Category } from '../models/Category.js';
 import { sendResponse } from '../utils/apiResponse.js';
 import { generateAdPosterAI } from '../services/marketingAdPosterService.js';
+import { cache } from '../utils/cache.js';
 import mongoose from 'mongoose';
 
 const escapeRegex = (str) => {
@@ -30,6 +31,13 @@ const ensureProductSizes = (prod) => {
 export const getProducts = async (req, res) => {
   try {
     const { category, search, status } = req.query;
+
+    const cacheKey = `products:${category || ''}:${search || ''}:${status || ''}`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return sendResponse(res, 200, true, 'Products retrieved successfully (instant cache)', cached);
+    }
+
     const filter = {};
 
     if (category && category !== 'ALL') {
@@ -44,9 +52,6 @@ export const getProducts = async (req, res) => {
     }
 
     // Status filtering rules:
-    // If status parameter is explicitly 'ALL', return all products (Active & Inactive, excluding Discontinued)
-    // If status parameter is specified (e.g., 'Active', 'Inactive'), filter by that status
-    // Default (for Customer Shop): return ONLY 'Active' products
     if (status === 'ALL') {
       filter.status = { $ne: 'Discontinued' };
     } else if (status) {
@@ -72,9 +77,16 @@ export const getProducts = async (req, res) => {
       }
     }
 
-    const rawProducts = await Product.find(filter).populate('category').sort({ createdAt: -1 });
+    const rawProducts = await Product.find(filter)
+      .select('-adPosterData')
+      .populate('category')
+      .sort({ createdAt: -1 })
+      .lean();
+
     const products = rawProducts.map(ensureProductSizes);
-    return sendResponse(res, 200, true, 'Products retrieved successfully', { products });
+    const payload = { products };
+    cache.set(cacheKey, payload, 30);
+    return sendResponse(res, 200, true, 'Products retrieved successfully', payload);
   } catch (err) {
     return sendResponse(res, 500, false, err.message || 'Failed to fetch products');
   }
@@ -271,8 +283,14 @@ export const deleteProduct = async (req, res) => {
 // GET /api/categories
 export const getCategories = async (req, res) => {
   try {
-    const categories = await Category.find({ isActive: true }).sort({ name: 1 });
-    return sendResponse(res, 200, true, 'Categories retrieved', { categories });
+    const cached = cache.get('products:categories');
+    if (cached) {
+      return sendResponse(res, 200, true, 'Categories retrieved (instant cache)', cached);
+    }
+    const categories = await Category.find({ isActive: true }).sort({ name: 1 }).lean();
+    const payload = { categories };
+    cache.set('products:categories', payload, 60);
+    return sendResponse(res, 200, true, 'Categories retrieved', payload);
   } catch (err) {
     return sendResponse(res, 500, false, err.message || 'Failed to fetch categories');
   }
@@ -283,6 +301,7 @@ export const createCategory = async (req, res) => {
   try {
     const { name, description } = req.body;
     const category = await Category.create({ name, description });
+    cache.del('products:categories');
     return sendResponse(res, 201, true, 'Category created', { category });
   } catch (err) {
     return sendResponse(res, 400, false, err.message || 'Failed to create category');

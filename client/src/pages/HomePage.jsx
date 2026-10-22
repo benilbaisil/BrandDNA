@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
   ShoppingBag,
   ArrowRight,
@@ -9,47 +8,101 @@ import {
   Star,
   Truck,
   RotateCcw,
-  Lock,
   Sparkles,
-  Dumbbell,
-  Compass,
-  Footprints,
-  Backpack,
-  Trophy,
-  HeartPulse,
+  ChevronLeft,
   ChevronRight,
   Headphones,
-  ArrowUpRight
+  ArrowUpRight,
+  Play,
+  Pause,
+  Zap
 } from 'lucide-react';
 import { businessService } from '../services/businessService';
 import { useAuth, getRoleRedirectPath } from '../context/AuthContext';
+import { INITIAL_PRODUCTS } from '../constants/initialProducts';
 
 export const HomePage = () => {
-  const [dbProducts, setDbProducts] = useState([]);
+  const [dbProducts, setDbProducts] = useState(INITIAL_PRODUCTS);
+  const { user, isAuthenticated } = useAuth();
 
+  // Slide-by-slide Carousel State
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(4);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
+  const sliderRef = useRef(null);
+
+  // Responsive visible cards count
   useEffect(() => {
+    const updateVisibleCount = () => {
+      const width = window.innerWidth;
+      if (width < 640) {
+        setVisibleCount(1);
+      } else if (width < 1024) {
+        setVisibleCount(2);
+      } else if (width < 1280) {
+        setVisibleCount(3);
+      } else {
+        setVisibleCount(4);
+      }
+    };
+    updateVisibleCount();
+    window.addEventListener('resize', updateVisibleCount);
+    return () => window.removeEventListener('resize', updateVisibleCount);
+  }, []);
+
+  // Fetch real active products immediately for all visitors (public catalogue preview)
+  useEffect(() => {
+    let isMounted = true;
     const loadProducts = async () => {
       try {
         const res = await businessService.getProducts();
-        if (res?.data?.products && res.data.products.length > 0) {
-          setDbProducts(res.data.products);
+        if (isMounted && res?.data?.products && res.data.products.length > 0) {
+          const active = res.data.products.filter((p) => !p.status || p.status === 'Active');
+          if (active.length > 0) {
+            setDbProducts(active);
+          }
         }
       } catch (err) {
-        console.error('Error fetching home page products:', err);
+        console.warn('Error fetching live products for homepage:', err.message);
       }
     };
     loadProducts();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const { user, isAuthenticated } = useAuth();
-
-  const getTargetRoute = (customerPath = '/customer/dashboard') => {
-    if (!isAuthenticated) return '/login';
-    if (user?.role === 'customer') return customerPath;
-    return getRoleRedirectPath(user?.role);
-  };
-
   const displayProducts = dbProducts.filter((p) => !p.status || p.status === 'Active');
+  const maxSlide = Math.max(0, displayProducts.length - visibleCount);
+
+  // Snappy next/prev slide navigation
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev >= maxSlide ? 0 : prev + 1));
+  }, [maxSlide]);
+
+  const prevSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev <= 0 ? maxSlide : prev - 1));
+  }, [maxSlide]);
+
+  // Fast auto-advance (2.4 seconds) with instant response
+  useEffect(() => {
+    if (!isAutoPlaying || isHovered || displayProducts.length <= visibleCount) return;
+    const interval = setInterval(() => {
+      nextSlide();
+    }, 2400);
+    return () => clearInterval(interval);
+  }, [isAutoPlaying, isHovered, displayProducts.length, visibleCount, nextSlide]);
+
+  const getTargetLinkProps = (targetPath = '/products') => {
+    if (!isAuthenticated) {
+      return {
+        to: '/login',
+        state: { from: targetPath, message: 'Please sign in to view complete details and order.' }
+      };
+    }
+    return { to: targetPath };
+  };
 
   // Curated high quality sport & outdoor images for editorial categories
   const categories = [
@@ -57,37 +110,37 @@ export const HomePage = () => {
       name: 'Workout Essentials',
       desc: 'Gym gear & fitness apparel',
       img: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=600&auto=format&fit=crop',
-      href: '/products?category=Workout%20Essentials'
+      href: '/customer/dashboard?category=Workout%20Essentials'
     },
     {
       name: 'Hiking & Trekking',
       desc: 'Tents, poles & mountain tools',
       img: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=600&auto=format&fit=crop',
-      href: '/products?category=Hiking%20%26%20Trekking'
+      href: '/customer/dashboard?category=Hiking%20%26%20Trekking'
     },
     {
       name: 'Shoes',
       desc: 'Trail runners & mountain boots',
       img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=600&auto=format&fit=crop',
-      href: '/products?category=Shoes'
+      href: '/customer/dashboard?category=Shoes'
     },
     {
       name: 'Bags & Backpacks',
       desc: 'Trekking packs & duffels',
       img: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?q=80&w=600&auto=format&fit=crop',
-      href: '/products?category=Bags%20%26%20Backpacks'
+      href: '/customer/dashboard?category=Bags%20%26%20Backpacks'
     },
     {
       name: 'Sport Accessories',
       desc: 'Bottles, bands & gear',
       img: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?q=80&w=600&auto=format&fit=crop',
-      href: '/products?category=Sport%20Accessories'
+      href: '/customer/dashboard?category=Sport%20Accessories'
     },
     {
       name: 'Nutrition & Care',
       desc: 'Hydration & recovery supplements',
       img: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?q=80&w=600&auto=format&fit=crop',
-      href: '/products?category=Nutrition%20%26%20Care'
+      href: '/customer/dashboard?category=Nutrition%20%26%20Care'
     }
   ];
 
@@ -95,60 +148,199 @@ export const HomePage = () => {
     <div className="bg-[#FAF8F5] font-sans text-slate-800 space-y-16 pb-20">
       
       {/* ─────────────────────────────────────────────────────────────
-          1. NEW ARRIVALS HORIZONTAL SHOWCASE (MATCHING REFERENCE IMAGE)
+          1. NEW ARRIVALS — ULTRA-FAST SLIDE-BY-SLIDE PRODUCT SHOWCASE
          ───────────────────────────────────────────────────────────── */}
-      <section className="bg-white border-b border-stone-200/60 py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <section className="bg-white border-b border-stone-200/60 py-8 px-4 sm:px-6 lg:px-8 shadow-xs">
+        <div className="max-w-7xl mx-auto space-y-5">
           
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-mono font-bold tracking-widest text-[#0F291E] uppercase">
-              NEW ARRIVALS
-            </h2>
-            <Link
-              to={getTargetRoute('/customer/dashboard')}
-              className="text-xs font-semibold text-stone-500 hover:text-[#0F382C] flex items-center gap-1 transition-colors"
-            >
-              <span>Explore All</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
+          {/* Header Row: Title, Live indicator, Fast controls & Explore All */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xs font-mono font-bold tracking-widest text-[#0F291E] uppercase">
+                NEW ARRIVALS
+              </h2>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-[10px] font-mono font-bold text-emerald-800 border border-emerald-200">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                LIVE CATALOG ({displayProducts.length})
+              </span>
+            </div>
+
+            {/* Fast Slider Navigation Controls */}
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1 mr-2 text-[11px] font-mono font-semibold text-stone-500">
+                <span>{String(currentSlide + 1).padStart(2, '0')}</span>
+                <span>/</span>
+                <span>{String(maxSlide + 1).padStart(2, '0')}</span>
+              </div>
+
+              {/* Autoplay Pause / Play button */}
+              <button
+                type="button"
+                onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+                className="w-8 h-8 rounded-full border border-stone-200 bg-[#FAF8F5] hover:bg-stone-200/70 flex items-center justify-center text-stone-600 transition-colors cursor-pointer"
+                title={isAutoPlaying ? 'Pause fast auto-sliding' : 'Resume fast auto-sliding'}
+              >
+                {isAutoPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+              </button>
+
+              {/* Prev Slide Button */}
+              <button
+                type="button"
+                onClick={prevSlide}
+                id="slider-prev-btn"
+                className="w-8 h-8 rounded-full border border-stone-200 bg-white hover:bg-[#0F382C] hover:text-white hover:border-[#0F382C] flex items-center justify-center text-stone-700 transition-all cursor-pointer shadow-xs active:scale-95"
+                title="Previous slide"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {/* Next Slide Button */}
+              <button
+                type="button"
+                onClick={nextSlide}
+                id="slider-next-btn"
+                className="w-8 h-8 rounded-full border border-stone-200 bg-white hover:bg-[#0F382C] hover:text-white hover:border-[#0F382C] flex items-center justify-center text-stone-700 transition-all cursor-pointer shadow-xs active:scale-95"
+                title="Next slide"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              <div className="w-px h-5 bg-stone-200 mx-1" />
+
+              <Link
+                {...getTargetLinkProps('/customer/dashboard')}
+                className="text-xs font-semibold text-[#0F382C] hover:underline flex items-center gap-1 transition-colors pl-1"
+              >
+                <span>Explore All</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
-          {/* Horizontal Product Showcase Row (Cutout Style Pristine White Display) */}
-          <div className="flex items-center gap-6 overflow-x-auto no-scrollbar py-4 px-2">
-            {displayProducts.length === 0 ? (
-              <div className="w-full text-center py-8 text-xs text-stone-400 font-medium">
-                Loading store catalogue items...
-              </div>
-            ) : (
-              displayProducts.map((product) => (
-                <Link
-                  key={product._id}
-                  to={getTargetRoute(`/customer/product/${product._id}`)}
-                  className="flex flex-col items-center group shrink-0 w-36 sm:w-44 text-center cursor-pointer"
-                >
-                  <div className="w-36 h-36 sm:w-44 sm:h-44 bg-white rounded-2xl p-4 border border-stone-100 group-hover:border-stone-300 transition-all flex items-center justify-center relative overflow-hidden group-hover:scale-105 duration-300">
-                    <img
-                      src={product.images?.[0] || product.image || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=400&auto=format&fit=crop'}
-                      alt={product.name}
-                      className="max-h-32 sm:max-h-36 object-contain drop-shadow-sm"
-                    />
+          {/* Slide-by-Slide Track Container with Hardware Acceleration */}
+          <div
+            className="relative overflow-hidden py-2"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            ref={sliderRef}
+          >
+            <div
+              className="flex items-stretch transition-transform ease-out will-change-transform"
+              style={{
+                transform: `translateX(-${currentSlide * (100 / visibleCount)}%)`,
+                transitionDuration: '320ms',
+                transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+            >
+              {displayProducts.map((product) => {
+                const discount = product.discountPrice && product.discountPrice > product.price
+                  ? Math.round(((product.discountPrice - product.price) / product.discountPrice) * 100)
+                  : 0;
+
+                return (
+                  <div
+                    key={product._id}
+                    className="shrink-0 p-2 select-none"
+                    style={{ width: `${100 / visibleCount}%` }}
+                  >
+                    <div className="h-full bg-white rounded-2xl border border-stone-200/90 hover:border-emerald-600/60 hover:shadow-lg transition-all duration-200 flex flex-col justify-between p-4 group relative overflow-hidden">
+                      
+                      {/* Top Badges */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 line-clamp-1">
+                          {product.categoryName || product.category?.name || 'Gear'}
+                        </span>
+
+                        {discount > 0 ? (
+                          <span className="text-[10px] font-mono font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                            {discount}% OFF
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            NEW
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Product Image */}
+                      <Link
+                        {...getTargetLinkProps(`/customer/product/${product._id}`)}
+                        className="block my-2 h-40 sm:h-44 bg-[#FAF8F5] rounded-xl p-3 flex items-center justify-center relative overflow-hidden cursor-pointer"
+                      >
+                        <img
+                          src={product.images?.[0] || product.image || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=400&auto=format&fit=crop'}
+                          alt={product.name}
+                          loading="eager"
+                          className="max-h-36 sm:max-h-40 w-auto object-contain group-hover:scale-108 transition-transform duration-300 drop-shadow-xs"
+                        />
+                      </Link>
+
+                      {/* Details */}
+                      <div className="space-y-1.5 pt-2">
+                        {product.brand && (
+                          <span className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-widest block">
+                            {product.brand}
+                          </span>
+                        )}
+                        <h3 className="font-serif text-sm font-bold text-slate-900 line-clamp-1 group-hover:text-[#0F382C] transition-colors" title={product.name}>
+                          {product.name}
+                        </h3>
+
+                        {/* Price & Action */}
+                        <div className="pt-2 flex items-center justify-between border-t border-stone-100">
+                          <div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-sm sm:text-base font-bold text-slate-900 font-mono">
+                                ₹{product.price?.toLocaleString('en-IN')}
+                              </span>
+                              {product.discountPrice > product.price && (
+                                <span className="text-[11px] font-mono text-stone-400 line-through">
+                                  ₹{product.discountPrice?.toLocaleString('en-IN')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <Link
+                            {...getTargetLinkProps(`/customer/product/${product._id}`)}
+                            className="px-3 py-1.5 rounded-full bg-[#0F382C] hover:bg-[#08221B] text-white text-xs font-bold transition-all shadow-2xs flex items-center gap-1 active:scale-95"
+                          >
+                            <ShoppingBag className="w-3 h-3 text-emerald-300" />
+                            <span>Shop</span>
+                          </Link>
+                        </div>
+                      </div>
+
+                    </div>
                   </div>
-                  <span className="text-xs font-bold text-slate-800 group-hover:text-[#0F382C] mt-3 line-clamp-1">
-                    {product.name}
-                  </span>
-                  <span className="text-[11px] font-mono text-stone-500 font-semibold mt-0.5">
-                    ₹{product.price}
-                  </span>
-                </Link>
-              ))
-            )}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Bottom Fast Slider Progress Dots */}
+          <div className="flex items-center justify-center gap-1.5 pt-1">
+            {Array.from({ length: maxSlide + 1 }).map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setCurrentSlide(idx)}
+                className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${
+                  currentSlide === idx ? 'w-6 bg-[#0F382C]' : 'w-1.5 bg-stone-300 hover:bg-stone-400'
+                }`}
+                aria-label={`Go to slide ${idx + 1}`}
+              />
+            ))}
           </div>
 
         </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          2. EDITORIAL PROMOTIONAL SPLIT SECTION (MATCHING REFERENCE IMAGE)
+          2. EDITORIAL PROMOTIONAL SPLIT SECTION
          ───────────────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 rounded-3xl overflow-hidden border border-stone-200/80 shadow-md min-h-[500px]">
@@ -174,7 +366,7 @@ export const HomePage = () => {
               </p>
               <div>
                 <Link
-                  to={getTargetRoute('/customer/dashboard?search=special')}
+                  {...getTargetLinkProps('/customer/dashboard?search=special')}
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#0F291E] text-xs font-bold hover:bg-emerald-50 transition-colors shadow-sm"
                 >
                   <span>Shop Special Offers</span>
@@ -206,7 +398,7 @@ export const HomePage = () => {
               </p>
               <div>
                 <Link
-                  to={getTargetRoute('/customer/dashboard?search=bestseller')}
+                  {...getTargetLinkProps('/customer/dashboard?search=bestseller')}
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0F382C] border border-emerald-600/40 text-white text-xs font-bold hover:bg-[#154E3E] transition-colors shadow-sm"
                 >
                   <span>View Bestsellers</span>
@@ -222,7 +414,7 @@ export const HomePage = () => {
       {/* ─────────────────────────────────────────────────────────────
           3. CATEGORIES SHOWCASE GRID (6 CORE SPORTS CATEGORIES)
          ───────────────────────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+      <section id="categories" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 scroll-mt-24">
         <div className="flex items-center justify-between border-b border-stone-200/80 pb-4">
           <h2 className="font-serif text-2xl font-bold text-slate-900 tracking-tight">
             Curated Categories
@@ -236,7 +428,7 @@ export const HomePage = () => {
           {categories.map((cat, idx) => (
             <Link
               key={idx}
-              to={getTargetRoute(`/customer/dashboard?category=${encodeURIComponent(cat.name)}`)}
+              {...getTargetLinkProps(cat.href)}
               className="group relative h-72 rounded-3xl overflow-hidden border border-stone-200/80 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-end p-6"
             >
               <img
@@ -263,15 +455,20 @@ export const HomePage = () => {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          4. STORE CATALOGUE GRID (FROM REAL MONGODB DATA)
+          4. STORE CATALOGUE GRID (REAL ACTIVE PRODUCTS)
          ───────────────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div className="flex items-center justify-between border-b border-stone-200/80 pb-4">
-          <h2 className="font-serif text-2xl font-bold text-slate-900 tracking-tight">
-            Featured Catalogue
-          </h2>
+          <div>
+            <h2 className="font-serif text-2xl font-bold text-slate-900 tracking-tight">
+              Featured Catalogue
+            </h2>
+            <p className="text-xs text-stone-500 font-medium mt-0.5">
+              Explore athlete-tested trail gear, performance footwear, and active lifestyle apparel
+            </p>
+          </div>
           <Link
-            to={getTargetRoute('/customer/dashboard')}
+            {...getTargetLinkProps('/customer/dashboard')}
             className="text-xs font-bold text-[#0F382C] hover:underline flex items-center gap-1"
           >
             <span>View Full Shop</span>
@@ -280,12 +477,12 @@ export const HomePage = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {displayProducts.length === 0 ? (
-            <div className="col-span-full bg-white p-12 rounded-3xl border border-stone-200 text-center text-slate-500 text-xs font-medium">
-              No products found in backend database. Add products via Admin / Inventory dashboard.
-            </div>
-          ) : (
-            displayProducts.slice(0, 8).map((p) => (
+          {displayProducts.slice(0, 8).map((p) => {
+            const discount = p.discountPrice && p.discountPrice > p.price
+              ? Math.round(((p.discountPrice - p.price) / p.discountPrice) * 100)
+              : 0;
+
+            return (
               <div
                 key={p._id}
                 className="bg-white rounded-3xl border border-stone-200/80 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group p-4"
@@ -295,6 +492,11 @@ export const HomePage = () => {
                     {p.brand && (
                       <span className="absolute top-3 left-3 bg-[#0F382C] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-2xs">
                         {p.brand}
+                      </span>
+                    )}
+                    {discount > 0 && (
+                      <span className="absolute top-3 right-3 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
+                        {discount}% OFF
                       </span>
                     )}
                     <img
@@ -315,18 +517,27 @@ export const HomePage = () => {
                 </div>
 
                 <div className="pt-4 flex items-center justify-between mt-2 border-t border-stone-100">
-                  <span className="text-sm font-bold text-slate-900 font-mono">₹{p.price}</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-sm font-bold text-slate-900 font-mono">
+                      ₹{p.price?.toLocaleString('en-IN')}
+                    </span>
+                    {p.discountPrice > p.price && (
+                      <span className="text-[11px] font-mono text-stone-400 line-through">
+                        ₹{p.discountPrice?.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </div>
                   <Link
-                    to={getTargetRoute(`/customer/product/${p._id}`)}
-                    className="px-3.5 py-1.5 bg-[#0F382C] hover:bg-[#08221B] text-white rounded-full text-xs font-bold transition-all shadow-2xs flex items-center gap-1"
+                    {...getTargetLinkProps(`/customer/product/${p._id}`)}
+                    className="px-3.5 py-1.5 bg-[#0F382C] hover:bg-[#08221B] text-white rounded-full text-xs font-bold transition-all shadow-2xs flex items-center gap-1 active:scale-95"
                   >
                     <ShoppingBag className="w-3 h-3 text-emerald-300" />
                     <span>Buy</span>
                   </Link>
                 </div>
               </div>
-            ))
-          )}
+            );
+          })}
         </div>
       </section>
 
@@ -334,7 +545,7 @@ export const HomePage = () => {
           5. TRUST & SERVICE HIGHLIGHTS
          ───────────────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-3xl p-8 border border-stone-200/80 shadow-xs grid grid-cols-2 lg:grid-cols-4 gap-6 text-slate-700">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-stone-200/80 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-slate-700">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] border border-stone-200 flex items-center justify-center shrink-0">
               <Truck className="w-5 h-5 text-[#0F382C]" />
@@ -357,7 +568,7 @@ export const HomePage = () => {
 
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] border border-stone-200 flex items-center justify-center shrink-0">
-              <Lock className="w-5 h-5 text-[#0F382C]" />
+              <ShieldCheck className="w-5 h-5 text-[#0F382C]" />
             </div>
             <div>
               <h4 className="font-bold text-xs text-slate-900">Razorpay Verified Payments</h4>
@@ -371,7 +582,7 @@ export const HomePage = () => {
             </div>
             <div>
               <h4 className="font-bold text-xs text-slate-900">24/7 Athlete Concierge</h4>
-              <p className="text-[11px] text-slate-500">Expert gear recommendations</p>
+              <p className="text-[11px] text-slate-500">Dedicated equipment specialist support</p>
             </div>
           </div>
         </div>
@@ -380,5 +591,3 @@ export const HomePage = () => {
     </div>
   );
 };
-
-

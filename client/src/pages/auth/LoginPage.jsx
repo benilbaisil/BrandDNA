@@ -29,7 +29,7 @@ export const LoginPage = () => {
   const onSubmit = async (data) => {
     const success = await login(data);
     if (success) {
-      const savedUser = localStorage.getItem('branddna_user');
+      const savedUser = sessionStorage.getItem('branddna_user') || localStorage.getItem('branddna_user');
       const parsedUser = (savedUser && savedUser !== 'undefined') ? JSON.parse(savedUser) : null;
       const from = location.state?.from;
       const target = (from && from !== '/login') ? from : getRoleRedirectPath(parsedUser?.role);
@@ -94,6 +94,13 @@ export const LoginPage = () => {
               <h2 className="font-serif text-3xl font-bold text-slate-900 tracking-tight">Sign In</h2>
               <p className="text-xs text-slate-500 mt-1">Enter your email and password to access your role portal.</p>
             </div>
+
+            {location.state?.message && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-semibold flex items-center gap-2.5 shadow-2xs">
+                <Lock className="w-4 h-4 text-[#0F382C] shrink-0" />
+                <span>{location.state.message}</span>
+              </div>
+            )}
 
             {/* Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

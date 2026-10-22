@@ -1,5 +1,6 @@
 import { User } from '../models/User.js';
 import { generateToken } from '../utils/generateToken.js';
+import { validateAndNormalizePhone, validateAddress } from '../validators/contactValidator.js';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 
@@ -87,12 +88,21 @@ export const registerUserService = async (userData) => {
     throw new Error('User with this email address already exists');
   }
 
+  let normalizedPhone = '';
+  if (phone && phone.trim()) {
+    const phoneRes = validateAndNormalizePhone(phone);
+    if (!phoneRes.isValid) {
+      throw new Error(phoneRes.error);
+    }
+    normalizedPhone = phoneRes.normalized;
+  }
+
   // Force every newly registered account to be a Customer
   const newUser = await User.create({
     fullName,
     email: email.toLowerCase(),
     password,
-    phone: phone || '',
+    phone: normalizedPhone,
     role: 'customer',
   });
 
@@ -139,7 +149,7 @@ export const loginUserService = async (email, password) => {
 };
 
 export const updateUserProfileService = async (userId, updateData) => {
-  const { fullName, email, password, phone, avatar } = updateData;
+  const { fullName, email, password, phone, address, avatar } = updateData;
 
   let user = null;
   if (userId) {
@@ -163,7 +173,29 @@ export const updateUserProfileService = async (userId, updateData) => {
   if (password && password.trim().length >= 6) {
     user.password = password;
   }
-  if (phone !== undefined) user.phone = phone;
+  if (phone !== undefined) {
+    if (phone && phone.trim()) {
+      const phoneRes = validateAndNormalizePhone(phone);
+      if (!phoneRes.isValid) {
+        throw new Error(phoneRes.error);
+      }
+      user.phone = phoneRes.normalized;
+    } else {
+      user.phone = '';
+    }
+  }
+  if (address !== undefined) {
+    if (address && (address.street || address.city || address.zipCode)) {
+      const addrRes = validateAddress(address);
+      if (!addrRes.isValid) {
+        const firstErr = Object.values(addrRes.errors)[0];
+        throw new Error(firstErr || 'Invalid address provided');
+      }
+      user.address = addrRes.sanitized;
+    } else if (address === null || address === '') {
+      user.address = { street: '', city: '', state: '', zipCode: '', country: 'India' };
+    }
+  }
   if (avatar !== undefined) user.avatar = avatar;
 
   await user.save();
@@ -173,6 +205,7 @@ export const updateUserProfileService = async (userId, updateData) => {
     fullName: user.fullName,
     email: user.email,
     phone: user.phone || '',
+    address: user.address,
     role: user.role,
     avatar: user.avatar || '',
   };

@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import html2canvas from 'html2canvas';
 import {
   ShoppingBag,
   ShoppingCart,
@@ -36,74 +35,21 @@ import {
   Flame,
   ArrowLeft,
   Heart,
-  Cloud,
-  Download,
-  RefreshCw,
-  Sliders,
-  ExternalLink,
-  Share2,
-  Layers,
-  Maximize2
+  Menu
 } from 'lucide-react';
 import { businessService } from '../../services/businessService';
 import { paymentService } from '../../services/paymentService';
 import { useToast } from '../../context/ToastContext';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, getRoleRedirectPath } from '../../context/AuthContext';
 import { Footer } from '../../components/layout/Footer';
 import { getDefaultSizesForCategory, SIZE_GUIDE_CHART } from '../../constants/sizes';
-
-const POSTER_THEMES = {
-  midnight: {
-    name: 'Midnight Luxe',
-    primary: '#0B192C',
-    accent: '#38BDF8',
-    overlay: 'linear-gradient(180deg, rgba(11,25,44,0.4) 0%, rgba(11,25,44,0.88) 100%)',
-    badgeBg: '#38BDF8',
-    badgeText: '#060D1A',
-    btnBg: '#38BDF8',
-    btnText: '#060D1A',
-  },
-  emerald: {
-    name: 'Emerald Heritage',
-    primary: '#064E3B',
-    accent: '#34D399',
-    overlay: 'linear-gradient(180deg, rgba(6,78,59,0.35) 0%, rgba(6,78,59,0.9) 100%)',
-    badgeBg: '#34D399',
-    badgeText: '#064E3B',
-    btnBg: '#34D399',
-    btnText: '#064E3B',
-  },
-  crimson: {
-    name: 'Crimson Velocity',
-    primary: '#881337',
-    accent: '#FB7185',
-    overlay: 'linear-gradient(180deg, rgba(136,19,55,0.4) 0%, rgba(136,19,55,0.9) 100%)',
-    badgeBg: '#FB7185',
-    badgeText: '#4C0519',
-    btnBg: '#FB7185',
-    btnText: '#4C0519',
-  },
-  amber: {
-    name: 'Golden Radiance',
-    primary: '#451A03',
-    accent: '#FBBF24',
-    overlay: 'linear-gradient(180deg, rgba(69,26,3,0.4) 0%, rgba(69,26,3,0.9) 100%)',
-    badgeBg: '#FBBF24',
-    badgeText: '#451A03',
-    btnBg: '#FBBF24',
-    btnText: '#451A03',
-  },
-  obsidian: {
-    name: 'Obsidian Minimal',
-    primary: '#0F172A',
-    accent: '#94A3B8',
-    overlay: 'linear-gradient(180deg, rgba(15,23,42,0.45) 0%, rgba(15,23,42,0.92) 100%)',
-    badgeBg: '#334155',
-    badgeText: '#F8FAFC',
-    btnBg: '#F8FAFC',
-    btnText: '#0F172A',
-  },
-};
+import {
+  validatePhoneNumber,
+  validateStreet,
+  validateCity,
+  validateState,
+  validatePinCode,
+} from '../../utils/validation';
 
 export const CustomerProductDetailPage = () => {
   const { id } = useParams();
@@ -111,22 +57,26 @@ export const CustomerProductDetailPage = () => {
   const { addToast } = useToast();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const [product, setProduct] = useState(null);
+  const [product, setProduct] = useState({
+    name: '',
+    brand: '',
+    categoryName: '',
+    description: '',
+    price: 0,
+    discountPrice: 0,
+    images: ['/images/cat_workout_essentials.jpg'],
+    sizes: [],
+    stock: 1,
+    inStock: true,
+  });
+  const [productNotFound, setProductNotFound] = useState(false);
   const [similarProducts, setSimilarProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [wishlist, setWishlist] = useState([]);
   const [selectedSize, setSelectedSize] = useState('');
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
-
-  // Cloud AI Ad Poster State
-  const [adPosterData, setAdPosterData] = useState(null);
-  const [isGeneratingPoster, setIsGeneratingPoster] = useState(false);
-  const [posterTheme, setPosterTheme] = useState('midnight');
-  const [isPreviewPosterModalOpen, setIsPreviewPosterModalOpen] = useState(false);
-  const [isDownloadingPoster, setIsDownloadingPoster] = useState(false);
-  const posterRef = useRef(null);
-  const modalPosterRef = useRef(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Cart & Checkout State
   const [cart, setCart] = useState([]);
@@ -136,19 +86,66 @@ export const CustomerProductDetailPage = () => {
   const [confirmedOrderModal, setConfirmedOrderModal] = useState(null);
   const [razorpayTestModalData, setRazorpayTestModalData] = useState(null);
 
-  // Shipping address
+  // Shipping address (live customer address input)
   const [address, setAddress] = useState({
     fullName: user?.fullName || '',
-    street: user ? '12 Marine Drive, Suite 402' : '',
-    city: user ? 'Kochi' : '',
-    state: user ? 'Kerala' : '',
-    zipCode: user ? '682011' : '',
-    phone: user ? '+91 98765 43210' : '',
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: 'India',
+    phone: user?.phone || '',
   });
+
+  const [addressErrors, setAddressErrors] = useState({});
+  const [addressTouched, setAddressTouched] = useState({});
+
+  const validateAddressField = (field, value, currentAddr = address) => {
+    let error = null;
+    if (field === 'fullName') {
+      if (!value || !value.trim()) error = 'Full name is required';
+      else if (value.trim().length < 2) error = 'Full name must be at least 2 characters';
+    } else if (field === 'street') {
+      error = validateStreet(value);
+    } else if (field === 'city') {
+      error = validateCity(value);
+    } else if (field === 'state') {
+      error = validateState(value);
+    } else if (field === 'zipCode') {
+      error = validatePinCode(value, currentAddr.country || 'India');
+    } else if (field === 'phone') {
+      if (!value || !value.trim()) {
+        error = 'Phone number is required';
+      } else {
+        const pRes = validatePhoneNumber(value);
+        if (!pRes.isValid) error = pRes.error;
+      }
+    }
+
+    setAddressErrors((prev) => {
+      const updated = { ...prev };
+      if (error) updated[field] = error;
+      else delete updated[field];
+      return updated;
+    });
+    return error;
+  };
+
+  const handleAddressChange = (field, value) => {
+    const updated = { ...address, [field]: value };
+    setAddress(updated);
+    if (addressTouched[field]) {
+      validateAddressField(field, value, updated);
+    }
+  };
+
+  const handleAddressBlur = (field) => {
+    setAddressTouched((prev) => ({ ...prev, [field]: true }));
+    validateAddressField(field, address[field], address);
+  };
 
   // Fetch product details & similar products
   const fetchProductData = async () => {
-    setLoading(true);
     try {
       // 1. Fetch current product
       const res = await businessService.getProductById(id);
@@ -161,20 +158,17 @@ export const CustomerProductDetailPage = () => {
         currentProd = res.data;
       }
 
-      setProduct(currentProd);
       if (currentProd) {
-        if (currentProd.adPosterData?.headline) {
-          setAdPosterData(currentProd.adPosterData);
-        } else {
-          setAdPosterData(null);
-        }
-
+        setProduct(currentProd);
+        setProductNotFound(false);
         const prodSizes = currentProd.sizes && currentProd.sizes.length > 0
           ? currentProd.sizes
           : getDefaultSizesForCategory(currentProd.categoryName || currentProd.category?.name || '');
         if (prodSizes.length > 0) {
           setSelectedSize(prodSizes[0]);
         }
+      } else {
+        setProductNotFound(true);
       }
 
       if (isAuthenticated) {
@@ -210,7 +204,7 @@ export const CustomerProductDetailPage = () => {
       }
     } catch (err) {
       console.error('Error fetching product details:', err);
-      addToast('Failed to load product details.', 'error');
+      setProductNotFound(true);
     } finally {
       setLoading(false);
     }
@@ -330,10 +324,30 @@ export const CustomerProductDetailPage = () => {
       addToast('Your cart is empty', 'error');
       return;
     }
-    if (!address.fullName || !address.street || !address.city || !address.phone) {
-      addToast('Please complete shipping address fields before placing order', 'error');
+
+    // Live validation across all required shipping fields
+    const errors = {};
+    ['fullName', 'street', 'city', 'state', 'zipCode', 'phone'].forEach((field) => {
+      const err = validateAddressField(field, address[field], address);
+      if (err) errors[field] = err;
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setAddressErrors(errors);
+      addToast('Please complete all valid shipping address details before checkout', 'error');
       return;
     }
+
+    const phoneRes = validatePhoneNumber(address.phone);
+    const cleanShippingAddress = {
+      fullName: address.fullName.trim(),
+      street: address.street.trim(),
+      city: address.city.trim(),
+      state: address.state.trim(),
+      zipCode: address.zipCode.trim(),
+      country: address.country || 'India',
+      phone: phoneRes.normalized || address.phone.trim(),
+    };
 
     const orderItems = cart.map((item) => ({
       productId: item.product._id,
@@ -344,82 +358,82 @@ export const CustomerProductDetailPage = () => {
     try {
       setIsProcessingPayment(true);
       const isLoaded = await loadRazorpayScript();
-        if (!isLoaded) {
-          addToast('Razorpay SDK failed to load. Check network connection.', 'error');
-          setIsProcessingPayment(false);
-          return;
-        }
+      if (!isLoaded) {
+        addToast('Razorpay SDK failed to load. Check network connection.', 'error');
+        setIsProcessingPayment(false);
+        return;
+      }
 
-        const orderRes = await paymentService.createPaymentOrder({
-          items: orderItems,
-          shippingAddress: address,
+      const orderRes = await paymentService.createPaymentOrder({
+        items: orderItems,
+        shippingAddress: cleanShippingAddress,
+      });
+
+      if (!orderRes?.success || !orderRes?.data) {
+        addToast(orderRes?.message || 'Failed to create Razorpay payment order', 'error');
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      const { razorpayOrderId, amount, currency, keyId } = orderRes.data;
+
+      if (razorpayOrderId && razorpayOrderId.startsWith('order_test_')) {
+        setRazorpayTestModalData({
+          razorpayOrderId,
+          amount,
+          orderItems,
+          shippingAddress: cleanShippingAddress,
         });
+        setIsProcessingPayment(false);
+        return;
+      }
 
-        if (!orderRes?.success || !orderRes?.data) {
-          addToast(orderRes?.message || 'Failed to create Razorpay payment order', 'error');
-          setIsProcessingPayment(false);
-          return;
-        }
+      const options = {
+        key: keyId || '',
+        amount: amount,
+        currency: currency || 'INR',
+        name: 'BrandDNA Store',
+        description: 'Secure Checkout Payment',
+        image: product?.images?.[0] || '/images/cat_workout_essentials.jpg',
+        ...(razorpayOrderId ? { order_id: razorpayOrderId } : {}),
+        prefill: {
+          name: cleanShippingAddress.fullName || user?.fullName || '',
+          email: user?.email || '',
+          contact: cleanShippingAddress.phone || '',
+        },
+        theme: { color: '#0B192C' },
+        handler: async function (response) {
+          try {
+            setIsProcessingPayment(true);
+            const verifyRes = await paymentService.verifyPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id || razorpayOrderId,
+              razorpay_signature: response.razorpay_signature,
+              items: orderItems,
+              shippingAddress: cleanShippingAddress,
+            });
 
-        const { razorpayOrderId, amount, currency, keyId } = orderRes.data;
-
-        if (razorpayOrderId && razorpayOrderId.startsWith('order_test_')) {
-          setRazorpayTestModalData({
-            razorpayOrderId,
-            amount,
-            orderItems,
-            shippingAddress: address
-          });
-          setIsProcessingPayment(false);
-          return;
-        }
-
-        const options = {
-          key: keyId || '',
-          amount: amount,
-          currency: currency || 'INR',
-          name: 'BrandDNA Store',
-          description: 'Secure Checkout Payment',
-          image: product?.images?.[0] || '/images/cat_workout_essentials.jpg',
-          ...(razorpayOrderId ? { order_id: razorpayOrderId } : {}),
-          prefill: {
-            name: address.fullName || user?.fullName || '',
-            email: user?.email || '',
-            contact: address.phone || '',
-          },
-          theme: { color: '#0B192C' },
-          handler: async function (response) {
-            try {
-              setIsProcessingPayment(true);
-              const verifyRes = await paymentService.verifyPayment({
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id || razorpayOrderId,
-                razorpay_signature: response.razorpay_signature,
-                items: orderItems,
-                shippingAddress: address,
-              });
-
-              if (verifyRes?.success && verifyRes?.data?.order) {
-                addToast('Razorpay Payment Successful & Verified!', 'success');
-                setCart([]);
-                setConfirmedOrderModal(verifyRes.data.order);
-                setIsCartOpen(false);
-              } else {
-                addToast(verifyRes?.message || 'Payment verification failed', 'error');
-              }
-            } catch (verifyErr) {
-              addToast(verifyErr.response?.data?.message || 'Signature verification failed', 'error');
-            } finally {
-              setIsProcessingPayment(false);
+            if (verifyRes?.success && verifyRes?.data?.order) {
+              addToast('Razorpay Payment Successful & Verified!', 'success');
+              setCart([]);
+              setConfirmedOrderModal(verifyRes.data.order);
+              setIsCartOpen(false);
+            } else {
+              addToast(verifyRes?.message || 'Payment verification failed', 'error');
             }
+          } catch (verifyErr) {
+            addToast(verifyErr.response?.data?.message || 'Signature verification failed', 'error');
+          } finally {
+            setIsProcessingPayment(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            addToast('Payment process cancelled.', 'info');
+            setIsProcessingPayment(false);
           },
-          modal: {
-            ondismiss: function () {
-              addToast('Payment process cancelled.', 'info');
-              setIsProcessingPayment(false);
-            },
-          },
-        };
+        },
+      };
 
         const razorpayInstance = new window.Razorpay(options);
         razorpayInstance.on('payment.failed', function (response) {
@@ -477,214 +491,9 @@ export const CustomerProductDetailPage = () => {
     }
   };
 
-  const handleGenerateAdPoster = async (forceRegenerate = false) => {
-    if (!product?._id) return;
-    setIsGeneratingPoster(true);
-    try {
-      const res = forceRegenerate
-        ? await businessService.regenerateProductAdPoster(product._id)
-        : await businessService.generateProductAdPoster(product._id);
 
-      if (res?.success && res?.data?.adPosterData) {
-        setAdPosterData(res.data.adPosterData);
-        setProduct((prev) => ({
-          ...prev,
-          adPosterData: res.data.adPosterData,
-          adPosterStatus: 'Generated',
-        }));
-        addToast(
-          forceRegenerate
-            ? 'Cloud commercial ad poster refreshed!'
-            : 'Cloud commercial ad poster generated with exact product!',
-          'success'
-        );
-      } else {
-        addToast(res?.message || 'Failed to generate ad poster', 'error');
-      }
-    } catch (err) {
-      console.error('Error generating product ad poster:', err);
-      addToast(err.response?.data?.message || 'Failed to generate cloud ad poster', 'error');
-    } finally {
-      setIsGeneratingPoster(false);
-    }
-  };
 
-  const handleDownloadPoster = async (targetRef = posterRef) => {
-    if (!targetRef.current) return;
-    setIsDownloadingPoster(true);
-    try {
-      const canvas = await html2canvas(targetRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
-      });
-      const link = document.createElement('a');
-      const cleanName = (product?.name || 'Product').replace(/[^a-zA-Z0-9]/g, '_');
-      link.download = `${cleanName}_Commercial_Cloud_Ad.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      addToast('Commercial ad poster downloaded!', 'success');
-    } catch (err) {
-      console.error('Failed to download poster:', err);
-      addToast('Could not export poster image.', 'error');
-    } finally {
-      setIsDownloadingPoster(false);
-    }
-  };
-
-  const renderAdPosterCanvas = (targetRef, isModal = false) => {
-    const currentTheme = POSTER_THEMES[posterTheme] || POSTER_THEMES.midnight;
-    const exactImg = adPosterData?.productImageUrl || product?.images?.[0] || '/images/cat_workout_essentials.jpg';
-    const cloudBg = adPosterData?.cloudImageUrl || (adPosterData?.cloudImageBase64 ? `data:image/jpeg;base64,${adPosterData.cloudImageBase64}` : null);
-    const brandName = adPosterData?.brandNameText || product?.brand || 'BrandDNA';
-    const catText = adPosterData?.categoryText || product?.categoryName || product?.category?.name || 'Store Collection';
-
-    return (
-      <div
-        ref={targetRef}
-        className={`aspect-[4/5] p-7 sm:p-9 flex flex-col justify-between relative text-white overflow-hidden rounded-3xl shadow-2xl ${
-          isModal ? 'max-w-lg w-full mx-auto' : 'w-full'
-        }`}
-        style={{ backgroundColor: currentTheme.primary }}
-      >
-        {/* Background Layer: Cloud AI Backdrop or Radial Gradient */}
-        {cloudBg ? (
-          <>
-            <img
-              src={cloudBg}
-              alt="Cloud Studio Background"
-              className="absolute inset-0 w-full h-full object-cover scale-105 filter blur-[0.5px] pointer-events-none"
-            />
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: currentTheme.overlay }}
-            />
-          </>
-        ) : (
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `radial-gradient(circle at top right, ${currentTheme.accent}40, transparent 65%), radial-gradient(circle at bottom left, ${currentTheme.primary}, transparent 70%)`,
-            }}
-          />
-        )}
-
-        {/* Ambient Top Glow */}
-        <div
-          className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-40 pointer-events-none"
-          style={{ backgroundColor: currentTheme.accent }}
-        />
-
-        {/* Top Bar: Brand, Badge & Category */}
-        <div className="flex items-center justify-between z-10">
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-xl border border-white/20 flex items-center justify-center font-bold text-white text-xs shadow-md backdrop-blur-md"
-              style={{ background: 'rgba(255,255,255,0.12)' }}
-            >
-              {brandName.charAt(0)}
-            </div>
-            <div className="flex flex-col">
-              <span className="font-extrabold tracking-tight text-sm text-white uppercase font-serif drop-shadow-sm">
-                {brandName}
-              </span>
-              <span className="text-[9px] font-mono tracking-widest text-slate-300 uppercase font-semibold">
-                Official Collection
-              </span>
-            </div>
-          </div>
-
-          <span
-            className="px-3 py-1 rounded-full text-[10px] font-bold text-white tracking-wider uppercase border border-white/20 backdrop-blur-md shadow-sm"
-            style={{ background: 'rgba(0,0,0,0.35)' }}
-          >
-            {catText}
-          </span>
-        </div>
-
-        {/* Center Hero: EXACT Inventory Product Image */}
-        <div className="relative my-auto flex flex-col items-center justify-center py-2 z-10">
-          <div
-            className="absolute w-52 h-52 rounded-full blur-2xl opacity-45 pointer-events-none"
-            style={{ backgroundColor: currentTheme.accent }}
-          />
-
-          <div className="relative flex flex-col items-center">
-            <div className="absolute -bottom-3 w-44 h-4 bg-black/60 rounded-full blur-md" />
-            <img
-              src={exactImg}
-              alt={product?.name || 'Exact Inventory Product'}
-              className="max-h-48 sm:max-h-56 max-w-[280px] object-contain drop-shadow-[0_20px_25px_rgba(0,0,0,0.65)] hover:scale-105 transition-transform duration-500 z-10"
-            />
-          </div>
-
-          {cloudBg && (
-            <span className="mt-3 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold text-sky-200 bg-sky-950/70 border border-sky-400/30 backdrop-blur-md flex items-center gap-1 shadow-sm">
-              <Cloud className="w-2.5 h-2.5 text-sky-400" /> Cloud Studio Render
-            </span>
-          )}
-        </div>
-
-        {/* Copy: USP, Headline, Subheadline */}
-        <div className="space-y-2 z-10 pt-2">
-          {adPosterData?.primaryUSP && (
-            <div
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-md backdrop-blur-md border border-white/10"
-              style={{ backgroundColor: currentTheme.badgeBg, color: currentTheme.badgeText }}
-            >
-              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-              <span className="uppercase tracking-wider text-[10px] font-extrabold">{adPosterData.primaryUSP}</span>
-            </div>
-          )}
-
-          <h3 className="text-xl sm:text-2xl font-black leading-tight tracking-tight font-serif text-white drop-shadow-md">
-            {adPosterData?.headline || product?.name}
-          </h3>
-
-          <p className="text-[11px] sm:text-xs text-slate-200 leading-relaxed font-sans line-clamp-2 opacity-95 drop-shadow-sm">
-            {adPosterData?.subheadline || product?.description || 'Engineered for exceptional daily performance.'}
-          </p>
-
-          {adPosterData?.positioningMessage && (
-            <p className="text-[10px] text-slate-300 italic border-l-2 border-amber-400/90 pl-2.5 py-0.5 line-clamp-1">
-              "{adPosterData.positioningMessage}"
-            </p>
-          )}
-        </div>
-
-        {/* Bottom Bar: Price & CTA */}
-        <div className="flex items-center justify-between pt-3 border-t border-white/15 z-10 mt-1">
-          <div>
-            <span className="text-[9px] font-mono tracking-widest text-slate-300 uppercase block">Verified Price</span>
-            <span className="text-xl sm:text-2xl font-black text-white font-mono drop-shadow-sm">
-              {adPosterData?.pricingText || `₹${product?.price?.toLocaleString('en-IN')}`}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            className="px-5 py-2.5 rounded-xl font-mono text-xs font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 transition-all"
-            style={{ backgroundColor: currentTheme.btnBg, color: currentTheme.btnText }}
-          >
-            <span>{adPosterData?.ctaText || 'Shop Now'}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#060D1A] flex flex-col items-center justify-center gap-3 font-sans text-white">
-        <div className="w-12 h-12 border-4 border-sky-400 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Loading Product Showcase...</p>
-      </div>
-    );
-  }
-
-  if (!product) {
+  if (productNotFound) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 space-y-4 font-sans text-slate-800">
         <Package className="w-16 h-16 text-slate-300" />
@@ -719,32 +528,35 @@ export const CustomerProductDetailPage = () => {
 
       {/* STICKY HEADER */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-100 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between">
           <button
             onClick={() => navigate('/customer/dashboard')}
-            className="flex items-center gap-3 group cursor-pointer"
+            className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer"
           >
-            <div className="w-10 h-10 rounded-2xl bg-[#0B192C] text-white flex items-center justify-center font-bold shadow-md group-hover:scale-105 transition-transform border border-sky-700/40">
-              <Dna className="w-5 h-5 text-sky-300" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#0B192C] text-white flex items-center justify-center font-bold shadow-md group-hover:scale-105 transition-transform border border-sky-700/40 shrink-0">
+              <Dna className="w-4 h-4 sm:w-5 sm:h-5 text-sky-300" />
             </div>
             <div className="flex flex-col text-left">
-              <span className="font-serif font-extrabold text-2xl tracking-tight text-[#0B192C] flex items-center gap-1">
-                BrandDNA<span className="text-sky-500 font-sans text-3xl leading-none">.</span>
+              <span className="font-serif font-extrabold text-xl sm:text-2xl tracking-tight text-[#0B192C] flex items-center gap-1">
+                BrandDNA<span className="text-sky-500 font-sans text-2xl sm:text-3xl leading-none">.</span>
               </span>
-              <span className="text-[9px] font-mono font-bold tracking-widest text-slate-400 uppercase leading-none">
+              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-slate-400 uppercase leading-none">
                 Performance Store
               </span>
             </div>
           </button>
 
-          <nav className="hidden md:flex items-center gap-8 text-xs font-bold tracking-widest uppercase text-slate-700">
-            <button onClick={() => navigate('/customer/dashboard')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-xs font-bold tracking-widest uppercase text-slate-700">
+            <button onClick={() => navigate('/')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
+              Home
+            </button>
+            <button onClick={() => navigate('/products')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
               Catalog
             </button>
-            <button onClick={() => navigate('/customer/dashboard?search=special')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
+            <button onClick={() => navigate('/products?search=special')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
               Special Offers
             </button>
-            <button onClick={() => navigate('/customer/dashboard?search=bestseller')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
+            <button onClick={() => navigate('/products?search=bestseller')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
               Bestsellers
             </button>
             <button
@@ -775,21 +587,30 @@ export const CustomerProductDetailPage = () => {
             </button>
           </nav>
 
-          <div className="flex items-center gap-5 text-xs font-bold">
+          <div className="flex items-center gap-2 sm:gap-4 text-xs font-bold">
             <button
               onClick={() => setIsCartOpen(true)}
-              className="px-4 py-2.5 rounded-full bg-[#0B192C] hover:bg-[#1E3E62] text-white transition-all cursor-pointer flex items-center gap-2 shadow-md hover:scale-105"
+              className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-full bg-[#0B192C] hover:bg-[#1E3E62] text-white transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 shadow-md hover:scale-105"
             >
               <ShoppingCart className="w-3.5 h-3.5 text-sky-300" />
-              <span>Cart</span>
+              <span className="hidden xs:inline">Cart</span>
               <span className="font-mono bg-white/20 px-2 py-0.5 rounded-full text-[10px] text-white">
                 {cartItemCount}
               </span>
             </button>
 
             {isAuthenticated ? (
-              <div className="flex items-center gap-2 pl-2 border-l border-stone-200">
-                <div className="w-9 h-9 rounded-full bg-[#0B192C] text-white font-bold text-xs flex items-center justify-center border border-sky-600/40">
+              <div className="flex items-center gap-1.5 sm:gap-2 pl-2 border-l border-stone-200">
+                {user?.role && user?.role !== 'customer' && (
+                  <button
+                    onClick={() => navigate(getRoleRedirectPath(user?.role))}
+                    className="px-3 py-1.5 rounded-full bg-[#E8F5E9] hover:bg-[#C4E1D4] text-[#0F382C] border border-[#A5D6A7] font-bold text-xs transition-all flex items-center gap-1 shadow-xs mr-1 cursor-pointer"
+                    title={`Go to your ${user?.role} workspace`}
+                  >
+                    <span>Workspace</span>
+                  </button>
+                )}
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0B192C] text-white font-bold text-xs flex items-center justify-center border border-sky-600/40">
                   {(user?.fullName || 'U')[0].toUpperCase()}
                 </div>
                 <span className="hidden lg:inline text-xs font-bold text-slate-800">
@@ -800,7 +621,7 @@ export const CustomerProductDetailPage = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 pl-2 border-l border-stone-200">
+              <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-stone-200">
                 <button
                   onClick={() => navigate('/login')}
                   className="px-3.5 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-slate-800 font-bold text-xs transition-all cursor-pointer font-medium"
@@ -815,9 +636,130 @@ export const CustomerProductDetailPage = () => {
                 </button>
               </div>
             )}
+
+            {/* Mobile Navigation Drawer Toggle */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl text-slate-800 hover:bg-stone-100 transition-colors cursor-pointer"
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
+
+        {/* MOBILE NAVIGATION DRAWER */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden bg-white/98 backdrop-blur-md border-b border-stone-200 overflow-hidden shadow-xl"
+            >
+              <div className="px-5 py-4 space-y-2 text-xs font-bold uppercase tracking-wider text-slate-700">
+                <button
+                  onClick={() => { setMobileMenuOpen(false); navigate('/customer/dashboard'); }}
+                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-stone-100 text-slate-800 transition-colors flex items-center justify-between"
+                >
+                  <span>Catalog</span>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
+
+                <button
+                  onClick={() => { setMobileMenuOpen(false); navigate('/customer/dashboard?search=special'); }}
+                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-stone-100 text-slate-800 transition-colors flex items-center justify-between"
+                >
+                  <span>Special Offers</span>
+                  <Flame className="w-3.5 h-3.5 text-rose-500" />
+                </button>
+
+                <button
+                  onClick={() => { setMobileMenuOpen(false); navigate('/customer/dashboard?search=bestseller'); }}
+                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-stone-100 text-slate-800 transition-colors flex items-center justify-between"
+                >
+                  <span>Bestsellers</span>
+                  <Star className="w-3.5 h-3.5 text-amber-500" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (!isAuthenticated) {
+                      addToast('Please sign in to view your orders.', 'info');
+                      navigate('/login', { state: { from: '/customer/dashboard?tab=orders' } });
+                      return;
+                    }
+                    navigate('/customer/dashboard?tab=orders');
+                  }}
+                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-stone-100 text-slate-800 transition-colors flex items-center justify-between"
+                >
+                  <span>My Orders</span>
+                  <Package className="w-3.5 h-3.5 text-sky-500" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (!isAuthenticated) {
+                      addToast('Please sign in to view your wishlist.', 'info');
+                      navigate('/login', { state: { from: '/customer/dashboard?tab=wishlist' } });
+                      return;
+                    }
+                    navigate('/customer/dashboard?tab=wishlist');
+                  }}
+                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-stone-100 text-rose-600 transition-colors flex items-center justify-between"
+                >
+                  <span>Wishlist {isAuthenticated ? `(${wishlist.length})` : ''}</span>
+                  <Heart className="w-3.5 h-3.5" />
+                </button>
+
+                {!isAuthenticated && (
+                  <div className="pt-3 border-t border-stone-100 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => { setMobileMenuOpen(false); navigate('/login'); }}
+                      className="py-2.5 rounded-xl bg-stone-100 text-slate-800 font-bold text-center text-xs"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => { setMobileMenuOpen(false); navigate('/register'); }}
+                      className="py-2.5 rounded-xl bg-[#0B192C] text-white font-bold text-center text-xs"
+                    >
+                      Register
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
+
+      {/* MARKETING STAFF WORKSPACE TOOLBAR (Restricted to Marketing Team & Admin Only) */}
+      {(user?.role === 'marketing_staff' || user?.role === 'admin') && (
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-indigo-100 border-b border-indigo-800/60 py-2.5 px-4 sm:px-8 shadow-sm">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-mono text-[10px] uppercase font-bold border border-indigo-400/30">
+                Marketing Staff
+              </span>
+              <span className="font-semibold text-slate-200">
+                Generate or customize official ad campaigns in Marketing Studio
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/marketing/ad-poster', { state: { mode: 'existing', productId: product?._id } })}
+              className="px-3.5 py-1.5 rounded-xl bg-sky-400 hover:bg-sky-300 text-slate-950 font-extrabold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-102 self-end sm:self-auto"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Generate Ad in Studio</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* BREADCRUMB BAR */}
       <div className="bg-stone-50 border-b border-stone-200/80 py-3.5 px-4 sm:px-8">
@@ -844,11 +786,11 @@ export const CustomerProductDetailPage = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full space-y-16">
         
         {/* TWO-COLUMN PRODUCT SHOWCASE STAGE */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
           {/* LEFT COLUMN: HIGH-DEFINITION STUDIO STAGE */}
-          <div className="space-y-6">
-            <div className="h-[420px] sm:h-[480px] bg-gradient-to-b from-[#0B192C]/[0.04] via-slate-50/80 to-white rounded-[36px] p-8 flex flex-col items-center justify-center relative border border-stone-200/90 shadow-lg overflow-hidden group">
+          <div className="space-y-5 sm:space-y-6">
+            <div className="h-[320px] sm:h-[440px] lg:h-[480px] bg-gradient-to-b from-[#0B192C]/[0.04] via-slate-50/80 to-white rounded-[28px] sm:rounded-[36px] p-6 sm:p-8 flex flex-col items-center justify-center relative border border-stone-200/90 shadow-lg overflow-hidden group">
               {/* Radial Background Studio Lighting */}
               <div className="absolute w-64 h-64 rounded-full bg-sky-400/15 blur-3xl group-hover:scale-125 transition-transform duration-700 pointer-events-none" />
               <div className="absolute bottom-8 w-52 h-3 bg-[#0B192C]/10 rounded-full blur-md group-hover:w-64 group-hover:bg-sky-500/25 transition-all duration-500" />
@@ -902,40 +844,6 @@ export const CustomerProductDetailPage = () => {
               </div>
             </div>
 
-            {/* QUICK CLOUD AD POSTER TEASER BANNER */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-[#0B192C] via-[#1E3E62] to-[#0B192C] text-white flex items-center justify-between gap-3 shadow-md border border-sky-400/20">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-sky-400/20 border border-sky-400/30 flex items-center justify-center shrink-0">
-                  <Cloud className="w-4 h-4 text-sky-300" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold flex items-center gap-1.5">
-                    <span>Cloud Commercial Ad</span>
-                    {adPosterData?.headline ? (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-mono">
-                        Ready
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] bg-sky-500/20 text-sky-300 border border-sky-400/30 font-mono">
-                        1-Click AI
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-[10px] text-slate-300">Features this exact inventory item & retail price</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const el = document.getElementById('cloud-ad-poster-section');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="px-3 py-1.5 rounded-xl bg-sky-400 hover:bg-sky-300 text-[#060D1A] text-[11px] font-extrabold cursor-pointer transition-all shrink-0 flex items-center gap-1 shadow-sm"
-              >
-                <Sparkles className="w-3 h-3" />
-                <span>{adPosterData?.headline ? 'View Ad' : 'Explore Ad'}</span>
-              </button>
-            </div>
           </div>
 
 
@@ -1136,238 +1044,6 @@ export const CustomerProductDetailPage = () => {
           </div>
         </section>
 
-
-        {/* ─────────────────────────────────────────────────────────────
-            AI COMMERCIAL AD POSTER (CLOUD STUDIO ENGINE)
-           ───────────────────────────────────────────────────────────── */}
-        <section id="cloud-ad-poster-section" className="pt-10 border-t border-stone-200 space-y-8 scroll-mt-24">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-stone-200/80 pb-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-3 py-1 rounded-full text-[10px] font-mono font-extrabold uppercase tracking-widest bg-gradient-to-r from-sky-500/10 to-indigo-500/10 text-sky-700 border border-sky-400/30 flex items-center gap-1.5">
-                  <Cloud className="w-3.5 h-3.5 text-sky-600" />
-                  Cloudflare Flux-1 Schnell + Gemini AI
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-900 text-white">
-                  Exact Inventory Product
-                </span>
-              </div>
-              <h2 className="font-serif text-3xl font-extrabold text-slate-900 tracking-tight">
-                Official Commercial Ad Campaign
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 max-w-2xl font-medium">
-                Cloud-generated advertising visual featuring this exact item from store inventory, rendered with commercial studio lighting, automated positioning, and verified pricing.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-wrap">
-              {adPosterData?.headline ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateAdPoster(true)}
-                    disabled={isGeneratingPoster}
-                    className="px-4 py-2.5 rounded-xl border border-stone-200 hover:border-slate-400 bg-white hover:bg-stone-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-2 shadow-2xs disabled:opacity-50 cursor-pointer"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 text-sky-600 ${isGeneratingPoster ? 'animate-spin' : ''}`} />
-                    <span>{isGeneratingPoster ? 'Regenerating...' : 'Regenerate Cloud Ad'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadPoster(posterRef)}
-                    disabled={isDownloadingPoster}
-                    className="px-4 py-2.5 rounded-xl bg-[#0B192C] hover:bg-[#1E3E62] text-white text-xs font-bold transition-all flex items-center gap-2 shadow-md hover:scale-102 cursor-pointer disabled:opacity-50"
-                  >
-                    <Download className="w-3.5 h-3.5 text-sky-300" />
-                    <span>{isDownloadingPoster ? 'Exporting...' : 'Download PNG'}</span>
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleGenerateAdPoster(false)}
-                  disabled={isGeneratingPoster}
-                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#0B192C] to-[#1E3E62] hover:from-[#1E3E62] hover:to-[#0B192C] text-white text-xs font-bold transition-all flex items-center gap-2.5 shadow-xl hover:scale-102 cursor-pointer disabled:opacity-50"
-                >
-                  {isGeneratingPoster ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
-                      <span>Generating in Cloud...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-sky-300" />
-                      <span>Generate Cloud Commercial Poster</span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* CONTENT AREA */}
-          {adPosterData?.headline ? (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              
-              {/* POSTER CANVAS (5 cols on lg) */}
-              <div className="lg:col-span-5 flex flex-col items-center">
-                <div className="w-full max-w-md shadow-2xl rounded-3xl overflow-hidden border border-[#E5E0D8]/80 group">
-                  {renderAdPosterCanvas(posterRef, false)}
-                </div>
-                <p className="text-[11px] font-mono text-slate-400 mt-3 text-center">
-                  * Features verified inventory pricing and the exact product image from your catalog.
-                </p>
-              </div>
-
-              {/* POSTER DETAILS & CONTROLS (7 cols on lg) */}
-              <div className="lg:col-span-7 space-y-6">
-                
-                {/* Theme Switcher Card */}
-                <div className="p-6 bg-stone-50 rounded-3xl border border-stone-200/90 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 flex items-center gap-2">
-                      <Sliders className="w-4 h-4 text-sky-600" />
-                      Ad Poster Visual Theme
-                    </span>
-                    <span className="text-xs font-mono text-slate-500 font-semibold">
-                      {POSTER_THEMES[posterTheme]?.name}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {Object.entries(POSTER_THEMES).map(([themeKey, tObj]) => {
-                      const isSelected = posterTheme === themeKey;
-                      return (
-                        <button
-                          key={themeKey}
-                          type="button"
-                          onClick={() => setPosterTheme(themeKey)}
-                          className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center gap-2.5 ${
-                            isSelected
-                              ? 'bg-white border-slate-900 shadow-md ring-2 ring-slate-900 ring-offset-1'
-                              : 'bg-white/70 border-stone-200 hover:border-slate-300 hover:bg-white'
-                          }`}
-                        >
-                          <div
-                            className="w-5 h-5 rounded-full border border-white/40 shrink-0 shadow-2xs"
-                            style={{ backgroundColor: tObj.primary }}
-                          />
-                          <span className="text-xs font-bold text-slate-800 truncate">
-                            {tObj.name}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Cloud AI Studio Diagnostics & Prompt */}
-                <div className="p-6 bg-white rounded-3xl border border-stone-200 space-y-4 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold uppercase tracking-widest text-slate-900 flex items-center gap-2">
-                      <Cloud className="w-4 h-4 text-sky-600" />
-                      Cloudflare Workers AI Generation Specs
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-50 text-sky-700 border border-sky-200">
-                      @cf/black-forest-labs/flux-1-schnell
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-mono uppercase font-bold text-slate-400">Backdrop Prompt:</span>
-                    <p className="text-xs text-slate-700 italic bg-stone-50 p-3 rounded-2xl border border-stone-200/70 leading-relaxed font-serif">
-                      "{adPosterData.imagePrompt || 'Commercial product studio photography, soft volumetric lighting, luxury pedestal backdrop'}"
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-                    <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/70">
-                      <span className="text-[10px] font-mono text-slate-400 uppercase block font-semibold">Hero Subject</span>
-                      <span className="text-xs font-bold text-slate-800 line-clamp-1">{product?.name}</span>
-                    </div>
-                    <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/70">
-                      <span className="text-[10px] font-mono text-slate-400 uppercase block font-semibold">Primary USP</span>
-                      <span className="text-xs font-bold text-sky-700 line-clamp-1">{adPosterData.primaryUSP || 'High Durability'}</span>
-                    </div>
-                    <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/70">
-                      <span className="text-[10px] font-mono text-slate-400 uppercase block font-semibold">Catalog Price</span>
-                      <span className="text-xs font-bold text-slate-800 font-mono">₹{product?.price?.toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Studio Actions */}
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsPreviewPosterModalOpen(true)}
-                    className="px-5 py-3 rounded-2xl border border-stone-300 hover:border-slate-800 bg-white hover:bg-stone-50 text-slate-850 font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
-                  >
-                    <Maximize2 className="w-4 h-4 text-sky-600" />
-                    <span>Fullscreen Preview</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate('/marketing/ad-poster', { state: { mode: 'existing', productId: product._id } })}
-                    className="px-5 py-3 rounded-2xl bg-[#0B192C] hover:bg-[#1E3E62] text-white font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md"
-                  >
-                    <ExternalLink className="w-4 h-4 text-sky-300" />
-                    <span>Open in Ad Poster Studio</span>
-                  </button>
-                </div>
-
-              </div>
-
-            </div>
-          ) : (
-            /* EMPTY / GENERATE STATE CARD */
-            <div className="p-10 sm:p-14 rounded-3xl bg-gradient-to-br from-[#060D1A] via-[#0B192C] to-[#1E3E62] text-white border border-slate-800 shadow-2xl relative overflow-hidden text-center space-y-6">
-              <div className="absolute -top-24 -right-24 w-80 h-80 bg-sky-400/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="w-16 h-16 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center mx-auto shadow-xl">
-                <Cloud className="w-8 h-8 text-sky-300" />
-              </div>
-
-              <div className="max-w-xl mx-auto space-y-3 relative z-10">
-                <span className="px-3.5 py-1 rounded-full text-[10px] font-mono font-extrabold uppercase tracking-widest bg-sky-400/20 text-sky-300 border border-sky-400/30">
-                  Instant Cloud Generation Available
-                </span>
-                <h3 className="font-serif text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  Commercial Cloud Ad Poster for {product.name}
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                  Generate professional studio lighting and visual effects using Cloudflare Workers AI (<code className="text-sky-300 font-mono">flux-1-schnell</code>) alongside commercial copy synthesized by Gemini. The ad will feature this exact inventory product in high resolution.
-                </p>
-              </div>
-
-              <div className="relative z-10 pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleGenerateAdPoster(false)}
-                  disabled={isGeneratingPoster}
-                  className="px-8 py-4 rounded-2xl bg-gradient-to-r from-sky-400 to-sky-300 hover:from-sky-300 hover:to-sky-200 text-[#060D1A] font-black text-sm transition-all shadow-xl hover:scale-105 cursor-pointer disabled:opacity-50 inline-flex items-center gap-3"
-                >
-                  {isGeneratingPoster ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-[#060D1A] border-t-transparent rounded-full animate-spin" />
-                      <span>Generating in Cloud (Cloudflare + Gemini)...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5 text-[#060D1A]" />
-                      <span>Generate Cloud Ad Poster Now</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-        </section>
-
-
         {/* ─────────────────────────────────────────────────────────────
             SIMILAR PRODUCTS SECTION (SAME CATEGORY)
            ───────────────────────────────────────────────────────────── */}
@@ -1464,7 +1140,7 @@ export const CustomerProductDetailPage = () => {
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"
             />
 
-            <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
               <motion.div
                 initial={{ x: '100%' }}
                 animate={{ x: 0 }}
@@ -1542,35 +1218,109 @@ export const CustomerProductDetailPage = () => {
                         <Truck className="w-4 h-4 text-slate-700" /> Shipping Details
                       </h3>
                       <div className="space-y-2 text-xs">
-                        <input
-                          type="text"
-                          value={address.fullName}
-                          onChange={(e) => setAddress({ ...address, fullName: e.target.value })}
-                          placeholder="Full Name"
-                          className="w-full bg-white border border-stone-200 rounded-lg p-2 outline-none font-medium"
-                        />
-                        <input
-                          type="text"
-                          value={address.street}
-                          onChange={(e) => setAddress({ ...address, street: e.target.value })}
-                          placeholder="Street Address"
-                          className="w-full bg-white border border-stone-200 rounded-lg p-2 outline-none font-medium"
-                        />
+                        <div>
+                          <input
+                            type="text"
+                            value={address.fullName}
+                            onChange={(e) => handleAddressChange('fullName', e.target.value)}
+                            onBlur={() => handleAddressBlur('fullName')}
+                            placeholder="Full Name *"
+                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                              addressErrors.fullName ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                            }`}
+                          />
+                          {addressErrors.fullName && (
+                            <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.fullName}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            value={address.street}
+                            onChange={(e) => handleAddressChange('street', e.target.value)}
+                            onBlur={() => handleAddressBlur('street')}
+                            placeholder="Street Address (min 5 characters) *"
+                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                              addressErrors.street ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                            }`}
+                          />
+                          {addressErrors.street && (
+                            <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.street}</p>
+                          )}
+                        </div>
+
                         <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            value={address.city}
-                            onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                            placeholder="City"
-                            className="bg-white border border-stone-200 rounded-lg p-2 outline-none font-medium"
-                          />
-                          <input
-                            type="text"
-                            value={address.phone}
-                            onChange={(e) => setAddress({ ...address, phone: e.target.value })}
-                            placeholder="Phone"
-                            className="bg-white border border-stone-200 rounded-lg p-2 outline-none font-medium"
-                          />
+                          <div>
+                            <input
+                              type="text"
+                              value={address.city}
+                              onChange={(e) => handleAddressChange('city', e.target.value)}
+                              onBlur={() => handleAddressBlur('city')}
+                              placeholder="City *"
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                                addressErrors.city ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
+                            />
+                            {addressErrors.city && (
+                              <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.city}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <input
+                              type="text"
+                              value={address.state}
+                              onChange={(e) => handleAddressChange('state', e.target.value)}
+                              onBlur={() => handleAddressBlur('state')}
+                              placeholder="State *"
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                                addressErrors.state ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
+                            />
+                            {addressErrors.state && (
+                              <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.state}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <input
+                              type="text"
+                              maxLength={6}
+                              value={address.zipCode}
+                              onChange={(e) => handleAddressChange('zipCode', e.target.value)}
+                              onBlur={() => handleAddressBlur('zipCode')}
+                              placeholder="PIN Code (6 digits) *"
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                                addressErrors.zipCode ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
+                            />
+                            {addressErrors.zipCode && (
+                              <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.zipCode}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <input
+                              type="text"
+                              value={address.phone}
+                              onChange={(e) => handleAddressChange('phone', e.target.value)}
+                              onBlur={() => handleAddressBlur('phone')}
+                              placeholder="Phone (e.g. 9876543210) *"
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
+                                addressErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
+                            />
+                            {addressErrors.phone ? (
+                              <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.phone}</p>
+                            ) : address.phone && !addressErrors.phone && addressTouched.phone ? (
+                              <p className="text-[10px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Valid phone
+                              </p>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
 
@@ -1607,8 +1357,8 @@ export const CustomerProductDetailPage = () => {
 
                     <button
                       onClick={handlePlaceOrder}
-                      disabled={isProcessingPayment}
-                      className="w-full py-3.5 bg-[#0B192C] hover:bg-[#1E3E62] disabled:bg-slate-400 text-white font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                      disabled={isProcessingPayment || Object.keys(addressErrors).length > 0}
+                      className="w-full py-3.5 bg-[#0B192C] hover:bg-[#1E3E62] disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
                     >
                       {isProcessingPayment ? (
                         <>
@@ -1815,53 +1565,6 @@ export const CustomerProductDetailPage = () => {
                 >
                   Got It, Thanks!
                 </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* FULLSCREEN PREVIEW AD POSTER MODAL */}
-      <AnimatePresence>
-        {isPreviewPosterModalOpen && adPosterData?.headline && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl border border-stone-200 max-h-[92vh] overflow-y-auto"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-                <div className="flex items-center gap-2">
-                  <Cloud className="w-5 h-5 text-sky-600" />
-                  <h3 className="font-serif text-lg font-bold text-slate-900">Commercial Cloud Ad Poster</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewPosterModalOpen(false)}
-                  className="p-1.5 text-slate-400 hover:text-slate-800 rounded-full hover:bg-stone-100 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="flex justify-center">
-                {renderAdPosterCanvas(modalPosterRef, true)}
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-xs font-mono text-slate-500">Theme: {POSTER_THEMES[posterTheme]?.name}</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadPoster(modalPosterRef)}
-                    disabled={isDownloadingPoster}
-                    className="px-5 py-2.5 rounded-xl bg-[#0B192C] hover:bg-[#1E3E62] text-white text-xs font-bold transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
-                  >
-                    <Download className="w-4 h-4 text-sky-300" />
-                    <span>{isDownloadingPoster ? 'Downloading...' : 'Download PNG'}</span>
-                  </button>
-                </div>
               </div>
             </motion.div>
           </div>

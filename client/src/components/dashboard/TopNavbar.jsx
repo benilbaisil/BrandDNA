@@ -28,7 +28,7 @@ export const TopNavbar = ({ onOpenMobile }) => {
   let role = user?.role;
   if (!role) {
     try {
-      const u = localStorage.getItem('branddna_user');
+      const u = sessionStorage.getItem('branddna_user') || localStorage.getItem('branddna_user');
       role = u && u !== 'undefined' ? JSON.parse(u)?.role : 'customer';
     } catch(e) { role = 'customer'; }
   }
