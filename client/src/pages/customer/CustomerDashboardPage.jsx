@@ -246,7 +246,7 @@ export const CustomerDashboardPage = () => {
           storageCache.set('all_products', fetchedProducts);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // 2. Categories background refresh
     businessService.getCategories()
@@ -256,7 +256,7 @@ export const CustomerDashboardPage = () => {
           storageCache.set('all_categories', catRes.data.categories);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // 3. User Telemetry background refresh (dashboard, wishlist, returns)
     if (isAuth) {
@@ -267,7 +267,7 @@ export const CustomerDashboardPage = () => {
             storageCache.set('cust_dashboard', dashRes.data);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
 
       businessService.getWishlist()
         .then((wishRes) => {
@@ -275,7 +275,7 @@ export const CustomerDashboardPage = () => {
             setWishlist(wishRes.data.wishlist.map((p) => p._id));
           }
         })
-        .catch(() => {});
+        .catch(() => { });
 
       businessService.getReturns()
         .then((retRes) => {
@@ -283,7 +283,7 @@ export const CustomerDashboardPage = () => {
             setCustomerReturns(retRes.data.returns);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   };
 
@@ -418,7 +418,7 @@ export const CustomerDashboardPage = () => {
       ? product.sizes
       : getDefaultSizesForCategory(product.categoryName || product.category?.name || '');
     const itemSize = chosenSize || (availableSizes.length > 0 ? availableSizes[0] : 'Standard');
-    
+
     const existing = cart.find((item) => item.product._id === product._id && item.size === itemSize);
     if (existing && existing.quantity >= product.stock) {
       addToast(`Only ${product.stock} units available in stock`, 'error');
@@ -440,7 +440,7 @@ export const CustomerDashboardPage = () => {
   const updateCartQty = (productId, delta, itemSize) => {
     const itemToUpdate = cart.find(item => item.product._id === productId && (!itemSize || item.size === itemSize));
     if (!itemToUpdate) return;
-    
+
     const newQty = itemToUpdate.quantity + delta;
     if (newQty > itemToUpdate.product.stock) {
       addToast(`Cannot exceed available stock (${itemToUpdate.product.stock})`, 'error');
@@ -580,47 +580,47 @@ export const CustomerDashboardPage = () => {
               shippingAddress: cleanShippingAddress,
             });
 
-              if (verifyRes?.success && verifyRes?.data?.order) {
-                addToast('Razorpay Payment Successful & Verified!', 'success');
-                setCart([]);
-                setConfirmedOrderModal(verifyRes.data.order);
-                setIsCartOpen(false);
-                setActiveTab('orders');
-                fetchCustomerData();
-              } else {
-                addToast(verifyRes?.message || 'Payment verification failed on server', 'error');
-              }
-            } catch (verifyErr) {
-              addToast(
-                verifyErr.response?.data?.message || 'Server signature verification failed',
-                'error'
-              );
-            } finally {
-              setIsProcessingPayment(false);
+            if (verifyRes?.success && verifyRes?.data?.order) {
+              addToast('Razorpay Payment Successful & Verified!', 'success');
+              setCart([]);
+              setConfirmedOrderModal(verifyRes.data.order);
+              setIsCartOpen(false);
+              setActiveTab('orders');
+              fetchCustomerData();
+            } else {
+              addToast(verifyRes?.message || 'Payment verification failed on server', 'error');
             }
+          } catch (verifyErr) {
+            addToast(
+              verifyErr.response?.data?.message || 'Server signature verification failed',
+              'error'
+            );
+          } finally {
+            setIsProcessingPayment(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            addToast('Payment process cancelled by user.', 'info');
+            setIsProcessingPayment(false);
           },
-          modal: {
-            ondismiss: function () {
-              addToast('Payment process cancelled by user.', 'info');
-              setIsProcessingPayment(false);
-            },
-          },
-        };
+        },
+      };
 
-        const razorpayInstance = new window.Razorpay(options);
-        razorpayInstance.on('payment.failed', function (response) {
-          addToast(
-            `Payment Failed: ${response.error?.description || response.error?.reason || 'Transaction declined'}`,
-            'error'
-          );
-          setIsProcessingPayment(false);
-        });
-        razorpayInstance.open();
-      } catch (err) {
-        addToast(err.response?.data?.message || 'Failed to launch Razorpay checkout', 'error');
+      const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.on('payment.failed', function (response) {
+        addToast(
+          `Payment Failed: ${response.error?.description || response.error?.reason || 'Transaction declined'}`,
+          'error'
+        );
         setIsProcessingPayment(false);
-      }
-    };
+      });
+      razorpayInstance.open();
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to launch Razorpay checkout', 'error');
+      setIsProcessingPayment(false);
+    }
+  };
 
   const handleSimulateTestPaymentSuccess = async () => {
     if (!razorpayTestModalData) return;
@@ -788,20 +788,7 @@ export const CustomerDashboardPage = () => {
             >
               Catalog
             </button>
-            <button
-              id="nav-special-offers-btn"
-              onClick={() => { setActiveTab('catalogue'); setSpecialFilterMode('special'); setCatalogueSearch(''); }}
-              className={`hover:text-[#0B192C] transition-colors cursor-pointer ${specialFilterMode === 'special' ? 'text-[#0B192C] underline underline-offset-8 decoration-2 font-extrabold' : ''}`}
-            >
-              Special Offers
-            </button>
-            <button
-              id="nav-bestsellers-btn"
-              onClick={() => { setActiveTab('catalogue'); setSpecialFilterMode('bestseller'); setCatalogueSearch(''); }}
-              className={`hover:text-[#0B192C] transition-colors cursor-pointer ${specialFilterMode === 'bestseller' ? 'text-[#0B192C] underline underline-offset-8 decoration-2 font-extrabold' : ''}`}
-            >
-              Bestsellers
-            </button>
+
             <button
               id="nav-my-orders-btn"
               onClick={() => {
@@ -918,11 +905,10 @@ export const CustomerDashboardPage = () => {
                     setSelectedSubFilter('');
                     setMobileMenuOpen(false);
                   }}
-                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${
-                    activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch && !specialFilterMode
+                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${activeTab === 'catalogue' && selectedCatFilter === 'ALL' && !catalogueSearch && !specialFilterMode
                       ? 'bg-[#0B192C] text-white'
                       : 'hover:bg-stone-100 text-slate-800'
-                  }`}
+                    }`}
                 >
                   <span>Catalog</span>
                   <ArrowRight className="w-3.5 h-3.5 opacity-60" />
@@ -935,11 +921,10 @@ export const CustomerDashboardPage = () => {
                     setCatalogueSearch('');
                     setMobileMenuOpen(false);
                   }}
-                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${
-                    specialFilterMode === 'special'
+                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${specialFilterMode === 'special'
                       ? 'bg-[#0B192C] text-white'
                       : 'hover:bg-stone-100 text-slate-800'
-                  }`}
+                    }`}
                 >
                   <span>Special Offers</span>
                   <Flame className="w-3.5 h-3.5 text-rose-500" />
@@ -952,11 +937,10 @@ export const CustomerDashboardPage = () => {
                     setCatalogueSearch('');
                     setMobileMenuOpen(false);
                   }}
-                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${
-                    specialFilterMode === 'bestseller'
+                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${specialFilterMode === 'bestseller'
                       ? 'bg-[#0B192C] text-white'
                       : 'hover:bg-stone-100 text-slate-800'
-                  }`}
+                    }`}
                 >
                   <span>Bestsellers</span>
                   <Trophy className="w-3.5 h-3.5 text-amber-500" />
@@ -968,11 +952,10 @@ export const CustomerDashboardPage = () => {
                     if (requireLogin('view your orders')) return;
                     setActiveTab('orders');
                   }}
-                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${
-                    activeTab === 'orders'
+                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${activeTab === 'orders'
                       ? 'bg-[#0B192C] text-white'
                       : 'hover:bg-stone-100 text-slate-800'
-                  }`}
+                    }`}
                 >
                   <span>My Orders {isAuthenticated ? `(${recentOrders.length})` : ''}</span>
                   <Package className="w-3.5 h-3.5 text-sky-500" />
@@ -984,11 +967,10 @@ export const CustomerDashboardPage = () => {
                     if (requireLogin('view your wishlist')) return;
                     setActiveTab('wishlist');
                   }}
-                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${
-                    activeTab === 'wishlist'
+                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${activeTab === 'wishlist'
                       ? 'bg-rose-500 text-white'
                       : 'hover:bg-stone-100 text-rose-600'
-                  }`}
+                    }`}
                 >
                   <span>Wishlist {isAuthenticated ? `(${wishlist.length})` : ''}</span>
                   <Heart className="w-3.5 h-3.5" />
@@ -1305,11 +1287,10 @@ export const CustomerDashboardPage = () => {
               <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
                 <button
                   onClick={() => { setSelectedCatFilter('ALL'); setCataloguePage(1); setSelectedSubFilter(''); }}
-                  className={`px-4.5 py-2.5 rounded-full text-xs font-bold tracking-wide uppercase transition-all cursor-pointer shrink-0 border ${
-                    selectedCatFilter === 'ALL'
+                  className={`px-4.5 py-2.5 rounded-full text-xs font-bold tracking-wide uppercase transition-all cursor-pointer shrink-0 border ${selectedCatFilter === 'ALL'
                       ? 'bg-[#0B192C] text-white border-[#0B192C] shadow-xs'
                       : 'bg-white text-slate-600 border-slate-200 hover:border-[#0B192C]'
-                  }`}
+                    }`}
                 >
                   All Products
                 </button>
@@ -1321,11 +1302,10 @@ export const CustomerDashboardPage = () => {
                     <button
                       key={cat.id}
                       onClick={() => { setSelectedCatFilter(cat.name); setCataloguePage(1); setSelectedSubFilter(''); }}
-                      className={`px-4.5 py-2.5 rounded-full text-xs font-bold tracking-wide uppercase transition-all cursor-pointer shrink-0 border flex items-center gap-2 ${
-                        isSelected
+                      className={`px-4.5 py-2.5 rounded-full text-xs font-bold tracking-wide uppercase transition-all cursor-pointer shrink-0 border flex items-center gap-2 ${isSelected
                           ? 'bg-[#0B192C] text-white border-[#0B192C] shadow-xs'
                           : 'bg-white text-slate-600 border-slate-200 hover:border-[#0B192C]'
-                      }`}
+                        }`}
                     >
                       <IconComp className={`w-3.5 h-3.5 ${isSelected ? 'text-sky-300' : 'text-slate-500'}`} />
                       <span>{cat.name}</span>
@@ -1343,9 +1323,8 @@ export const CustomerDashboardPage = () => {
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => setSelectedSubFilter('')}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${
-                        !selectedSubFilter ? 'bg-[#0B192C] text-white' : 'bg-white text-slate-700 border border-stone-200 hover:border-[#0B192C]'
-                      }`}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${!selectedSubFilter ? 'bg-[#0B192C] text-white' : 'bg-white text-slate-700 border border-stone-200 hover:border-[#0B192C]'
+                        }`}
                     >
                       All {activeCategoryObj.name}
                     </button>
@@ -1353,9 +1332,8 @@ export const CustomerDashboardPage = () => {
                       <button
                         key={sub}
                         onClick={() => { setSelectedSubFilter(sub); setCataloguePage(1); }}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
-                          selectedSubFilter === sub ? 'bg-[#0B192C] text-white font-bold' : 'bg-white text-slate-700 border border-stone-200 hover:border-[#0B192C]'
-                        }`}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${selectedSubFilter === sub ? 'bg-[#0B192C] text-white font-bold' : 'bg-white text-slate-700 border border-stone-200 hover:border-[#0B192C]'
+                          }`}
                       >
                         {sub}
                       </button>
@@ -1494,7 +1472,7 @@ export const CustomerDashboardPage = () => {
                   const hasDiscount = product.discountPrice > 0 && product.discountPrice > product.price;
                   const savings = hasDiscount ? product.discountPrice - product.price : 0;
                   const discountPercent = hasDiscount ? Math.round((savings / product.discountPrice) * 100) : 0;
-                  
+
                   // Spec tags based on category or name
                   const catName = (product.categoryName || product.category?.name || '').toLowerCase();
                   let specBadge = 'Pro Series';
@@ -1577,9 +1555,8 @@ export const CustomerDashboardPage = () => {
                             <span className="text-[10px] text-slate-400 font-mono font-bold tracking-wider uppercase">
                               SKU: {product.sku || 'BDNA-PRO'}
                             </span>
-                            <span className={`text-[10px] font-bold px-3 py-0.5 rounded-full flex items-center gap-1.5 ${
-                              product.stock > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'
-                            }`}>
+                            <span className={`text-[10px] font-bold px-3 py-0.5 rounded-full flex items-center gap-1.5 ${product.stock > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'
+                              }`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${product.stock > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
                               {product.stock > 0 ? `${product.stock} units available` : 'Out of Stock'}
                             </span>
@@ -1785,14 +1762,13 @@ export const CustomerDashboardPage = () => {
                             <div
                               className="bg-gradient-to-r from-sky-500 via-emerald-500 to-[#0B192C] h-full rounded-full transition-all duration-700"
                               style={{
-                                width: `${
-                                  (order.shipmentStatusText?.toUpperCase() === 'DELIVERED' || order.shipmentStatus?.toUpperCase() === 'DELIVERED') ? 100 :
-                                  (order.shipmentStatusText?.toUpperCase() === 'OUT_FOR_DELIVERY' || order.shipmentStatus?.toUpperCase() === 'OUT_FOR_DELIVERY') ? 85 :
-                                  (order.shipmentStatusText?.toUpperCase() === 'ARRIVED_AT_HUB' || order.shipmentStatus?.toUpperCase() === 'ARRIVED_AT_HUB') ? 70 :
-                                  (order.shipmentStatusText?.toUpperCase() === 'IN_TRANSIT' || order.shipmentStatus?.toUpperCase() === 'IN_TRANSIT') ? 55 :
-                                  (order.shipmentStatusText?.toUpperCase() === 'PICKED_UP' || order.shipmentStatus?.toUpperCase() === 'PICKED_UP') ? 40 :
-                                  (order.shipmentStatusText?.toUpperCase() === 'ORDER_CONFIRMED' || order.shipmentStatus?.toUpperCase() === 'ORDER_CONFIRMED') ? 25 : 10
-                                }%`
+                                width: `${(order.shipmentStatusText?.toUpperCase() === 'DELIVERED' || order.shipmentStatus?.toUpperCase() === 'DELIVERED') ? 100 :
+                                    (order.shipmentStatusText?.toUpperCase() === 'OUT_FOR_DELIVERY' || order.shipmentStatus?.toUpperCase() === 'OUT_FOR_DELIVERY') ? 85 :
+                                      (order.shipmentStatusText?.toUpperCase() === 'ARRIVED_AT_HUB' || order.shipmentStatus?.toUpperCase() === 'ARRIVED_AT_HUB') ? 70 :
+                                        (order.shipmentStatusText?.toUpperCase() === 'IN_TRANSIT' || order.shipmentStatus?.toUpperCase() === 'IN_TRANSIT') ? 55 :
+                                          (order.shipmentStatusText?.toUpperCase() === 'PICKED_UP' || order.shipmentStatus?.toUpperCase() === 'PICKED_UP') ? 40 :
+                                            (order.shipmentStatusText?.toUpperCase() === 'ORDER_CONFIRMED' || order.shipmentStatus?.toUpperCase() === 'ORDER_CONFIRMED') ? 25 : 10
+                                  }%`
                               }}
                             />
                           </div>
@@ -2191,9 +2167,8 @@ export const CustomerDashboardPage = () => {
                             onChange={(e) => handleAddressChange('fullName', e.target.value)}
                             onBlur={() => handleAddressBlur('fullName')}
                             placeholder="Full Name *"
-                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                              addressErrors.fullName ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                            }`}
+                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.fullName ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
                           />
                           {addressErrors.fullName && (
                             <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.fullName}</p>
@@ -2207,9 +2182,8 @@ export const CustomerDashboardPage = () => {
                             onChange={(e) => handleAddressChange('street', e.target.value)}
                             onBlur={() => handleAddressBlur('street')}
                             placeholder="Street Address (min 5 characters) *"
-                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                              addressErrors.street ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                            }`}
+                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.street ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
                           />
                           {addressErrors.street && (
                             <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.street}</p>
@@ -2224,9 +2198,8 @@ export const CustomerDashboardPage = () => {
                               onChange={(e) => handleAddressChange('city', e.target.value)}
                               onBlur={() => handleAddressBlur('city')}
                               placeholder="City *"
-                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                                addressErrors.city ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                              }`}
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.city ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                                }`}
                             />
                             {addressErrors.city && (
                               <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.city}</p>
@@ -2240,9 +2213,8 @@ export const CustomerDashboardPage = () => {
                               onChange={(e) => handleAddressChange('state', e.target.value)}
                               onBlur={() => handleAddressBlur('state')}
                               placeholder="State *"
-                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                                addressErrors.state ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                              }`}
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.state ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                                }`}
                             />
                             {addressErrors.state && (
                               <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.state}</p>
@@ -2259,9 +2231,8 @@ export const CustomerDashboardPage = () => {
                               onChange={(e) => handleAddressChange('zipCode', e.target.value)}
                               onBlur={() => handleAddressBlur('zipCode')}
                               placeholder="PIN Code (6 digits) *"
-                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                                addressErrors.zipCode ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                              }`}
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.zipCode ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                                }`}
                             />
                             {addressErrors.zipCode && (
                               <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.zipCode}</p>
@@ -2275,9 +2246,8 @@ export const CustomerDashboardPage = () => {
                               onChange={(e) => handleAddressChange('phone', e.target.value)}
                               onBlur={() => handleAddressBlur('phone')}
                               placeholder="Phone (e.g. 9876543210) *"
-                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                                addressErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                              }`}
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                                }`}
                             />
                             {addressErrors.phone ? (
                               <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.phone}</p>
@@ -2421,9 +2391,8 @@ export const CustomerDashboardPage = () => {
                       <span className="text-xs font-bold text-slate-900 ml-1.5">4.9 / 5.0</span>
                     </div>
 
-                    <span className={`text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${
-                      selectedProductDetails.stock > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'
-                    }`}>
+                    <span className={`text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${selectedProductDetails.stock > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'
+                      }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${selectedProductDetails.stock > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
                       {selectedProductDetails.stock > 0 ? `In Stock (${selectedProductDetails.stock} units)` : 'Out of Stock'}
                     </span>
@@ -2483,11 +2452,10 @@ export const CustomerDashboardPage = () => {
                               key={sz}
                               type="button"
                               onClick={() => setQuickViewSelectedSize(sz)}
-                              className={`px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer ${
-                                currentChosenSize === sz
+                              className={`px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer ${currentChosenSize === sz
                                   ? 'bg-[#0B192C] text-white ring-2 ring-[#0B192C] ring-offset-1 shadow-sm'
                                   : 'bg-stone-100 hover:bg-stone-200 text-slate-700 border border-stone-200'
-                              }`}
+                                }`}
                             >
                               {sz}
                             </button>
@@ -2702,10 +2670,10 @@ export const CustomerDashboardPage = () => {
                     <strong className="text-slate-800 font-bold">
                       {selectedProductForReturn.deliveredAt
                         ? new Date(selectedProductForReturn.deliveredAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })
                         : 'Confirmed Delivery'}
                     </strong>
                   </div>
@@ -2714,10 +2682,10 @@ export const CustomerDashboardPage = () => {
                     <strong className="text-emerald-700 font-bold">
                       {selectedProductForReturn.returnDeadline
                         ? new Date(selectedProductForReturn.returnDeadline).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })
                         : '7 days from delivery'}
                     </strong>
                   </div>
@@ -2943,13 +2911,12 @@ export const CustomerDashboardPage = () => {
                     return (
                       <div key={step.key} className="flex flex-col items-center text-center">
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                            isCurrent
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${isCurrent
                               ? 'bg-[#0B192C] text-white ring-4 ring-sky-300 scale-105 shadow-md'
                               : isDone
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-stone-100 text-slate-400 border border-stone-200'
-                          }`}
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-stone-100 text-slate-400 border border-stone-200'
+                            }`}
                         >
                           {isDone && !isCurrent ? '✓' : idx + 1}
                         </div>

@@ -188,7 +188,7 @@ export const CustomerProductDetailPage = () => {
 
       if (currentProd && allProds.length > 0) {
         const currentCat = (currentProd.categoryName || currentProd.category?.name || currentProd.category || '').toString().toLowerCase().trim();
-        
+
         const filteredSimilar = allProds.filter(p => {
           if (p._id === currentProd._id) return false; // exclude current
           const pCat = (p.categoryName || p.category?.name || p.category || '').toString().toLowerCase().trim();
@@ -275,7 +275,7 @@ export const CustomerProductDetailPage = () => {
       (item) => item.product._id === productId && (!itemSize || item.size === itemSize)
     );
     if (!itemToUpdate) return;
-    
+
     const newQty = itemToUpdate.quantity + delta;
     if (newQty > itemToUpdate.product.stock) {
       addToast(`Cannot exceed available stock (${itemToUpdate.product.stock})`, 'error');
@@ -435,20 +435,20 @@ export const CustomerProductDetailPage = () => {
         },
       };
 
-        const razorpayInstance = new window.Razorpay(options);
-        razorpayInstance.on('payment.failed', function (response) {
-          addToast(
-            `Payment Failed: ${response.error?.description || response.error?.reason || 'Transaction declined'}`,
-            'error'
-          );
-          setIsProcessingPayment(false);
-        });
-        razorpayInstance.open();
-      } catch (err) {
-        addToast(err.response?.data?.message || 'Failed to launch Razorpay checkout', 'error');
+      const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.on('payment.failed', function (response) {
+        addToast(
+          `Payment Failed: ${response.error?.description || response.error?.reason || 'Transaction declined'}`,
+          'error'
+        );
         setIsProcessingPayment(false);
-      }
-    };
+      });
+      razorpayInstance.open();
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to launch Razorpay checkout', 'error');
+      setIsProcessingPayment(false);
+    }
+  };
 
   const handleSimulateTestPaymentSuccess = async () => {
     if (!razorpayTestModalData) return;
@@ -553,12 +553,7 @@ export const CustomerProductDetailPage = () => {
             <button onClick={() => navigate('/products')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
               Catalog
             </button>
-            <button onClick={() => navigate('/products?search=special')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
-              Special Offers
-            </button>
-            <button onClick={() => navigate('/products?search=bestseller')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
-              Bestsellers
-            </button>
+
             <button
               onClick={() => {
                 if (!isAuthenticated) {
@@ -784,7 +779,7 @@ export const CustomerProductDetailPage = () => {
 
       {/* MAIN PRODUCT INFORMATION & BUYING SECTION */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full space-y-16">
-        
+
         {/* TWO-COLUMN PRODUCT SHOWCASE STAGE */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
@@ -849,7 +844,7 @@ export const CustomerProductDetailPage = () => {
 
           {/* RIGHT COLUMN: PRODUCT SPECIFICATIONS & BUYING OPTIONS */}
           <div className="space-y-6">
-            
+
             {/* Header info */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -857,9 +852,8 @@ export const CustomerProductDetailPage = () => {
                   {categoryName}
                 </span>
 
-                <span className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${
-                  product.stock > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'
-                }`}>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${product.stock > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'
+                  }`}>
                   <span className={`w-2 h-2 rounded-full ${product.stock > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
                   {product.stock > 0 ? `In Stock (${product.stock} units available)` : 'Currently Out of Stock'}
                 </span>
@@ -962,11 +956,10 @@ export const CustomerProductDetailPage = () => {
                       key={sizeOption}
                       type="button"
                       onClick={() => setSelectedSize(sizeOption)}
-                      className={`min-w-[52px] px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs ${
-                        isSelected
+                      className={`min-w-[52px] px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs ${isSelected
                           ? 'bg-[#0B192C] text-white ring-2 ring-[#0B192C] ring-offset-2 scale-105 shadow-md'
                           : 'bg-white text-slate-700 border border-stone-200 hover:border-slate-400 hover:bg-stone-100/80'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="w-3 h-3 text-sky-300" />}
                       <span>{sizeOption}</span>
@@ -1027,7 +1020,7 @@ export const CustomerProductDetailPage = () => {
                   <span>Buy Now & Checkout</span>
                 </button>
               </div>
-              
+
               <button
                 onClick={(e) => handleToggleWishlist(product, e)}
                 className={`w-full py-4 rounded-2xl font-extrabold text-xs transition-all shadow-md hover:scale-102 cursor-pointer flex items-center justify-center gap-2 border ${wishlist.includes(product._id) ? 'bg-rose-50/10 border-rose-500/50 text-rose-400 hover:bg-rose-500/20' : 'bg-transparent border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white'}`}
@@ -1225,9 +1218,8 @@ export const CustomerProductDetailPage = () => {
                             onChange={(e) => handleAddressChange('fullName', e.target.value)}
                             onBlur={() => handleAddressBlur('fullName')}
                             placeholder="Full Name *"
-                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                              addressErrors.fullName ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                            }`}
+                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.fullName ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
                           />
                           {addressErrors.fullName && (
                             <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.fullName}</p>
@@ -1241,9 +1233,8 @@ export const CustomerProductDetailPage = () => {
                             onChange={(e) => handleAddressChange('street', e.target.value)}
                             onBlur={() => handleAddressBlur('street')}
                             placeholder="Street Address (min 5 characters) *"
-                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                              addressErrors.street ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                            }`}
+                            className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.street ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                              }`}
                           />
                           {addressErrors.street && (
                             <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.street}</p>
@@ -1258,9 +1249,8 @@ export const CustomerProductDetailPage = () => {
                               onChange={(e) => handleAddressChange('city', e.target.value)}
                               onBlur={() => handleAddressBlur('city')}
                               placeholder="City *"
-                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                                addressErrors.city ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                              }`}
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.city ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                                }`}
                             />
                             {addressErrors.city && (
                               <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.city}</p>
@@ -1274,9 +1264,8 @@ export const CustomerProductDetailPage = () => {
                               onChange={(e) => handleAddressChange('state', e.target.value)}
                               onBlur={() => handleAddressBlur('state')}
                               placeholder="State *"
-                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                                addressErrors.state ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                              }`}
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.state ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                                }`}
                             />
                             {addressErrors.state && (
                               <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.state}</p>
@@ -1293,9 +1282,8 @@ export const CustomerProductDetailPage = () => {
                               onChange={(e) => handleAddressChange('zipCode', e.target.value)}
                               onBlur={() => handleAddressBlur('zipCode')}
                               placeholder="PIN Code (6 digits) *"
-                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                                addressErrors.zipCode ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                              }`}
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.zipCode ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                                }`}
                             />
                             {addressErrors.zipCode && (
                               <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.zipCode}</p>
@@ -1309,9 +1297,8 @@ export const CustomerProductDetailPage = () => {
                               onChange={(e) => handleAddressChange('phone', e.target.value)}
                               onBlur={() => handleAddressBlur('phone')}
                               placeholder="Phone (e.g. 9876543210) *"
-                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${
-                                addressErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
-                              }`}
+                              className={`w-full bg-white border rounded-lg p-2 outline-none font-medium transition-all ${addressErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-stone-200 focus:border-[#0B192C]'
+                                }`}
                             />
                             {addressErrors.phone ? (
                               <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{addressErrors.phone}</p>
