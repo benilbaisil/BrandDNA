@@ -101,7 +101,7 @@ export const AIChatPage = () => {
           </div>
           <div>
             <h1 className="text-lg font-extrabold text-[#0F291E] tracking-tight flex items-center gap-2">
-              BrandDNA Copilot Chat
+              BrandDNA AI Advisor Chat
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
                 v4.5 Enterprise
               </span>

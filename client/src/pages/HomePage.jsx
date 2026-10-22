@@ -51,6 +51,19 @@ export const HomePage = () => {
     return () => window.removeEventListener('resize', updateVisibleCount);
   }, []);
 
+  // Handle smooth scroll if hash present in URL
+  useEffect(() => {
+    if (window.location.hash) {
+      const id = window.location.hash.replace('#', '');
+      const el = document.getElementById(id);
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }, 120);
+      }
+    }
+  }, []);
+
   // Fetch real active products immediately for all visitors (public catalogue preview)
   useEffect(() => {
     let isMounted = true;
@@ -146,13 +159,13 @@ export const HomePage = () => {
 
   return (
     <div className="bg-[#FAF8F5] font-sans text-slate-800 space-y-16 pb-20">
-      
+
       {/* ─────────────────────────────────────────────────────────────
           1. NEW ARRIVALS — ULTRA-FAST SLIDE-BY-SLIDE PRODUCT SHOWCASE
          ───────────────────────────────────────────────────────────── */}
       <section className="bg-white border-b border-stone-200/60 py-8 px-4 sm:px-6 lg:px-8 shadow-xs">
         <div className="max-w-7xl mx-auto space-y-5">
-          
+
           {/* Header Row: Title, Live indicator, Fast controls & Explore All */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -247,7 +260,7 @@ export const HomePage = () => {
                     style={{ width: `${100 / visibleCount}%` }}
                   >
                     <div className="h-full bg-white rounded-2xl border border-stone-200/90 hover:border-emerald-600/60 hover:shadow-lg transition-all duration-200 flex flex-col justify-between p-4 group relative overflow-hidden">
-                      
+
                       {/* Top Badges */}
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 line-clamp-1">
@@ -328,9 +341,8 @@ export const HomePage = () => {
                 key={idx}
                 type="button"
                 onClick={() => setCurrentSlide(idx)}
-                className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${
-                  currentSlide === idx ? 'w-6 bg-[#0F382C]' : 'w-1.5 bg-stone-300 hover:bg-stone-400'
-                }`}
+                className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${currentSlide === idx ? 'w-6 bg-[#0F382C]' : 'w-1.5 bg-stone-300 hover:bg-stone-400'
+                  }`}
                 aria-label={`Go to slide ${idx + 1}`}
               />
             ))}
@@ -344,7 +356,7 @@ export const HomePage = () => {
          ───────────────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 rounded-3xl overflow-hidden border border-stone-200/80 shadow-md min-h-[500px]">
-          
+
           {/* Left Block: SPECIAL OFFER (Lifestyle Editorial Outdoor Photo) */}
           <div className="relative bg-[#1C3026] text-white p-8 sm:p-12 flex flex-col justify-between overflow-hidden group min-h-[380px] lg:min-h-full">
             <img
@@ -355,24 +367,14 @@ export const HomePage = () => {
             <div className="absolute inset-0 bg-gradient-to-t from-[#08221B] via-transparent to-transparent opacity-80" />
 
             <div className="relative z-10 space-y-2">
-              <span className="text-[10px] font-mono font-bold tracking-widest text-emerald-300 uppercase block">
-                SPECIAL OFFER
-              </span>
+
             </div>
 
             <div className="relative z-10 space-y-4 max-w-md pt-20">
               <p className="font-serif text-xl sm:text-2xl font-normal leading-relaxed text-stone-100">
                 Up to 40% off — discover this season's finest trekking gear, trail footwear & outdoor essentials.
               </p>
-              <div>
-                <Link
-                  {...getTargetLinkProps('/customer/dashboard?search=special')}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#0F291E] text-xs font-bold hover:bg-emerald-50 transition-colors shadow-sm"
-                >
-                  <span>Shop Special Offers</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+
             </div>
           </div>
 
@@ -386,11 +388,7 @@ export const HomePage = () => {
               />
             </div>
 
-            <div className="relative z-10 space-y-2">
-              <span className="text-[10px] font-mono font-bold tracking-widest text-emerald-300 uppercase block">
-                BESTSELLERS
-              </span>
-            </div>
+
 
             <div className="relative z-10 space-y-4 max-w-sm pt-20">
               <p className="font-serif text-xl sm:text-2xl font-normal leading-relaxed text-stone-100">
@@ -542,7 +540,50 @@ export const HomePage = () => {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          5. TRUST & SERVICE HIGHLIGHTS
+          5. ABOUT BRAND. SPORTS EDITORIAL SECTION
+         ───────────────────────────────────────────────────────────── */}
+      <section id="about" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24">
+        <div className="bg-white rounded-3xl border border-stone-200/80 p-8 sm:p-12 lg:p-14 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center shadow-xs">
+          <div className="lg:col-span-7 space-y-4">
+            <span className="text-[10px] font-mono font-bold tracking-widest text-[#0F382C] uppercase bg-[#E8F5E9] px-2.5 py-1 rounded-full border border-[#C4E1D4] inline-block">
+              ABOUT BRAND. SPORTS
+            </span>
+            <h2 className="font-serif text-2xl sm:text-4xl font-bold text-[#0F291E] tracking-tight leading-snug">
+              Engineered for the summit. Refined for the everyday.
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed max-w-xl">
+              We design precision gear, athletic footwear, and outdoor equipment engineered to withstand extreme mountain conditions while elevating your daily movement. Every product is athlete-tested across rugged terrain before release.
+            </p>
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <Link
+                to="/about"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0F382C] hover:bg-[#08221B] text-white text-xs font-bold transition-all shadow-xs group"
+              >
+                <span>Read Full Brand Story</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                to="/products"
+                className="inline-flex items-center gap-1.5 px-5 py-3 rounded-full bg-[#FAF8F5] border border-stone-200 text-[#0F291E] text-xs font-bold hover:bg-stone-100 transition-colors"
+              >
+                <span>Explore Catalog</span>
+              </Link>
+            </div>
+          </div>
+          <div className="lg:col-span-5 relative">
+            <div className="rounded-2xl overflow-hidden border border-stone-200/80 shadow-md">
+              <img
+                src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop"
+                alt="Brand. Sports Mountain Field Testing"
+                className="w-full h-64 object-cover hover:scale-105 transition-transform duration-500"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          6. TRUST & SERVICE HIGHLIGHTS
          ───────────────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-stone-200/80 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-slate-700">

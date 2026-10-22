@@ -7,6 +7,7 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 import { AdminLayout } from './layouts/AdminLayout';
 
 import { HomePage } from './pages/HomePage';
+import { AboutPage } from './pages/AboutPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
@@ -76,9 +77,10 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            {/* Public Landing Page */}
+            {/* Public Landing & Editorial Pages */}
             <Route path="/" element={<MainLayout />}>
               <Route index element={<HomePage />} />
+              <Route path="about" element={<AboutPage />} />
             </Route>
 
             {/* Protected Customer Storefront & Product Catalogue Routes (Login Required) */}

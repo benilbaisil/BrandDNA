@@ -781,6 +781,9 @@ export const CustomerDashboardPage = () => {
             <Link to="/" className="hover:text-[#0B192C] transition-colors cursor-pointer">
               Home
             </Link>
+            <Link to="/about" className="hover:text-[#0B192C] transition-colors cursor-pointer">
+              About
+            </Link>
             <button
               id="nav-catalog-btn"
               onClick={() => { setActiveTab('catalogue'); setSelectedCatFilter('ALL'); setCatalogueSearch(''); setSpecialFilterMode(''); setSelectedSubFilter(''); }}
@@ -896,6 +899,14 @@ export const CustomerDashboardPage = () => {
                   <span>Home</span>
                   <ArrowRight className="w-3.5 h-3.5 opacity-60" />
                 </Link>
+                <Link
+                  to="/about"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between hover:bg-stone-100 text-slate-800"
+                >
+                  <span>About</span>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-60" />
+                </Link>
                 <button
                   onClick={() => {
                     setActiveTab('catalogue');
@@ -912,38 +923,6 @@ export const CustomerDashboardPage = () => {
                 >
                   <span>Catalog</span>
                   <ArrowRight className="w-3.5 h-3.5 opacity-60" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    setActiveTab('catalogue');
-                    setSpecialFilterMode('special');
-                    setCatalogueSearch('');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${specialFilterMode === 'special'
-                      ? 'bg-[#0B192C] text-white'
-                      : 'hover:bg-stone-100 text-slate-800'
-                    }`}
-                >
-                  <span>Special Offers</span>
-                  <Flame className="w-3.5 h-3.5 text-rose-500" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    setActiveTab('catalogue');
-                    setSpecialFilterMode('bestseller');
-                    setCatalogueSearch('');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full text-left py-2.5 px-3 rounded-xl transition-colors flex items-center justify-between ${specialFilterMode === 'bestseller'
-                      ? 'bg-[#0B192C] text-white'
-                      : 'hover:bg-stone-100 text-slate-800'
-                    }`}
-                >
-                  <span>Bestsellers</span>
-                  <Trophy className="w-3.5 h-3.5 text-amber-500" />
                 </button>
 
                 <button
@@ -2837,11 +2816,11 @@ export const CustomerDashboardPage = () => {
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block font-bold">Live Sync</span>
+                  <span className="text-[10px] font-mono text-slate-400 uppercase block font-bold">Live Tracking</span>
                   <span className="font-semibold text-slate-600 mt-0.5 flex items-center gap-1">
                     {isSyncingTracking ? (
                       <span className="text-sky-600 font-bold flex items-center gap-1">
-                        <Clock className="w-3 h-3 animate-spin" /> Syncing...
+                        <Clock className="w-3 h-3 animate-spin" /> Tracking active...
                       </span>
                     ) : (
                       <span>Updated {selectedTrackingOrder.shipmentLastSyncedAt ? new Date(selectedTrackingOrder.shipmentLastSyncedAt).toLocaleTimeString() : 'Just now'}</span>
@@ -2961,12 +2940,10 @@ export const CustomerDashboardPage = () => {
                   Status updated in real-time by Delivery Agent.
                 </span>
                 <button
-                  onClick={() => handleOpenTrackModal(selectedTrackingOrder)}
-                  disabled={isSyncingTracking}
+                  onClick={() => setSelectedTrackingOrder(null)}
                   className="px-5 py-2.5 bg-[#0B192C] hover:bg-[#1E3E62] text-white font-extrabold text-xs rounded-xl cursor-pointer shadow-md transition-all flex items-center gap-1.5"
                 >
-                  <Clock className={`w-3.5 h-3.5 ${isSyncingTracking ? 'animate-spin' : ''}`} />
-                  <span>Refresh Status</span>
+                  <span>Close</span>
                 </button>
               </div>
             </motion.div>

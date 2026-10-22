@@ -83,15 +83,6 @@ export const AdminStartupsPage = () => {
             Registered business profiles and their post-analysis AI brand identity summaries.
           </p>
         </div>
-
-        <button
-          onClick={fetchStartups}
-          disabled={loading}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-xs shrink-0 self-start sm:self-auto cursor-pointer"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-white ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh Startups</span>
-        </button>
       </div>
 
       {/* Filter */}

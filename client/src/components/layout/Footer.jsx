@@ -24,6 +24,12 @@ export const Footer = () => {
             <p className="text-slate-400 max-w-sm leading-relaxed text-xs">
               Crafted for high performance, workout discipline, outdoor expeditions, and active lifestyles. Quality products engineered with precision.
             </p>
+            <div>
+              <Link to="/about" className="text-xs font-bold text-sky-400 hover:text-white transition-colors inline-flex items-center gap-1">
+                <span>About our brand & craft</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
           {/* Catalog */}

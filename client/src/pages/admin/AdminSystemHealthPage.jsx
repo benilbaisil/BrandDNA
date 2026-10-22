@@ -58,7 +58,7 @@ export const AdminSystemHealthPage = () => {
           disabled={isDiagnosticsRunning}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-all disabled:opacity-50 shadow-xs shrink-0 self-start sm:self-auto"
         >
-          <RefreshCw className={`w-4 h-4 text-white ${isDiagnosticsRunning ? 'animate-spin' : ''}`} />
+          <Activity className={`w-4 h-4 text-white ${isDiagnosticsRunning ? 'animate-pulse' : ''}`} />
           <span>{isDiagnosticsRunning ? 'Running Diagnostics...' : 'Run System Diagnostics'}</span>
         </button>
       </div>

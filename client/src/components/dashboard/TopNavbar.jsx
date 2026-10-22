@@ -51,7 +51,7 @@ export const TopNavbar = ({ onOpenMobile }) => {
       case '/competitors':
         return { title: 'Competitor Intelligence', desc: 'Market Radar & Similarity Analysis' };
       case '/ai-chat':
-        return { title: 'AI Advisor Chat', desc: 'Interactive Brand & Legal Copilot' };
+        return { title: 'AI Advisor Chat', desc: 'Interactive Brand & Legal Advisory' };
       case '/marketing-planner':
         return { title: 'Marketing Planner', desc: 'Growth Strategy & Campaign Matrix' };
       case '/legal':

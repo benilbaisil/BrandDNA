@@ -166,14 +166,6 @@ export const AdminReturnsPage = () => {
             Review customer return requests, enforce strict 7-day policy, record reasons, and monitor Razorpay refunds.
           </p>
         </div>
-        <button
-          onClick={loadReturns}
-          disabled={refreshing}
-          className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-2 border border-stone-200 cursor-pointer transition-all self-start sm:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          <span>Refresh Data</span>
-        </button>
       </div>
 
       {/* KPI Cards */}

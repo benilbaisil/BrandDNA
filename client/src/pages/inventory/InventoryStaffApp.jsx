@@ -560,15 +560,6 @@ export const InventoryStaffApp = () => {
 
         <div className="flex items-center gap-3 relative z-10 shrink-0">
           <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="px-4 py-2.5 bg-[#1E3E62]/80 hover:bg-[#1E3E62] text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 border border-sky-400/30 shadow-xs cursor-pointer transition-all active:scale-95"
-          >
-            <RefreshCw className={`w-4 h-4 text-emerald-300 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>{refreshing ? 'Syncing...' : 'Sync Data'}</span>
-          </button>
-
-          <button
             onClick={() => handleTabChange('stock-management')}
             className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-[#060D1A] font-black rounded-2xl text-xs flex items-center gap-2 shadow-md cursor-pointer transition-all active:scale-95"
           >
@@ -1443,7 +1434,7 @@ export const InventoryStaffApp = () => {
                 {/* Footer Count Bar */}
                 <div className="pt-2 flex items-center justify-between text-xs text-slate-500 font-medium border-t border-stone-100">
                   <span>Showing <strong>{filteredLedger.length}</strong> of <strong>{ledger.length}</strong> total transaction entries</span>
-                  <span className="font-mono text-[10px] text-slate-400">Sync status: Authenticated MongoDB Engine</span>
+                  <span className="font-mono text-[10px] text-slate-400">Database: Authenticated MongoDB Engine</span>
                 </div>
               </div>
             </div>

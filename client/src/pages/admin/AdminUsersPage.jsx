@@ -406,15 +406,6 @@ export const AdminUsersPage = () => {
             <Plus className="w-4 h-4" />
             <span>Create Staff Account</span>
           </button>
-
-          <button
-            onClick={fetchUsers}
-            disabled={loading}
-            className="p-2.5 rounded-full bg-stone-100 hover:bg-stone-200 text-slate-700 transition-all cursor-pointer border border-stone-200"
-            title="Refresh User Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 

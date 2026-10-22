@@ -521,15 +521,6 @@ export const AdminDeliveryManagementPage = () => {
 
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <button
-            onClick={fetchData}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-[#D6E6EC] bg-white text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-
-          <button
             onClick={handleOpenAdd}
             className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0F291E] text-white font-bold text-xs hover:bg-slate-800 transition-all shadow-xs cursor-pointer"
           >

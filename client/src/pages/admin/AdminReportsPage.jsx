@@ -314,15 +314,6 @@ export const AdminReportsPage = () => {
             <Sparkles className="w-4 h-4 text-[#0F291E]" />
             <span>Generate Master All-In-One PDF</span>
           </button>
-
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="p-3 bg-stone-800 hover:bg-stone-700 text-white rounded-2xl text-xs font-bold border border-stone-700 shadow-xs cursor-pointer transition-all"
-            title="Refresh Live Data"
-          >
-            <RefreshCw className={`w-4 h-4 text-emerald-300 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 

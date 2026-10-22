@@ -118,40 +118,121 @@ export const DeliveryDashboardPage = () => {
     }
   };
 
-  // Actions
+  // Actions with Zero-Delay Optimistic UI Updates
   const handleAccept = async (orderId) => {
+    // 1. Instant optimistic update: flip to "Pick Up Order" immediately (0ms delay)
+    const now = new Date().toISOString();
+    setAssignedOrders((prev) => {
+      const updated = prev.map((ord) => {
+        if (ord._id === orderId) {
+          return {
+            ...ord,
+            status: 'Assigned to Agent',
+            acceptedAt: now,
+          };
+        }
+        return ord;
+      });
+      storageCache.set('agent_assigned_orders', updated);
+      return updated;
+    });
+
+    addToast('Delivery accepted!', 'success');
+
+    // 2. Background server synchronization
     try {
       const res = await deliveryService.acceptDelivery(orderId);
-      if (res?.success) {
-        addToast('Delivery accepted!', 'success');
-        fetchAgentData();
+      if (res?.success && res.data?.order) {
+        setAssignedOrders((prev) => {
+          const updated = prev.map((ord) =>
+            ord._id === orderId ? { ...ord, ...res.data.order, acceptedAt: res.data.order.acceptedAt || now } : ord
+          );
+          storageCache.set('agent_assigned_orders', updated);
+          return updated;
+        });
       }
+      fetchAgentData();
     } catch (err) {
       addToast(err.response?.data?.message || err.message || 'Failed to accept delivery', 'error');
+      fetchAgentData();
     }
   };
 
   const handlePickup = async (orderId) => {
+    // 1. Instant optimistic update: flip to "Start Delivery" immediately (0ms delay)
+    const now = new Date().toISOString();
+    setAssignedOrders((prev) => {
+      const updated = prev.map((ord) => {
+        if (ord._id === orderId) {
+          return {
+            ...ord,
+            status: 'Picked Up',
+            pickedUpAt: now,
+          };
+        }
+        return ord;
+      });
+      storageCache.set('agent_assigned_orders', updated);
+      return updated;
+    });
+
+    addToast('Order marked as Picked Up!', 'success');
+
+    // 2. Background server synchronization
     try {
       const res = await deliveryService.pickupOrder(orderId);
-      if (res?.success) {
-        addToast('Order marked as Picked Up!', 'success');
-        fetchAgentData();
+      if (res?.success && res.data?.order) {
+        setAssignedOrders((prev) => {
+          const updated = prev.map((ord) =>
+            ord._id === orderId ? { ...ord, ...res.data.order, status: 'Picked Up' } : ord
+          );
+          storageCache.set('agent_assigned_orders', updated);
+          return updated;
+        });
       }
+      fetchAgentData();
     } catch (err) {
       addToast(err.response?.data?.message || err.message || 'Failed to update pickup status', 'error');
+      fetchAgentData();
     }
   };
 
   const handleStartDelivery = async (orderId) => {
+    // 1. Instant optimistic update: flip to "Mark as Delivered (OTP)" immediately (0ms delay)
+    const now = new Date().toISOString();
+    setAssignedOrders((prev) => {
+      const updated = prev.map((ord) => {
+        if (ord._id === orderId) {
+          return {
+            ...ord,
+            status: 'Out for Delivery',
+            outForDeliveryAt: now,
+          };
+        }
+        return ord;
+      });
+      storageCache.set('agent_assigned_orders', updated);
+      return updated;
+    });
+
+    addToast('Delivery started! Verification OTP sent to customer.', 'success');
+
+    // 2. Background server synchronization
     try {
       const res = await deliveryService.startDelivery(orderId);
-      if (res?.success) {
-        addToast('Delivery started! Verification OTP sent to customer.', 'success');
-        fetchAgentData();
+      if (res?.success && res.data?.order) {
+        setAssignedOrders((prev) => {
+          const updated = prev.map((ord) =>
+            ord._id === orderId ? { ...ord, ...res.data.order, status: 'Out for Delivery' } : ord
+          );
+          storageCache.set('agent_assigned_orders', updated);
+          return updated;
+        });
       }
+      fetchAgentData();
     } catch (err) {
       addToast(err.response?.data?.message || err.message || 'Failed to start delivery', 'error');
+      fetchAgentData();
     }
   };
 
@@ -172,9 +253,34 @@ export const DeliveryDashboardPage = () => {
     }
 
     setSubmittingAction(true);
+    const orderId = selectedOrder._id;
     try {
-      const res = await deliveryService.confirmDelivery(selectedOrder._id, otpInput, deliveryNote);
+      const res = await deliveryService.confirmDelivery(orderId, otpInput, deliveryNote);
       if (res?.success) {
+        const now = new Date().toISOString();
+        setAssignedOrders((prev) => {
+          const updated = prev.map((ord) => {
+            if (ord._id === orderId) {
+              return {
+                ...ord,
+                status: 'Delivered',
+                deliveredAt: now,
+                paymentStatus: 'Paid',
+              };
+            }
+            return ord;
+          });
+          storageCache.set('agent_assigned_orders', updated);
+          return updated;
+        });
+
+        setStats((prev) => ({
+          ...prev,
+          deliveredToday: (prev.deliveredToday || 0) + 1,
+          totalDelivered: (prev.totalDelivered || 0) + 1,
+          pendingDeliveries: Math.max(0, (prev.pendingDeliveries || 1) - 1),
+        }));
+
         addToast('OTP verified! Delivery marked as DELIVERED.', 'success');
         setShowOtpModal(false);
         setSelectedOrder(null);
@@ -199,9 +305,34 @@ export const DeliveryDashboardPage = () => {
   const handleConfirmFailure = async (e) => {
     e.preventDefault();
     setSubmittingAction(true);
+    const orderId = selectedOrder._id;
     try {
-      const res = await deliveryService.failDelivery(selectedOrder._id, failureReason, failureNote);
+      const res = await deliveryService.failDelivery(orderId, failureReason, failureNote);
       if (res?.success) {
+        const now = new Date().toISOString();
+        setAssignedOrders((prev) => {
+          const updated = prev.map((ord) => {
+            if (ord._id === orderId) {
+              return {
+                ...ord,
+                status: 'Delivery Failed',
+                failedAt: now,
+                deliveryFailureReason: failureReason,
+                deliveryFailureNote: failureNote,
+              };
+            }
+            return ord;
+          });
+          storageCache.set('agent_assigned_orders', updated);
+          return updated;
+        });
+
+        setStats((prev) => ({
+          ...prev,
+          failedDeliveries: (prev.failedDeliveries || 0) + 1,
+          pendingDeliveries: Math.max(0, (prev.pendingDeliveries || 1) - 1),
+        }));
+
         addToast('Delivery issue reported. Admin notified for reassignment.', 'info');
         setShowFailModal(false);
         setSelectedOrder(null);
@@ -311,15 +442,6 @@ export const DeliveryDashboardPage = () => {
               }`}
             />
             <span>{stats.availabilityStatus === 'Available' ? 'On Duty (Available)' : 'Off Duty (Unavailable)'}</span>
-          </button>
-
-          <button
-            onClick={fetchAgentData}
-            disabled={loading}
-            className="p-2 rounded-xl border border-[#D6E6EC] bg-white text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-            title="Refresh Deliveries"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
 
           <button

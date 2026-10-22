@@ -485,7 +485,7 @@ export const ProductStrategyPage = () => {
             type="text"
             value={productIdea}
             onChange={(e) => setProductIdea(e.target.value)}
-            placeholder='e.g., "Enter your specific product idea or feature" (e.g., AI-powered strategy copilot)'
+            placeholder='e.g., "Enter your specific product idea or feature" (e.g., AI-powered strategy engine)'
             className="flex-1 w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] placeholder-slate-400 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel transition-all font-medium"
           />
           <button
@@ -621,7 +621,7 @@ export const ProductStrategyPage = () => {
               type="text"
               value={strategy.productName}
               onChange={(e) => setStrategy({ ...strategy, productName: e.target.value })}
-              placeholder="e.g. BrandDNA Copilot"
+              placeholder="e.g. BrandDNA Intelligence"
               className="flex-1 bg-[#FAF8F5] border border-[#E5E0D8] focus:border-slate-900 focus:glass-panel text-xs font-bold text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none transition-all"
             />
             {saveSuccess.names && (

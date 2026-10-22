@@ -77,7 +77,7 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
     try {
       const res = await businessService.retryShipment(orderId);
       if (res?.success && res?.data?.order) {
-        addToast('Shipment creation/sync retry successful!', 'success');
+        addToast('Shipment retry successful!', 'success');
         fetchOrders();
         if (selectedOrder && selectedOrder._id === orderId) {
           setSelectedOrder(res.data.order);
@@ -141,19 +141,6 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
               API-driven automated courier tracking monitoring. Shipment statuses update automatically from the courier API service.
             </p>
           </div>
-
-          <button
-            onClick={() => {
-              setRefreshing(true);
-              fetchOrders();
-            }}
-            disabled={refreshing}
-            className="p-2.5 bg-stone-100 hover:bg-stone-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer self-start sm:self-auto"
-            title="Refresh Order & Shipment List"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>Sync Live Statuses</span>
-          </button>
         </div>
 
         {/* Filter Controls Row */}
@@ -234,7 +221,7 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
                   <th className="p-4">Tracking Number</th>
                   <th className="p-4">Courier</th>
                   <th className="p-4">Shipment Status (API)</th>
-                  <th className="p-4">Sync Status</th>
+                  <th className="p-4">Dispatch Status</th>
                   <th className="p-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -275,7 +262,7 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
                           </span>
                         ) : (
                           <span className="text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md text-[11px] font-bold border border-amber-200">
-                            Pending Sync
+                            Pending Dispatch
                           </span>
                         )}
                       </td>
@@ -310,7 +297,7 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
                             ? 'bg-rose-50 text-rose-700 border-rose-200'
                             : 'bg-amber-50 text-amber-700 border-amber-200'
                         }`}>
-                          {ord.shipmentSyncStatus || 'SYNCED'}
+                          {ord.shipmentSyncStatus === 'SYNCED' ? 'CONFIRMED' : (ord.shipmentSyncStatus || 'CONFIRMED')}
                         </span>
                       </td>
 
@@ -326,10 +313,10 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
                           onClick={() => handleRetryShipment(ord._id)}
                           disabled={retryingId === ord._id}
                           className="px-3 py-1.5 bg-[#0F291E] hover:bg-[#09271E] text-white font-bold rounded-xl text-xs inline-flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
-                          title="Retry shipment creation or status synchronization"
+                          title="Retry shipment creation"
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${retryingId === ord._id ? 'animate-spin' : ''}`} />
-                          <span>Retry/Sync</span>
+                          <span>Retry Shipment</span>
                         </button>
                       </td>
                     </tr>
@@ -383,7 +370,7 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-mono uppercase block">Last Synced</span>
+                    <span className="text-[10px] text-slate-400 font-mono uppercase block">Last Updated</span>
                     <span className="font-medium text-slate-600">
                       {selectedOrder.shipmentLastSyncedAt ? new Date(selectedOrder.shipmentLastSyncedAt).toLocaleTimeString() : 'N/A'}
                     </span>
@@ -393,7 +380,7 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
                 {selectedOrder.shipmentSyncError && (
                   <div className="p-2.5 bg-rose-50 text-rose-700 rounded-xl border border-rose-200 text-[11px] flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>Sync Warning: {selectedOrder.shipmentSyncError}</span>
+                    <span>Shipment Notice: {selectedOrder.shipmentSyncError}</span>
                   </div>
                 )}
               </div>
@@ -476,7 +463,7 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
                   className="px-4 py-2 bg-[#0F291E] hover:bg-[#09271E] text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs flex items-center gap-1.5"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${retryingId === selectedOrder._id ? 'animate-spin' : ''}`} />
-                  <span>Retry / Sync Shipment API</span>
+                  <span>Retry Shipment API</span>
                 </button>
                 <button
                   type="button"

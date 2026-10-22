@@ -40,10 +40,8 @@ export const Navbar = () => {
   };
 
   const navLinks = [
-    { name: 'About', href: '/#about' },
+    { name: 'About', href: '/about' },
     { name: 'Catalog', href: '/products' },
-    { name: 'Special Offers', href: '/products?search=special' },
-    { name: 'Bestsellers', href: '/products?search=bestseller' },
     { name: 'Categories', href: '/#categories' },
   ];
 

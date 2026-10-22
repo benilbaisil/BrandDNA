@@ -550,6 +550,9 @@ export const CustomerProductDetailPage = () => {
             <button onClick={() => navigate('/')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
               Home
             </button>
+            <button onClick={() => navigate('/about')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
+              About
+            </button>
             <button onClick={() => navigate('/products')} className="hover:text-[#0B192C] transition-colors cursor-pointer">
               Catalog
             </button>
@@ -654,28 +657,30 @@ export const CustomerProductDetailPage = () => {
             >
               <div className="px-5 py-4 space-y-2 text-xs font-bold uppercase tracking-wider text-slate-700">
                 <button
-                  onClick={() => { setMobileMenuOpen(false); navigate('/customer/dashboard'); }}
+                  onClick={() => { setMobileMenuOpen(false); navigate('/'); }}
+                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-stone-100 text-slate-800 transition-colors flex items-center justify-between"
+                >
+                  <span>Home</span>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
+
+                <button
+                  onClick={() => { setMobileMenuOpen(false); navigate('/about'); }}
+                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-stone-100 text-slate-800 transition-colors flex items-center justify-between"
+                >
+                  <span>About</span>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
+
+                <button
+                  onClick={() => { setMobileMenuOpen(false); navigate('/products'); }}
                   className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-stone-100 text-slate-800 transition-colors flex items-center justify-between"
                 >
                   <span>Catalog</span>
                   <ArrowRight className="w-3.5 h-3.5 opacity-60" />
                 </button>
 
-                <button
-                  onClick={() => { setMobileMenuOpen(false); navigate('/customer/dashboard?search=special'); }}
-                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-stone-100 text-slate-800 transition-colors flex items-center justify-between"
-                >
-                  <span>Special Offers</span>
-                  <Flame className="w-3.5 h-3.5 text-rose-500" />
-                </button>
 
-                <button
-                  onClick={() => { setMobileMenuOpen(false); navigate('/customer/dashboard?search=bestseller'); }}
-                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-stone-100 text-slate-800 transition-colors flex items-center justify-between"
-                >
-                  <span>Bestsellers</span>
-                  <Star className="w-3.5 h-3.5 text-amber-500" />
-                </button>
 
                 <button
                   onClick={() => {
@@ -957,8 +962,8 @@ export const CustomerProductDetailPage = () => {
                       type="button"
                       onClick={() => setSelectedSize(sizeOption)}
                       className={`min-w-[52px] px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs ${isSelected
-                          ? 'bg-[#0B192C] text-white ring-2 ring-[#0B192C] ring-offset-2 scale-105 shadow-md'
-                          : 'bg-white text-slate-700 border border-stone-200 hover:border-slate-400 hover:bg-stone-100/80'
+                        ? 'bg-[#0B192C] text-white ring-2 ring-[#0B192C] ring-offset-2 scale-105 shadow-md'
+                        : 'bg-white text-slate-700 border border-stone-200 hover:border-slate-400 hover:bg-stone-100/80'
                         }`}
                     >
                       {isSelected && <Check className="w-3 h-3 text-sky-300" />}

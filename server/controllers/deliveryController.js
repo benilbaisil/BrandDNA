@@ -367,6 +367,9 @@ export const assignDeliveryAgent = async (req, res) => {
     order.assignedAt = new Date();
     await order.save();
 
+    cache.invalidatePrefix(`delivery:assigned:${agent._id}`);
+    cache.invalidatePrefix(`delivery:stats:${agent._id}`);
+
     await recordDeliveryEvent({
       orderId: order._id,
       agentId: agent._id,
@@ -413,12 +416,20 @@ export const reassignDeliveryAgent = async (req, res) => {
         return sendResponse(res, 400, false, 'Selected agent is invalid or inactive');
       }
 
+      const prevAgentId = order.deliveryAgent;
       order.deliveryAgent = agent._id;
       order.status = 'Assigned to Agent';
       order.assignedAt = new Date();
       order.deliveryFailureReason = null;
       order.deliveryFailureNote = null;
       await order.save();
+
+      if (prevAgentId) {
+        cache.invalidatePrefix(`delivery:assigned:${prevAgentId}`);
+        cache.invalidatePrefix(`delivery:stats:${prevAgentId}`);
+      }
+      cache.invalidatePrefix(`delivery:assigned:${agent._id}`);
+      cache.invalidatePrefix(`delivery:stats:${agent._id}`);
 
       await recordDeliveryEvent({
         orderId: order._id,
@@ -539,6 +550,9 @@ export const acceptDelivery = async (req, res) => {
     order.status = 'Assigned to Agent';
     await order.save();
 
+    cache.invalidatePrefix(`delivery:assigned:${agentId}`);
+    cache.invalidatePrefix(`delivery:stats:${agentId}`);
+
     await recordDeliveryEvent({
       orderId: order._id,
       agentId,
@@ -570,12 +584,15 @@ export const pickupOrder = async (req, res) => {
     }
 
     if (!order.acceptedAt) {
-      return sendResponse(res, 400, false, 'Order must be accepted before picking up');
+      order.acceptedAt = new Date();
     }
 
     order.status = 'Picked Up';
     order.pickedUpAt = new Date();
     await order.save();
+
+    cache.invalidatePrefix(`delivery:assigned:${agentId}`);
+    cache.invalidatePrefix(`delivery:stats:${agentId}`);
 
     await recordDeliveryEvent({
       orderId: order._id,
@@ -620,6 +637,9 @@ export const startDelivery = async (req, res) => {
     order.deliveryOtp = generatedOtp;
     order.deliveryOtpExpiresAt = otpExpiry;
     await order.save();
+
+    cache.invalidatePrefix(`delivery:assigned:${agentId}`);
+    cache.invalidatePrefix(`delivery:stats:${agentId}`);
 
     await recordDeliveryEvent({
       orderId: order._id,
@@ -672,6 +692,10 @@ export const confirmDeliveryWithOtp = async (req, res) => {
     order.deliveryOtp = null; // Clear OTP after use
     await order.save();
 
+    cache.invalidatePrefix(`delivery:assigned:${agentId}`);
+    cache.invalidatePrefix(`delivery:stats:${agentId}`);
+    cache.invalidatePrefix('delivery:agents');
+
     await recordDeliveryEvent({
       orderId: order._id,
       agentId,
@@ -721,6 +745,9 @@ export const failDelivery = async (req, res) => {
     order.deliveryFailureReason = reason;
     order.deliveryFailureNote = note || '';
     await order.save();
+
+    cache.invalidatePrefix(`delivery:assigned:${agentId}`);
+    cache.invalidatePrefix(`delivery:stats:${agentId}`);
 
     await recordDeliveryEvent({
       orderId: order._id,
