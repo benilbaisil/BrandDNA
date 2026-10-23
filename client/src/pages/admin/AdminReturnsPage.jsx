@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { businessService } from '../../services/businessService';
 import { useToast } from '../../context/ToastContext';
+import { EvidencePhotoModal } from '../../components/common/EvidencePhotoModal';
 
 export const AdminReturnsPage = () => {
   const { addToast } = useToast();
@@ -32,11 +33,19 @@ export const AdminReturnsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  // Selected Return Detail / Reject Modal
+  // Selected Return Detail / Reject Modal / Refund Modal
   const [selectedReturn, setSelectedReturn] = useState(null);
   const [rejectModalReturn, setRejectModalReturn] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [refundModalReturn, setRefundModalReturn] = useState(null);
+  const [refundAmount, setRefundAmount] = useState(0);
+  const [processingRefund, setProcessingRefund] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
+  const [evidenceModal, setEvidenceModal] = useState({
+    isOpen: false,
+    imageUrl: '',
+    returnDoc: null,
+  });
 
   const loadReturns = async () => {
     try {
@@ -114,6 +123,36 @@ export const AdminReturnsPage = () => {
       setProcessingAction(false);
     }
   };
+
+  const handleRazorpayRefundSubmit = async (e) => {
+    e.preventDefault();
+    if (!refundModalReturn) return;
+    const amt = Number(refundAmount);
+    if (isNaN(amt) || amt <= 0) {
+      addToast('Please enter a valid positive refund amount', 'error');
+      return;
+    }
+    try {
+      setProcessingRefund(true);
+      const res = await businessService.refundReturn(refundModalReturn._id, { amount: amt });
+      if (res?.success) {
+        addToast(
+          `Razorpay refund of ₹${amt} initiated successfully! (Refund ID: ${res.data?.refundResponse?.id || 'Processed'})`,
+          'success'
+        );
+        setRefundModalReturn(null);
+        loadReturns();
+        if (selectedReturn?._id === refundModalReturn._id) setSelectedReturn(res.data.returnDoc);
+      } else {
+        addToast(res?.message || 'Refund processing failed', 'error');
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to initiate Razorpay refund', 'error');
+    } finally {
+      setProcessingRefund(false);
+    }
+  };
+
 
   // KPI Calculations
   const totalReturns = returnsList.length;
@@ -369,6 +408,21 @@ export const AdminReturnsPage = () => {
                             <Eye className="w-4 h-4" />
                           </button>
 
+                          {ret.status !== 'REJECTED' && ret.status !== 'Rejected' && !['Processed', 'Refunded'].includes(ret.refundStatus) && (ret.inspectStatus === 'Resellable' || ret.status === 'INSPECTED') && (
+                            <button
+                              onClick={() => {
+                                setRefundModalReturn(ret);
+                                setRefundAmount(ret.refundAmount || (ret.quantity * (ret.unitPrice || 0)));
+                              }}
+                              disabled={processingRefund}
+                              className="px-2.5 py-1 bg-sky-700 hover:bg-sky-800 text-white font-extrabold rounded-lg text-[11px] cursor-pointer transition-all inline-flex items-center gap-1 shadow-xs"
+                              title="Process Razorpay Refund"
+                            >
+                              <CreditCard className="w-3 h-3" />
+                              <span>Refund via Razorpay</span>
+                            </button>
+                          )}
+
                           {isPending && (
                             <>
                               <button
@@ -402,6 +456,198 @@ export const AdminReturnsPage = () => {
           </div>
         )}
       </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 3: RAZORPAY GATEWAY REFUND SETTLEMENT LEDGER
+         ───────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-6 sm:p-8 space-y-6 text-left">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                <CheckCircle className="w-3 h-3 text-emerald-600" /> Gateway Disbursals
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">Synchronized with Razorpay API</span>
+            </div>
+            <h2 className="font-serif text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <CreditCard className="w-6 h-6 text-sky-700" /> Razorpay Gateway Settlement Ledger
+            </h2>
+            <p className="text-xs text-slate-500">
+              Audit log of all refund transactions credited back to customer payment sources through the Razorpay Payment Gateway.
+            </p>
+          </div>
+
+          <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/80 sm:text-right">
+            <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block font-mono">
+              Total Volume Refunded
+            </span>
+            <span className="text-2xl font-black text-emerald-950 block mt-0.5">
+              ₹{totalRefundedAmount.toLocaleString('en-IN')}
+            </span>
+            <span className="text-[10px] text-emerald-700 font-medium">Disbursed directly via gateway</span>
+          </div>
+        </div>
+
+        {/* Ledger Table */}
+        {(() => {
+          const refundedList = returnsList.filter(r => ['Processed', 'Refunded'].includes(r.refundStatus));
+
+          if (refundedList.length === 0) {
+            return (
+              <div className="p-12 text-center bg-stone-50 rounded-2xl text-slate-400 text-xs border border-stone-200/60 space-y-2">
+                <CreditCard className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="font-bold text-slate-700 text-sm">No Razorpay refund settlements recorded yet.</p>
+                <p className="text-xs text-slate-400">Processed returns will automatically generate a Razorpay refund record here.</p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="overflow-x-auto rounded-2xl border border-stone-200/80">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#0B192C] text-slate-300 font-mono text-[11px] uppercase tracking-wider">
+                    <th className="py-3 px-4 font-bold">Razorpay Refund ID</th>
+                    <th className="py-3 px-4 font-bold">Original Payment Ref</th>
+                    <th className="py-3 px-4 font-bold">Return # / Order #</th>
+                    <th className="py-3 px-4 font-bold">Customer</th>
+                    <th className="py-3 px-4 font-bold">Returned Product</th>
+                    <th className="py-3 px-4 font-bold">Refund Amount</th>
+                    <th className="py-3 px-4 font-bold">Disbursed At</th>
+                    <th className="py-3 px-4 font-bold text-right">Gateway Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 bg-white">
+                  {refundedList.map(ret => (
+                    <tr key={ret._id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-sky-800 whitespace-nowrap">
+                        {ret.refundDetails?.razorpayRefundId || 'rfnd_processed'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600 text-[11px] whitespace-nowrap">
+                        {ret.order?.razorpayPaymentId || 'pay_sim_verified'}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="font-mono font-bold text-slate-900 block">{ret.returnNumber}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">#{ret.order?.orderNumber || 'ORDER'}</span>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="font-bold text-slate-800 block">{ret.customer?.fullName || 'Customer'}</span>
+                        <span className="text-[10px] text-slate-400 font-mono block">{ret.customer?.email}</span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <p className="font-medium text-slate-800 truncate max-w-[160px]">{ret.productName || ret.product?.name}</p>
+                        <span className="text-[10px] text-slate-400 block font-mono">Qty: {ret.quantity}</span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-emerald-700 text-sm whitespace-nowrap">
+                        ₹{(ret.refundDetails?.amount || ret.refundAmount || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap text-[11px]">
+                        {ret.refundDetails?.refundedAt ? new Date(ret.refundDetails.refundedAt).toLocaleString() : 'Recent'}
+                      </td>
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" /> Settled via Gateway
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Admin Razorpay Refund Modal */}
+      <AnimatePresence>
+        {refundModalReturn && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative"
+            >
+              <button
+                onClick={() => setRefundModalReturn(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 cursor-pointer"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-2.5 text-sky-700">
+                <CreditCard className="w-6 h-6" />
+                <h3 className="font-serif text-lg font-bold text-slate-900">Initiate Razorpay Refund</h3>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                Disburse refund for return <strong>{refundModalReturn.returnNumber}</strong> directly through the Razorpay Payment Gateway back to the customer's source account.
+              </p>
+
+              <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200/80 text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Customer:</span>
+                  <strong className="text-slate-800">{refundModalReturn.customer?.fullName}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Order:</span>
+                  <strong className="font-mono text-slate-800">#{refundModalReturn.order?.orderNumber || 'ORDER'}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Razorpay Payment ID:</span>
+                  <strong className="font-mono text-sky-700">{refundModalReturn.order?.razorpayPaymentId || 'pay_sim_verified'}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Returned Item:</span>
+                  <span className="font-medium text-slate-800">{refundModalReturn.productName || refundModalReturn.product?.name} ({refundModalReturn.quantity} unit)</span>
+                </div>
+                <div className="flex justify-between border-t border-stone-200 pt-1.5">
+                  <span className="text-slate-400 font-bold">Item Valuation:</span>
+                  <strong className="text-emerald-700 font-mono font-bold">
+                    ₹{refundModalReturn.refundAmount || (refundModalReturn.quantity * (refundModalReturn.unitPrice || 0))}
+                  </strong>
+                </div>
+              </div>
+
+              <form onSubmit={handleRazorpayRefundSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Refund Amount in INR (₹)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={refundModalReturn.order?.totalAmount || refundModalReturn.refundAmount}
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-mono font-bold text-sm text-slate-900 focus:border-sky-600"
+                    required
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Refund will be credited via Razorpay back to customer's card / UPI / netbanking.
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setRefundModalReturn(null)}
+                    className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={processingRefund || Number(refundAmount) <= 0}
+                    className="flex-1 py-2.5 bg-sky-700 hover:bg-sky-800 text-white font-bold rounded-xl cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>{processingRefund ? 'Disbursing...' : `Disburse ₹${refundAmount}`}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Reject Reason Modal */}
       <AnimatePresence>
@@ -547,14 +793,13 @@ export const AdminReturnsPage = () => {
                 {selectedReturn.evidenceImage && (
                   <div className="pt-2">
                     <span className="text-[10px] text-slate-400 block mb-1">Customer Evidence Photo:</span>
-                    <a
-                      href={selectedReturn.evidenceImage}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sky-600 hover:text-sky-800 font-bold"
+                    <button
+                      type="button"
+                      onClick={() => setEvidenceModal({ isOpen: true, imageUrl: selectedReturn.evidenceImage, returnDoc: selectedReturn })}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs border border-blue-200 transition-colors cursor-pointer"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" /> View Photo Evidence
-                    </a>
+                      <Eye className="w-3.5 h-3.5" /> View Photo Evidence
+                    </button>
                   </div>
                 )}
               </div>
@@ -604,6 +849,22 @@ export const AdminReturnsPage = () => {
 
               {/* Action Buttons */}
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+                {!['Processed', 'Refunded'].includes(selectedReturn.refundStatus) &&
+                  !['REJECTED', 'Rejected'].includes(selectedReturn.status) &&
+                  (selectedReturn.inspectStatus === 'Resellable' || selectedReturn.status === 'INSPECTED') && (
+                    <button
+                      onClick={() => {
+                        setRefundModalReturn(selectedReturn);
+                        setRefundAmount(selectedReturn.refundAmount || (selectedReturn.quantity * (selectedReturn.unitPrice || 0)));
+                      }}
+                      disabled={processingRefund}
+                      className="px-4 py-2 bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>Initiate Razorpay Refund</span>
+                    </button>
+                  )}
+
                 {['RETURN_REQUESTED', 'Pending'].includes(selectedReturn.status) && (
                   <button
                     onClick={() => handleReview(selectedReturn._id)}
@@ -641,6 +902,14 @@ export const AdminReturnsPage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Evidence Photo Lightbox Modal */}
+      <EvidencePhotoModal
+        isOpen={evidenceModal.isOpen}
+        onClose={() => setEvidenceModal({ isOpen: false, imageUrl: '', returnDoc: null })}
+        imageUrl={evidenceModal.imageUrl}
+        returnDoc={evidenceModal.returnDoc}
+      />
     </div>
   );
 };

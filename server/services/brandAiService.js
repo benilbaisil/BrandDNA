@@ -30,11 +30,9 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const generateWithFallback = async (prompt) => {
   const ai = getAIClient();
   const candidateModels = [
-    'gemini-2.5-flash',
-    'gemini-1.5-flash',
-    'gemini-2.0-flash',
+    'gemini-flash-lite-latest',
+    'gemini-3.5-flash-lite',
     'gemini-3.1-flash-lite',
-    'gemini-3.5-flash',
   ];
 
   let lastError = null;
@@ -47,9 +45,21 @@ const generateWithFallback = async (prompt) => {
       const text = response?.text;
       if (text) return text;
     } catch (err) {
-      console.warn(`Brand AI fallback: model '${model}' failed: ${err.message}`);
+      console.warn(`Brand AI fallback: model '${model}' failed: ${err.message?.slice(0, 100)}`);
       lastError = err;
-      await delay(500);
+      const errMsg = err.message || String(err);
+      if (
+        errMsg.includes('404') ||
+        errMsg.includes('429') ||
+        errMsg.includes('quota') ||
+        errMsg.includes('503') ||
+        errMsg.includes('high demand') ||
+        errMsg.includes('no longer available') ||
+        errMsg.includes('not found')
+      ) {
+        continue;
+      }
+      await delay(200);
     }
   }
   throw lastError || new Error('All Gemini models failed to respond.');

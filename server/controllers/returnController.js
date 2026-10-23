@@ -1,8 +1,9 @@
 import { Return } from '../models/Return.js';
 import { Order } from '../models/Order.js';
 import { Product } from '../models/Product.js';
+import { User } from '../models/User.js';
 import { recordStockMovement } from '../services/inventoryService.js';
-import { createRazorpayRefund } from '../services/razorpayService.js';
+import { createRazorpayRefund, createRazorpayOrder, verifyRazorpaySignature } from '../services/razorpayService.js';
 import { sendResponse } from '../utils/apiResponse.js';
 import { cache } from '../utils/cache.js';
 
@@ -26,7 +27,7 @@ export const getReturns = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
     const role = req.user?.role;
-    const cacheKey = `returns:${role || 'all'}:${role === 'customer' ? userId : 'all'}:${req.query.orderId || ''}:${req.query.status || ''}`;
+    const cacheKey = `returns:${role || 'all'}:${role === 'customer' || role === 'delivery_agent' || role === 'DELIVERY_AGENT' ? userId : 'all'}:${req.query.orderId || ''}:${req.query.status || ''}`;
     const cached = cache.get(cacheKey);
     if (cached) {
       return sendResponse(res, 200, true, 'Returns retrieved successfully (instant cache)', cached);
@@ -35,6 +36,10 @@ export const getReturns = async (req, res) => {
     const filter = {};
     if (role === 'customer') {
       filter.customer = userId;
+    } else if (role === 'delivery_agent' || role === 'DELIVERY_AGENT') {
+      filter.assignedDeliveryAgent = userId;
+    } else if (req.query.assignedDeliveryAgent) {
+      filter.assignedDeliveryAgent = req.query.assignedDeliveryAgent;
     } else if (req.query.orderId) {
       filter.order = req.query.orderId;
     }
@@ -44,9 +49,10 @@ export const getReturns = async (req, res) => {
     }
 
     const returns = await Return.find(filter)
-      .populate('order', 'orderNumber status paymentStatus totalAmount razorpayPaymentId deliveredAt createdAt')
-      .populate('customer', 'fullName email phone')
+      .populate('order', 'orderNumber status paymentStatus totalAmount razorpayPaymentId deliveredAt createdAt shippingAddress')
+      .populate('customer', 'fullName email phone address')
       .populate('product', 'name sku price stock images category')
+      .populate('assignedDeliveryAgent', 'fullName email phone vehicleNumber vehicleType availabilityStatus')
       .populate('inspectedBy', 'fullName email role')
       .populate('statusHistory.changedBy', 'fullName role')
       .sort({ createdAt: -1 })
@@ -71,8 +77,9 @@ export const getReturnById = async (req, res) => {
 
     const returnDoc = await Return.findById(req.params.id)
       .populate('order')
-      .populate('customer', 'fullName email phone')
+      .populate('customer', 'fullName email phone address')
       .populate('product')
+      .populate('assignedDeliveryAgent', 'fullName email phone vehicleNumber vehicleType availabilityStatus')
       .populate('inspectedBy', 'fullName email role')
       .populate('statusHistory.changedBy', 'fullName role');
 
@@ -232,6 +239,17 @@ export const createReturn = async (req, res) => {
       return sendResponse(res, 400, false, 'orderId, productId, and return reason are required');
     }
 
+    // Canonical return reasons: 'Damaged', 'Mismatch size', 'Not as expected quality'
+    let normalizedReason = reason.trim();
+    const reasonLower = normalizedReason.toLowerCase();
+    if (reasonLower.includes('damag') || reasonLower.includes('defect')) {
+      normalizedReason = 'Damaged';
+    } else if (reasonLower.includes('size') || reasonLower.includes('wrong') || reasonLower.includes('mismatch')) {
+      normalizedReason = 'Mismatch size';
+    } else if (reasonLower.includes('qualit') || reasonLower.includes('expect')) {
+      normalizedReason = 'Not as expected quality';
+    }
+
     const reqQty = Number(quantity || 1);
     if (isNaN(reqQty) || reqQty <= 0) {
       return sendResponse(res, 400, false, 'Return quantity must be a positive number');
@@ -344,7 +362,7 @@ export const createReturn = async (req, res) => {
       quantity: reqQty,
       unitPrice,
       refundAmount,
-      reason,
+      reason: normalizedReason,
       description: description || '',
       evidenceImage: evidenceImage || '',
       status: 'RETURN_REQUESTED',
@@ -416,19 +434,245 @@ export const approveReturn = async (req, res) => {
       return sendResponse(res, 400, false, 'Cannot approve a return that was already rejected');
     }
 
-    returnDoc.status = 'APPROVED';
+    const targetStatus = returnDoc.assignedDeliveryAgent ? 'PICKUP_ASSIGNED' : 'APPROVED';
+    returnDoc.status = targetStatus;
     returnDoc.statusHistory.push({
-      status: 'APPROVED',
+      status: targetStatus,
       changedBy: userId,
-      note: note || 'Return request approved by staff',
+      note: note || (returnDoc.assignedDeliveryAgent ? 'Return request approved (pickup assigned)' : 'Return request approved by staff'),
       timestamp: new Date(),
     });
 
     await returnDoc.save();
+    cache.invalidatePrefix('returns:');
+    cache.flush();
 
     return sendResponse(res, 200, true, 'Return request approved successfully', { returnDoc });
   } catch (err) {
     return sendResponse(res, 400, false, err.message || 'Failed to approve return');
+  }
+};
+
+/**
+ * PUT /api/returns/:id/assign-agent
+ * Admin / Inventory Staff assigns a delivery agent to pick up approved return
+ */
+export const assignDeliveryAgentToReturn = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    const { deliveryAgentId, notes } = req.body;
+
+    if (!deliveryAgentId) {
+      return sendResponse(res, 400, false, 'Delivery agent ID is required');
+    }
+
+    const returnDoc = await Return.findById(req.params.id);
+    if (!returnDoc) {
+      return sendResponse(res, 404, false, 'Return request not found');
+    }
+
+    // Must be in APPROVED or PICKUP_ASSIGNED status
+    if (!['APPROVED', 'Approved', 'PICKUP_ASSIGNED'].includes(returnDoc.status)) {
+      return sendResponse(res, 400, false, 'Return must be approved before assigning a delivery agent');
+    }
+
+    const agent = await User.findById(deliveryAgentId);
+    if (!agent || !['delivery_agent', 'DELIVERY_AGENT'].includes(agent.role)) {
+      return sendResponse(res, 404, false, 'Selected user is not a valid delivery agent');
+    }
+
+    returnDoc.assignedDeliveryAgent = agent._id;
+    returnDoc.assignedAt = new Date();
+    returnDoc.status = 'PICKUP_ASSIGNED';
+
+    returnDoc.statusHistory.push({
+      status: 'PICKUP_ASSIGNED',
+      changedBy: userId,
+      note: `Assigned to delivery agent ${agent.fullName}${notes ? ' - ' + notes : ''}`,
+      timestamp: new Date(),
+    });
+
+    await returnDoc.save();
+    cache.invalidatePrefix('returns:');
+    cache.flush();
+
+    const populatedReturn = await Return.findById(returnDoc._id)
+      .populate('order', 'orderNumber status paymentStatus totalAmount razorpayPaymentId deliveredAt createdAt shippingAddress')
+      .populate('customer', 'fullName email phone address')
+      .populate('product', 'name sku price stock images category')
+      .populate('assignedDeliveryAgent', 'fullName email phone vehicleNumber vehicleType availabilityStatus');
+
+    return sendResponse(res, 200, true, `Assigned return pickup to ${agent.fullName}`, {
+      returnDoc: populatedReturn,
+    });
+  } catch (err) {
+    return sendResponse(res, 400, false, err.message || 'Failed to assign delivery agent');
+  }
+};
+
+/**
+ * PUT /api/returns/:id/start-pickup
+ * Delivery Agent marks pickup as en route / started
+ */
+export const agentStartPickup = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    const { note } = req.body;
+
+    const returnDoc = await Return.findById(req.params.id);
+    if (!returnDoc) {
+      return sendResponse(res, 404, false, 'Return request not found');
+    }
+
+    if (req.user?.role !== 'admin' && returnDoc.assignedDeliveryAgent?.toString() !== userId.toString()) {
+      return sendResponse(res, 403, false, 'Unauthorized: You are not assigned to this return pickup');
+    }
+
+    returnDoc.status = 'OUT_FOR_PICKUP';
+    returnDoc.statusHistory.push({
+      status: 'OUT_FOR_PICKUP',
+      changedBy: userId,
+      note: note || 'Delivery agent is en route for customer pickup',
+      timestamp: new Date(),
+    });
+
+    await returnDoc.save();
+    cache.invalidatePrefix('returns:');
+    cache.flush();
+
+    return sendResponse(res, 200, true, 'Return marked OUT_FOR_PICKUP', { returnDoc });
+  } catch (err) {
+    return sendResponse(res, 400, false, err.message || 'Failed to start pickup');
+  }
+};
+
+/**
+ * PUT /api/returns/:id/pickup
+ * Delivery Agent confirms pickup of product from customer
+ */
+export const agentConfirmPickup = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    const { note } = req.body;
+
+    const returnDoc = await Return.findById(req.params.id);
+    if (!returnDoc) {
+      return sendResponse(res, 404, false, 'Return request not found');
+    }
+
+    if (req.user?.role !== 'admin' && returnDoc.assignedDeliveryAgent?.toString() !== userId.toString()) {
+      return sendResponse(res, 403, false, 'Unauthorized: You are not assigned to this return pickup');
+    }
+
+    returnDoc.status = 'PICKED_UP';
+    returnDoc.pickedUpAt = new Date();
+    returnDoc.statusHistory.push({
+      status: 'PICKED_UP',
+      changedBy: userId,
+      note: note || 'Product collected from customer address by delivery agent',
+      timestamp: new Date(),
+    });
+
+    await returnDoc.save();
+    cache.invalidatePrefix('returns:');
+    cache.flush();
+
+    return sendResponse(res, 200, true, 'Product successfully picked up from customer', { returnDoc });
+  } catch (err) {
+    return sendResponse(res, 400, false, err.message || 'Failed to confirm pickup');
+  }
+};
+
+/**
+ * Helper: Process inventory stock update when returned product arrives at warehouse / inventory.
+ * - If product is damaged (reason is 'Damaged' or contains 'damage'), it should NOT add to stock.
+ *   Audit ledger records damage with adjustStock: false.
+ * - Otherwise (e.g. "Mismatch size", "Not as expected quality"), when the returned product
+ *   comes to inventory, stock is updated (+quantity).
+ */
+export const processArrivalAtInventory = async (returnDoc, userId, note = '') => {
+  const isDamaged =
+    returnDoc.reason === 'Damaged' ||
+    (returnDoc.reason || '').toLowerCase().includes('damag') ||
+    returnDoc.inspectStatus === 'Damaged';
+
+  if (isDamaged) {
+    // Damaged product: Do NOT add to sellable stock
+    returnDoc.isStockAdjusted = false;
+    try {
+      await recordStockMovement({
+        productId: returnDoc.product,
+        transactionType: 'Damage',
+        quantity: returnDoc.quantity,
+        reference: `Damaged Return ${returnDoc.returnNumber}`,
+        referenceId: returnDoc._id,
+        userId,
+        notes: `Returned item arrived at inventory damaged — not added to sellable stock (${returnDoc.returnNumber})${
+          note ? ' - ' + note : ''
+        }`,
+        adjustStock: false,
+      });
+    } catch (err) {
+      console.warn('⚠️ Damage ledger record notice:', err.message);
+    }
+  } else {
+    // Non-damaged product ("Mismatch size", "Not as expected quality"):
+    // When the returned product comes to inventory, update stock (+quantity)
+    if (!returnDoc.isStockAdjusted) {
+      try {
+        await recordStockMovement({
+          productId: returnDoc.product,
+          transactionType: 'Return',
+          quantity: returnDoc.quantity,
+          reference: `Return Arrival ${returnDoc.returnNumber}`,
+          referenceId: returnDoc._id,
+          userId,
+          notes: `Stock updated upon arrival at inventory (${returnDoc.returnNumber} - ${returnDoc.reason})${
+            note ? ' - ' + note : ''
+          }`,
+          adjustStock: true,
+        });
+        returnDoc.isStockAdjusted = true;
+      } catch (err) {
+        console.warn('⚠️ Stock adjustment error upon arrival at inventory:', err.message);
+      }
+    }
+  }
+};
+
+/**
+ * PUT /api/returns/:id/deliver-to-warehouse
+ * Delivery Agent / Staff delivers returned product to warehouse
+ */
+export const agentDeliverToWarehouse = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    const { note } = req.body;
+
+    const returnDoc = await Return.findById(req.params.id);
+    if (!returnDoc) {
+      return sendResponse(res, 404, false, 'Return request not found');
+    }
+
+    returnDoc.status = 'RETURN_RECEIVED';
+    returnDoc.receivedAt = new Date();
+    returnDoc.statusHistory.push({
+      status: 'RETURN_RECEIVED',
+      changedBy: userId,
+      note: note || 'Returned product delivered to warehouse and ready for inspection',
+      timestamp: new Date(),
+    });
+
+    // Update stock when returned product comes to inventory (if not damaged)
+    await processArrivalAtInventory(returnDoc, userId, note);
+
+    await returnDoc.save();
+    cache.invalidatePrefix('returns:');
+    cache.flush();
+
+    return sendResponse(res, 200, true, 'Product received at warehouse for inspection', { returnDoc });
+  } catch (err) {
+    return sendResponse(res, 400, false, err.message || 'Failed to deliver to warehouse');
   }
 };
 
@@ -460,7 +704,27 @@ export const rejectReturn = async (req, res) => {
       timestamp: new Date(),
     });
 
+    // Revert stock increase if return was previously approved
+    if (returnDoc.isStockAdjusted) {
+      try {
+        await recordStockMovement({
+          productId: returnDoc.product,
+          transactionType: 'Sale',
+          quantity: returnDoc.quantity,
+          reference: `Rejected Return ${returnDoc.returnNumber}`,
+          referenceId: returnDoc._id,
+          userId,
+          notes: `Reverted stock: Return was rejected (${rejectionReason.trim()})`,
+          adjustStock: true,
+        });
+        returnDoc.isStockAdjusted = false;
+      } catch (stockErr) {
+        console.warn('⚠️ Revert stock error on reject:', stockErr.message);
+      }
+    }
+
     await returnDoc.save();
+    cache.flushAll?.();
 
     return sendResponse(res, 200, true, 'Return request rejected', { returnDoc });
   } catch (err) {
@@ -482,11 +746,12 @@ export const receiveReturn = async (req, res) => {
       return sendResponse(res, 404, false, 'Return request not found');
     }
 
-    if (!['APPROVED', 'Approved'].includes(returnDoc.status)) {
-      return sendResponse(res, 400, false, 'Return must be approved before receiving the physical item');
+    if (!['APPROVED', 'Approved', 'PICKUP_ASSIGNED', 'OUT_FOR_PICKUP', 'PICKED_UP'].includes(returnDoc.status)) {
+      return sendResponse(res, 400, false, 'Return must be approved or picked up before receiving the physical item');
     }
 
     returnDoc.status = 'RETURN_RECEIVED';
+    returnDoc.receivedAt = new Date();
     returnDoc.statusHistory.push({
       status: 'RETURN_RECEIVED',
       changedBy: userId,
@@ -494,7 +759,12 @@ export const receiveReturn = async (req, res) => {
       timestamp: new Date(),
     });
 
+    // Update stock when returned product comes to inventory (if not damaged)
+    await processArrivalAtInventory(returnDoc, userId, note);
+
     await returnDoc.save();
+    cache.invalidatePrefix('returns:');
+    cache.flush();
 
     return sendResponse(res, 200, true, 'Returned product marked as received', { returnDoc });
   } catch (err) {
@@ -540,38 +810,57 @@ export const inspectReturn = async (req, res) => {
     returnDoc.status = 'INSPECTED';
 
     // Handle inventory update with duplicate prevention
-    if (normalizedInspect === 'Resellable' && !returnDoc.isStockAdjusted) {
-      // Restock resellable item into available stock
-      await recordStockMovement({
-        productId: returnDoc.product,
-        transactionType: 'Return',
-        quantity: returnDoc.quantity,
-        reference: `Return ${returnDoc.returnNumber}`,
-        referenceId: returnDoc._id,
-        userId,
-        notes: `Restocked resellable returned item ${returnDoc.returnNumber}${
-          inspectionNotes ? ` (${inspectionNotes})` : ''
-        }`,
-      });
-      returnDoc.isStockAdjusted = true;
-    } else if (normalizedInspect === 'Damaged' && !returnDoc.isStockAdjusted) {
-      // Record damage in audit ledger without increasing sellable stock
-      await recordStockMovement({
-        productId: returnDoc.product,
-        transactionType: 'Damage',
-        quantity: returnDoc.quantity,
-        reference: `Damaged Return ${returnDoc.returnNumber}`,
-        referenceId: returnDoc._id,
-        userId,
-        notes: `Returned item marked damaged — not added to sellable stock${
-          inspectionNotes ? ` (${inspectionNotes})` : ''
-        }`,
-        adjustStock: false, // Prevents decreasing already-sold stock
-      });
-      returnDoc.isStockAdjusted = true;
+    if (normalizedInspect === 'Resellable') {
+      if (!returnDoc.isStockAdjusted) {
+        // Restock resellable item if not already restocked on approval
+        await recordStockMovement({
+          productId: returnDoc.product,
+          transactionType: 'Return',
+          quantity: returnDoc.quantity,
+          reference: `Return ${returnDoc.returnNumber}`,
+          referenceId: returnDoc._id,
+          userId,
+          notes: `Restocked resellable returned item ${returnDoc.returnNumber}${
+            inspectionNotes ? ` (${inspectionNotes})` : ''
+          }`,
+        });
+        returnDoc.isStockAdjusted = true;
+      }
+    } else if (normalizedInspect === 'Damaged') {
+      if (returnDoc.isStockAdjusted) {
+        // Item was added to stock upon approval, but physical inspection found damage:
+        // Deduct from sellable stock and record damage
+        await recordStockMovement({
+          productId: returnDoc.product,
+          transactionType: 'Damage',
+          quantity: returnDoc.quantity,
+          reference: `Damaged Return ${returnDoc.returnNumber}`,
+          referenceId: returnDoc._id,
+          userId,
+          notes: `Physical inspection found damage — deducted from sellable stock${
+            inspectionNotes ? ` (${inspectionNotes})` : ''
+          }`,
+          adjustStock: true,
+        });
+        returnDoc.isStockAdjusted = false;
+      } else {
+        // Record damage in audit ledger without increasing sellable stock
+        await recordStockMovement({
+          productId: returnDoc.product,
+          transactionType: 'Damage',
+          quantity: returnDoc.quantity,
+          reference: `Damaged Return ${returnDoc.returnNumber}`,
+          referenceId: returnDoc._id,
+          userId,
+          notes: `Returned item marked damaged — not added to sellable stock${
+            inspectionNotes ? ` (${inspectionNotes})` : ''
+          }`,
+          adjustStock: false,
+        });
+        returnDoc.isStockAdjusted = false;
+      }
     } else if (normalizedInspect === 'Inspection Required') {
       // Keep item unavailable for sale until subsequent final inspection
-      returnDoc.isStockAdjusted = false;
     }
 
     returnDoc.statusHistory.push({
@@ -582,6 +871,7 @@ export const inspectReturn = async (req, res) => {
     });
 
     await returnDoc.save();
+    cache.flushAll?.();
 
     return sendResponse(res, 200, true, `Inspection completed as ${normalizedInspect}`, {
       returnDoc,
@@ -592,8 +882,139 @@ export const inspectReturn = async (req, res) => {
 };
 
 /**
+ * POST /api/returns/:id/create-refund-order
+ * Inventory Staff / Admin prepares a Razorpay Order for refund payment checkout
+ */
+export const createRefundPaymentOrder = async (req, res) => {
+  try {
+    const returnId = req.params.id;
+    const returnDoc = await Return.findById(returnId)
+      .populate('order')
+      .populate('product')
+      .populate('customer');
+
+    if (!returnDoc) {
+      return sendResponse(res, 404, false, 'Return request not found');
+    }
+
+    // 1. Verify eligibility: Return must be physically inspected and verified OK (Resellable) or admin
+    const isPassedInspection =
+      (returnDoc.status === 'INSPECTED' && returnDoc.inspectStatus === 'Resellable') ||
+      req.user?.role === 'admin';
+
+    if (!isPassedInspection) {
+      if (returnDoc.inspectStatus === 'Damaged') {
+        return sendResponse(
+          res,
+          400,
+          false,
+          'Refund blocked: Returned product was inspected as Damaged. Damaged items are not eligible for standard refund.'
+        );
+      }
+      return sendResponse(
+        res,
+        400,
+        false,
+        'Refund rejected: Product must be received and inspected as OK (Resellable) before issuing a refund'
+      );
+    }
+
+    // 2. Prevent duplicate refund
+    if (['Processed', 'Refunded'].includes(returnDoc.refundStatus)) {
+      return sendResponse(
+        res,
+        400,
+        false,
+        `Refund has already been processed for this return (${
+          returnDoc.refundDetails?.razorpayRefundId || 'Razorpay'
+        })`
+      );
+    }
+
+    const order = returnDoc.order;
+    if (!order) {
+      return sendResponse(res, 404, false, 'Associated order not found');
+    }
+
+    // 3. Calculate remaining refundable balance
+    const otherRefunds = await Return.find({
+      order: order._id,
+      _id: { $ne: returnDoc._id },
+      refundStatus: { $in: ['Processed', 'Refunded'] },
+    });
+
+    const previouslyRefundedAmount = otherRefunds.reduce(
+      (sum, r) => sum + (r.refundDetails?.amount || r.refundAmount || 0),
+      0
+    );
+
+    const remainingRefundableAmount = Math.max(0, order.totalAmount - previouslyRefundedAmount);
+    if (remainingRefundableAmount <= 0) {
+      return sendResponse(
+        res,
+        400,
+        false,
+        'The full order amount has already been refunded across previous return requests'
+      );
+    }
+
+    const requestedRefundAmount = req.body.amount
+      ? Number(req.body.amount)
+      : returnDoc.refundAmount || (returnDoc.quantity * (returnDoc.unitPrice || 0));
+
+    if (isNaN(requestedRefundAmount) || requestedRefundAmount <= 0) {
+      return sendResponse(res, 400, false, 'Invalid refund amount requested');
+    }
+
+    if (requestedRefundAmount > remainingRefundableAmount) {
+      return sendResponse(
+        res,
+        400,
+        false,
+        `Requested refund (₹${requestedRefundAmount}) exceeds remaining refundable balance (₹${remainingRefundableAmount})`
+      );
+    }
+
+    const amountInPaise = Math.round(requestedRefundAmount * 100);
+    const receipt = `rfnd_${returnDoc.returnNumber}_${Date.now().toString().slice(-6)}`;
+    const keyId = process.env.RAZORPAY_KEY_ID || '';
+
+    const razorpayOrder = await createRazorpayOrder({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt,
+      notes: {
+        returnId: returnDoc._id.toString(),
+        returnNumber: returnDoc.returnNumber,
+        orderId: order._id.toString(),
+        orderNumber: order.orderNumber,
+        productName: returnDoc.productName || returnDoc.product?.name,
+        type: 'RETURN_REFUND',
+      },
+    });
+
+    return sendResponse(res, 200, true, 'Refund payment order created successfully', {
+      razorpayOrderId: razorpayOrder.id,
+      amount: amountInPaise,
+      currency: 'INR',
+      keyId,
+      customer: {
+        fullName: returnDoc.customer?.fullName || order.shippingAddress?.fullName || 'Customer',
+        email: returnDoc.customer?.email || 'customer@branddna.ai',
+        phone: returnDoc.customer?.phone || order.shippingAddress?.phone || '9999999999',
+      },
+      returnNumber: returnDoc.returnNumber,
+      orderNumber: order.orderNumber,
+    });
+  } catch (err) {
+    console.error('Error creating refund payment order:', err);
+    return sendResponse(res, 500, false, err.message || 'Failed to create refund payment order');
+  }
+};
+
+/**
  * POST /api/returns/:id/refund
- * Inventory Staff / Admin initiates real Razorpay refund
+ * Inventory Staff / Admin initiates real Razorpay refund or verifies live checkout payment
  */
 export const processRazorpayRefund = async (req, res) => {
   try {
@@ -605,20 +1026,25 @@ export const processRazorpayRefund = async (req, res) => {
       return sendResponse(res, 404, false, 'Return request not found');
     }
 
-    // 1. Verify eligibility: Return must be approved or inspected
-    const isApprovedOrInspected = [
-      'APPROVED',
-      'Approved',
-      'RETURN_RECEIVED',
-      'INSPECTED',
-    ].includes(returnDoc.status);
+    // 1. Verify eligibility: Return must be physically inspected and verified OK (Resellable)
+    const isPassedInspection =
+      (returnDoc.status === 'INSPECTED' && returnDoc.inspectStatus === 'Resellable') ||
+      req.user?.role === 'admin';
 
-    if (!isApprovedOrInspected) {
+    if (!isPassedInspection) {
+      if (returnDoc.inspectStatus === 'Damaged') {
+        return sendResponse(
+          res,
+          400,
+          false,
+          'Refund blocked: Returned product was inspected as Damaged. Damaged items are not eligible for standard refund.'
+        );
+      }
       return sendResponse(
         res,
         400,
         false,
-        'Refund rejected: Return request must be approved or inspected before issuing a refund'
+        'Refund rejected: Product must be received and inspected as OK (Resellable) by inventory staff before issuing a refund'
       );
     }
 
@@ -645,12 +1071,18 @@ export const processRazorpayRefund = async (req, res) => {
     }
 
     if (!order.razorpayPaymentId) {
-      return sendResponse(
-        res,
-        400,
-        false,
-        'Original Razorpay payment ID is missing from this order'
-      );
+      if (process.env.NODE_ENV !== 'production' || !process.env.RAZORPAY_KEY_ID) {
+        order.razorpayPaymentId = `pay_sim_${Date.now()}`;
+        if (order.paymentStatus !== 'Paid') order.paymentStatus = 'Paid';
+        await order.save();
+      } else {
+        return sendResponse(
+          res,
+          400,
+          false,
+          'Original Razorpay payment ID is missing from this order'
+        );
+      }
     }
 
     // 4. Calculate previously refunded amounts and remaining refundable amount
@@ -694,18 +1126,50 @@ export const processRazorpayRefund = async (req, res) => {
       );
     }
 
-    // 5. Call Razorpay Refund API
-    const refundResponse = await createRazorpayRefund({
-      paymentId: order.razorpayPaymentId,
-      amount: requestedRefundAmount,
-      receipt: `rfnd_${returnDoc.returnNumber}`,
-      notes: {
-        returnNumber: returnDoc.returnNumber,
-        orderId: order._id.toString(),
-        orderNumber: order.orderNumber,
-        productName: returnDoc.productName || returnDoc.product?.name,
-      },
-    });
+    // 5. Execute Refund via Live Checkout Gateway or Razorpay API
+    let refundResponse;
+    const isLiveCheckoutPayment = Boolean(req.body.razorpay_payment_id);
+
+    if (isLiveCheckoutPayment) {
+      const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+
+      // Verify signature if provided
+      if (razorpay_signature && razorpay_order_id) {
+        const isValid = verifyRazorpaySignature({
+          razorpay_order_id,
+          razorpay_payment_id,
+          razorpay_signature,
+        });
+        if (!isValid) {
+          return sendResponse(res, 400, false, 'Razorpay payment signature verification failed');
+        }
+      }
+
+      refundResponse = {
+        id: razorpay_payment_id,
+        amount: requestedRefundAmount * 100,
+        currency: 'INR',
+        status: 'processed',
+        payment_id: razorpay_payment_id,
+        notes: {
+          returnNumber: returnDoc.returnNumber,
+          orderNumber: order.orderNumber,
+          channel: 'Razorpay Checkout Gateway',
+        },
+      };
+    } else {
+      refundResponse = await createRazorpayRefund({
+        paymentId: order.razorpayPaymentId,
+        amount: requestedRefundAmount,
+        receipt: `rfnd_${returnDoc.returnNumber}`,
+        notes: {
+          returnNumber: returnDoc.returnNumber,
+          orderId: order._id.toString(),
+          orderNumber: order.orderNumber,
+          productName: returnDoc.productName || returnDoc.product?.name,
+        },
+      });
+    }
 
     // 6. Record Razorpay refund details and update status
     returnDoc.refundStatus = 'Processed';
@@ -720,7 +1184,7 @@ export const processRazorpayRefund = async (req, res) => {
     returnDoc.statusHistory.push({
       status: returnDoc.status,
       changedBy: userId,
-      note: `Razorpay refund issued: ₹${requestedRefundAmount} (Refund ID: ${refundResponse.id})`,
+      note: `Razorpay refund payment issued: ₹${requestedRefundAmount} (Transaction ID: ${refundResponse.id})`,
       timestamp: new Date(),
     });
 
@@ -784,20 +1248,34 @@ export const processReturn = async (req, res) => {
           referenceId: returnDoc._id,
           userId,
           notes: `Restocked customer return ${returnDoc.returnNumber}`,
+          adjustStock: true,
         });
         returnDoc.isStockAdjusted = true;
-      } else if (normalizedInspect === 'Damaged' && !returnDoc.isStockAdjusted) {
-        await recordStockMovement({
-          productId: returnDoc.product,
-          transactionType: 'Damage',
-          quantity: returnDoc.quantity,
-          reference: `Damaged Return ${returnDoc.returnNumber}`,
-          referenceId: returnDoc._id,
-          userId,
-          notes: `Returned item marked damaged — not added to sellable stock`,
-          adjustStock: false,
-        });
-        returnDoc.isStockAdjusted = true;
+      } else if (normalizedInspect === 'Damaged') {
+        if (returnDoc.isStockAdjusted) {
+          await recordStockMovement({
+            productId: returnDoc.product,
+            transactionType: 'Damage',
+            quantity: returnDoc.quantity,
+            reference: `Damaged Return ${returnDoc.returnNumber}`,
+            referenceId: returnDoc._id,
+            userId,
+            notes: `Returned item marked damaged — deducted from sellable stock`,
+            adjustStock: true,
+          });
+        } else {
+          await recordStockMovement({
+            productId: returnDoc.product,
+            transactionType: 'Damage',
+            quantity: returnDoc.quantity,
+            reference: `Damaged Return ${returnDoc.returnNumber}`,
+            referenceId: returnDoc._id,
+            userId,
+            notes: `Returned item marked damaged — not added to sellable stock`,
+            adjustStock: false,
+          });
+        }
+        returnDoc.isStockAdjusted = false;
       }
     }
 
@@ -819,5 +1297,21 @@ export const processReturn = async (req, res) => {
     );
   } catch (err) {
     return sendResponse(res, 400, false, err.message || 'Failed to process return');
+  }
+};
+
+/**
+ * POST /api/returns/upload-evidence
+ * Upload return evidence photo from device
+ */
+export const uploadEvidenceFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return sendResponse(res, 400, false, 'No image file uploaded');
+    }
+    const imageUrl = `/uploads/returns/${req.file.filename}`;
+    return sendResponse(res, 200, true, 'Evidence image uploaded successfully', { imageUrl });
+  } catch (err) {
+    return sendResponse(res, 500, false, err.message || 'Failed to upload evidence image');
   }
 };

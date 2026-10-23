@@ -16,8 +16,24 @@ export const storageCache = {
   set: (key, data) => {
     try {
       const val = JSON.stringify({ data, timestamp: Date.now() });
-      sessionStorage.setItem(`bdna_cache_${key}`, val);
-      localStorage.setItem(`bdna_cache_${key}`, val);
+      try {
+        sessionStorage.setItem(`bdna_cache_${key}`, val);
+      } catch (e) {}
+
+      // Asynchronously persist to localStorage so main thread render is never blocked
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        window.requestIdleCallback(() => {
+          try {
+            localStorage.setItem(`bdna_cache_${key}`, val);
+          } catch (e) {}
+        });
+      } else {
+        setTimeout(() => {
+          try {
+            localStorage.setItem(`bdna_cache_${key}`, val);
+          } catch (e) {}
+        }, 0);
+      }
     } catch (e) {}
   },
   del: (key) => {

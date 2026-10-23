@@ -60,15 +60,35 @@ const returnSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    assignedDeliveryAgent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    assignedAt: {
+      type: Date,
+      default: null,
+    },
+    pickedUpAt: {
+      type: Date,
+      default: null,
+    },
+    receivedAt: {
+      type: Date,
+      default: null,
+    },
     status: {
       type: String,
       enum: [
         'RETURN_REQUESTED',
         'UNDER_REVIEW',
         'APPROVED',
-        'REJECTED',
+        'PICKUP_ASSIGNED',
+        'OUT_FOR_PICKUP',
+        'PICKED_UP',
         'RETURN_RECEIVED',
         'INSPECTED',
+        'REJECTED',
         'Pending',
         'Approved',
         'Rejected',
@@ -140,6 +160,10 @@ const returnSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+returnSchema.index({ assignedDeliveryAgent: 1, status: 1 });
+returnSchema.index({ customer: 1, createdAt: -1 });
+returnSchema.index({ order: 1 });
 
 export const Return = mongoose.models.Return || mongoose.model('Return', returnSchema);
 

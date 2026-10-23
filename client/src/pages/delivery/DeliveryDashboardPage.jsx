@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Truck,
@@ -25,12 +25,17 @@ import {
   AlertCircle,
   ToggleLeft,
   ToggleRight,
+  RotateCcw,
+  ExternalLink,
+  Eye,
 } from 'lucide-react';
 import { deliveryService } from '../../services/deliveryService';
+import { businessService } from '../../services/businessService';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { storageCache } from '../../utils/storageCache';
+import { EvidencePhotoModal } from '../../components/common/EvidencePhotoModal';
 
 const DEFAULT_AGENT_STATS = {
   todaysDeliveries: 0,
@@ -53,6 +58,7 @@ export const DeliveryDashboardPage = () => {
   // Stats & Data - Initialized immediately from cache for 0ms delay
   const [stats, setStats] = useState(() => storageCache.get('agent_stats', DEFAULT_AGENT_STATS));
   const [assignedOrders, setAssignedOrders] = useState(() => storageCache.get('agent_assigned_orders', []));
+  const [assignedReturnPickups, setAssignedReturnPickups] = useState(() => storageCache.get('agent_return_pickups', []));
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -62,6 +68,11 @@ export const DeliveryDashboardPage = () => {
   const [showFailModal, setShowFailModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [orderDetailsHistory, setOrderDetailsHistory] = useState([]);
+  const [evidenceModal, setEvidenceModal] = useState({
+    isOpen: false,
+    imageUrl: '',
+    returnDoc: null,
+  });
 
   // Form Inputs
   const [otpInput, setOtpInput] = useState('');
@@ -69,22 +80,33 @@ export const DeliveryDashboardPage = () => {
   const [failureReason, setFailureReason] = useState('Customer unavailable');
   const [failureNote, setFailureNote] = useState('');
   const [submittingAction, setSubmittingAction] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchAgentData = async () => {
     try {
-      const [statsRes, ordersRes] = await Promise.all([
+      const [statsRes, ordersRes, returnsRes] = await Promise.allSettled([
         deliveryService.getAgentStats(),
         deliveryService.getAssignedOrders(statusFilter),
+        businessService.getReturns(),
       ]);
 
-      if (statsRes?.success && statsRes?.data) {
-        setStats(statsRes.data);
-        storageCache.set('agent_stats', statsRes.data);
+      if (statsRes.status === 'fulfilled' && statsRes.value?.success && statsRes.value?.data) {
+        setStats(statsRes.value.data);
+        storageCache.set('agent_stats', statsRes.value.data);
       }
 
-      if (ordersRes?.success && ordersRes?.data?.orders) {
-        setAssignedOrders(ordersRes.data.orders);
-        storageCache.set('agent_assigned_orders', ordersRes.data.orders);
+      if (ordersRes.status === 'fulfilled' && ordersRes.value?.success && ordersRes.value?.data?.orders) {
+        setAssignedOrders(ordersRes.value.data.orders);
+        storageCache.set('agent_assigned_orders', ordersRes.value.data.orders);
+      }
+
+      if (returnsRes.status === 'fulfilled') {
+        const val = returnsRes.value;
+        const fetchedReturns = val?.data?.returns || (Array.isArray(val?.data) ? val.data : []);
+        if (val?.success && Array.isArray(fetchedReturns)) {
+          setAssignedReturnPickups(fetchedReturns);
+          storageCache.set('agent_return_pickups', fetchedReturns);
+        }
       }
     } catch (err) {
       console.warn('Silent revalidation error in delivery dashboard:', err);
@@ -95,7 +117,19 @@ export const DeliveryDashboardPage = () => {
 
   useEffect(() => {
     fetchAgentData();
+    // Auto-poll every 15 seconds so newly assigned orders & returns appear automatically
+    const interval = setInterval(() => {
+      fetchAgentData();
+    }, 15000);
+    return () => clearInterval(interval);
   }, [statusFilter]);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchAgentData();
+    setIsRefreshing(false);
+    addToast('Dashboard data updated', 'info');
+  };
 
   const handleLogout = () => {
     logout();
@@ -359,6 +393,58 @@ export const DeliveryDashboardPage = () => {
     }
   };
 
+  // Return Pickup Actions
+  const handleStartReturnPickup = async (returnId) => {
+    setSubmittingAction(true);
+    try {
+      const res = await businessService.startReturnPickup(returnId);
+      if (res?.success) {
+        addToast('Marked out for pickup! Heading to customer address.', 'success');
+        fetchAgentData();
+      } else {
+        addToast(res?.message || 'Failed to start pickup', 'error');
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to start pickup', 'error');
+    } finally {
+      setSubmittingAction(false);
+    }
+  };
+
+  const handleConfirmReturnPickup = async (returnId) => {
+    setSubmittingAction(true);
+    try {
+      const res = await businessService.confirmReturnPickup(returnId);
+      if (res?.success) {
+        addToast('Product successfully collected from customer! Please deliver to warehouse.', 'success');
+        fetchAgentData();
+      } else {
+        addToast(res?.message || 'Failed to confirm pickup', 'error');
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to confirm pickup', 'error');
+    } finally {
+      setSubmittingAction(false);
+    }
+  };
+
+  const handleDeliverReturnToWarehouse = async (returnId) => {
+    setSubmittingAction(true);
+    try {
+      const res = await businessService.deliverReturnToWarehouse(returnId);
+      if (res?.success) {
+        addToast('Returned product delivered to warehouse! Inventory staff can now inspect.', 'success');
+        fetchAgentData();
+      } else {
+        addToast(res?.message || 'Failed to deliver to warehouse', 'error');
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to deliver to warehouse', 'error');
+    } finally {
+      setSubmittingAction(false);
+    }
+  };
+
   // Open Navigation via Google Maps
   const handleOpenMapsNavigation = (addressObj) => {
     if (!addressObj) return;
@@ -367,42 +453,87 @@ export const DeliveryDashboardPage = () => {
     window.open(mapsUrl, '_blank');
   };
 
-  // Filter Deliveries based on search and active state
-  const activeDeliveriesList = assignedOrders.filter((o) => {
-    const isActive = [
-      'Assigned to Agent',
-      'ACCEPTED',
-      'Picked Up',
-      'Out for Delivery',
-      'ASSIGNED_TO_AGENT',
-      'PICKED_UP',
-      'OUT_FOR_DELIVERY',
-    ].includes(o.status);
-    const q = searchQuery.toLowerCase();
-    const matchesQuery =
-      !q ||
-      o.orderNumber?.toLowerCase().includes(q) ||
-      o.customer?.fullName?.toLowerCase().includes(q) ||
-      o.shippingAddress?.street?.toLowerCase().includes(q) ||
-      o.shippingAddress?.city?.toLowerCase().includes(q);
-    return isActive && matchesQuery;
-  });
+  // Filter Deliveries based on search and active state with useMemo to eliminate lag
+  const activeDeliveriesList = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return assignedOrders.filter((o) => {
+      const isActive = [
+        'Assigned to Agent',
+        'ACCEPTED',
+        'Picked Up',
+        'Out for Delivery',
+        'ASSIGNED_TO_AGENT',
+        'PICKED_UP',
+        'OUT_FOR_DELIVERY',
+      ].includes(o.status);
+      if (!isActive) return false;
+      if (!q) return true;
+      return (
+        o.orderNumber?.toLowerCase().includes(q) ||
+        o.customer?.fullName?.toLowerCase().includes(q) ||
+        o.shippingAddress?.street?.toLowerCase().includes(q) ||
+        o.shippingAddress?.city?.toLowerCase().includes(q)
+      );
+    });
+  }, [assignedOrders, searchQuery]);
 
-  const completedDeliveriesList = assignedOrders.filter((o) => {
-    const isCompleted = ['Delivered', 'Delivery Failed', 'DELIVERED', 'DELIVERY_FAILED'].includes(o.status);
-    const q = searchQuery.toLowerCase();
-    const matchesQuery =
-      !q ||
-      o.orderNumber?.toLowerCase().includes(q) ||
-      o.customer?.fullName?.toLowerCase().includes(q) ||
-      o.shippingAddress?.city?.toLowerCase().includes(q);
-    return isCompleted && matchesQuery;
-  });
+  const activeReturnPickupsList = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return assignedReturnPickups.filter((r) => {
+      const statusUpper = (r.status || '').toUpperCase().replace(/[\s-]+/g, '_');
+      const isPickupActive = [
+        'PICKUP_ASSIGNED',
+        'APPROVED',
+        'OUT_FOR_PICKUP',
+        'PICKED_UP',
+      ].includes(statusUpper);
+      if (!isPickupActive) return false;
+      if (!q) return true;
+      return (
+        r.returnNumber?.toLowerCase().includes(q) ||
+        r.productName?.toLowerCase().includes(q) ||
+        r.customer?.fullName?.toLowerCase().includes(q) ||
+        r.order?.shippingAddress?.street?.toLowerCase().includes(q) ||
+        r.order?.shippingAddress?.city?.toLowerCase().includes(q)
+      );
+    });
+  }, [assignedReturnPickups, searchQuery]);
+
+  const completedReturnPickupsList = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return assignedReturnPickups.filter((r) => {
+      const statusUpper = (r.status || '').toUpperCase().replace(/[\s-]+/g, '_');
+      const isCompleted = ['RETURN_RECEIVED', 'INSPECTED', 'REFUNDED'].includes(statusUpper);
+      if (!isCompleted) return false;
+      if (!q) return true;
+      return (
+        r.returnNumber?.toLowerCase().includes(q) ||
+        r.productName?.toLowerCase().includes(q) ||
+        r.customer?.fullName?.toLowerCase().includes(q)
+      );
+    });
+  }, [assignedReturnPickups, searchQuery]);
+
+  const completedDeliveriesList = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return assignedOrders.filter((o) => {
+      const isCompleted = ['Delivered', 'Delivery Failed', 'DELIVERED', 'DELIVERY_FAILED'].includes(o.status);
+      if (!isCompleted) return false;
+      if (!q) return true;
+      return (
+        o.orderNumber?.toLowerCase().includes(q) ||
+        o.customer?.fullName?.toLowerCase().includes(q) ||
+        o.shippingAddress?.city?.toLowerCase().includes(q)
+      );
+    });
+  }, [assignedOrders, searchQuery]);
 
   // Newly Assigned Orders needing acceptance
-  const unacceptedNewOrders = activeDeliveriesList.filter(
-    (o) => o.status === 'Assigned to Agent' || o.status === 'ASSIGNED_TO_AGENT'
-  );
+  const unacceptedNewOrders = useMemo(() => {
+    return activeDeliveriesList.filter(
+      (o) => o.status === 'Assigned to Agent' || o.status === 'ASSIGNED_TO_AGENT'
+    );
+  }, [activeDeliveriesList]);
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-slate-900 pb-20 text-left">
@@ -426,6 +557,18 @@ export const DeliveryDashboardPage = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Manual Refresh Button */}
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#D6E6EC] text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer shadow-2xs"
+            title="Refresh dashboard data"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+
           {/* Duty Availability Toggle */}
           <button
             onClick={handleToggleAvailability}
@@ -477,6 +620,31 @@ export const DeliveryDashboardPage = () => {
               className="px-4 py-2 rounded-xl bg-amber-900 text-white text-xs font-bold hover:bg-amber-950 transition-all cursor-pointer shrink-0"
             >
               View New Orders
+            </button>
+          </div>
+        )}
+
+        {/* Return Pickup Notification Banner */}
+        {activeReturnPickupsList.length > 0 && activeTab !== 'return-pickups' && (
+          <div className="p-4 rounded-3xl bg-blue-500/10 border-2 border-blue-400/40 text-blue-900 flex items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-blue-600 text-white font-bold shrink-0">
+                <RotateCcw className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="font-serif font-bold text-sm">
+                  {activeReturnPickupsList.length} Customer Return Pickup{activeReturnPickupsList.length > 1 ? 's' : ''} Ready!
+                </h4>
+                <p className="text-xs text-blue-800 font-medium">
+                  Collect returned items from customer addresses and deliver them to the warehouse.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab('return-pickups')}
+              className="px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold transition-all cursor-pointer shrink-0"
+            >
+              View Return Pickups ({activeReturnPickupsList.length})
             </button>
           </div>
         )}
@@ -555,6 +723,18 @@ export const DeliveryDashboardPage = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('return-pickups')}
+              className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'return-pickups'
+                  ? 'bg-[#0F291E] text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-[#EAF4F7]'
+              }`}
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Return Pickups ({activeReturnPickupsList.length})</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('history')}
               className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'history'
@@ -587,6 +767,229 @@ export const DeliveryDashboardPage = () => {
             className="bg-white border border-[#D6E6EC] focus:border-slate-900 rounded-xl px-4 py-2 text-xs text-slate-900 outline-none w-full sm:w-64 font-medium"
           />
         </div>
+
+        {/* TAB: RETURN PICKUPS */}
+        {activeTab === 'return-pickups' && (
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50/70 border border-blue-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <RotateCcw className="w-5 h-5 text-blue-700 shrink-0" />
+                <div>
+                  <h4 className="font-bold text-slate-900">Customer Return Pickup Tasks</h4>
+                  <p className="text-slate-500 text-[11px]">
+                    Collect approved returns directly from customer addresses and deliver them to the warehouse for inspection.
+                  </p>
+                </div>
+              </div>
+              <span className="text-[11px] font-bold bg-white text-blue-900 px-3 py-1 rounded-xl border border-blue-200 shrink-0">
+                {activeReturnPickupsList.length} Active Pickup{activeReturnPickupsList.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {activeReturnPickupsList.length === 0 ? (
+              <div className="p-12 text-center bg-white rounded-3xl border border-[#D6E6EC] space-y-3">
+                <RotateCcw className="w-12 h-12 text-slate-300 mx-auto" />
+                <h3 className="font-serif text-lg font-bold text-slate-800">No Active Return Pickups</h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  You currently have no return pickups assigned. Approved customer returns will appear here once assigned by Inventory Staff.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {activeReturnPickupsList.map((ret) => {
+                  const addr = ret.order?.shippingAddress || ret.customer?.address || {};
+                  const isAssigned = ret.status === 'PICKUP_ASSIGNED' || ret.status === 'APPROVED' || ret.status === 'Approved';
+                  const isOut = ret.status === 'OUT_FOR_PICKUP';
+                  const isPicked = ret.status === 'PICKED_UP';
+
+                  return (
+                    <div
+                      key={ret._id}
+                      className="p-5 rounded-3xl bg-white border border-[#D6E6EC] shadow-2xs hover:shadow-md transition-all space-y-4 text-xs"
+                    >
+                      {/* Return Header */}
+                      <div className="flex items-center justify-between border-b border-[#D6E6EC] pb-3">
+                        <div>
+                          <span className="font-mono font-extrabold text-sm text-slate-900 block">
+                            {ret.returnNumber}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            Order #{ret.order?.orderNumber || 'ORDER'}
+                          </span>
+                        </div>
+                        <span
+                          className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            isOut
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'
+                              : isPicked
+                              ? 'bg-indigo-100 text-indigo-900 border border-indigo-300'
+                              : 'bg-blue-100 text-blue-900 border border-blue-300'
+                          }`}
+                        >
+                          {ret.status === 'APPROVED' ? 'PICKUP ASSIGNED' : ret.status?.replace('_', ' ')}
+                        </span>
+                      </div>
+
+                      {/* Product details */}
+                      <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl border border-stone-200/80">
+                        <img
+                          src={ret.productImage || ret.product?.images?.[0] || '/images/cat_workout_essentials.jpg'}
+                          alt=""
+                          className="w-14 h-14 object-contain rounded-xl bg-white p-1 border border-stone-200 shrink-0"
+                          onError={(e) => { e.target.src = '/images/cat_workout_essentials.jpg'; }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-slate-900 truncate">{ret.productName || ret.product?.name}</p>
+                          <p className="text-[11px] text-slate-500">
+                            Quantity: <strong>{ret.quantity}</strong> {ret.size && `• Size: ${ret.size}`}
+                          </p>
+                          <p className="text-[10px] text-amber-800 font-medium truncate mt-0.5">
+                            Reason: {ret.reason}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Customer Pickup Location */}
+                      <div className="space-y-1.5 p-3 rounded-2xl bg-[#F0F7F9] border border-[#D6E6EC]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                            Pickup Address (Customer)
+                          </span>
+                          {addr.street && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenMapsNavigation(addr)}
+                              className="text-[10px] text-blue-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <Navigation className="w-3 h-3" /> Navigate
+                            </button>
+                          )}
+                        </div>
+                        <p className="font-bold text-slate-900">
+                          {addr.fullName || ret.customer?.fullName || 'Customer'}
+                        </p>
+                        <p className="text-slate-600 text-[11px] leading-relaxed">
+                          {addr.street ? `${addr.street}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}` : 'Customer registered address'}
+                        </p>
+                        <div className="pt-1 flex items-center gap-2">
+                          <Phone className="w-3.5 h-3.5 text-slate-400" />
+                          <a
+                            href={`tel:${addr.phone || ret.customer?.phone || ''}`}
+                            className="font-mono text-blue-700 font-bold hover:underline"
+                          >
+                            {addr.phone || ret.customer?.phone || 'No phone provided'}
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Evidence Photo thumbnail with In-App Viewer Modal */}
+                      {ret.evidenceImage && (
+                        <div className="flex items-center justify-between p-2.5 bg-blue-50/60 rounded-2xl border border-blue-200/70 text-[11px]">
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={ret.evidenceImage}
+                              alt="Evidence"
+                              className="w-9 h-9 rounded-xl object-cover border border-blue-200 bg-white cursor-pointer hover:opacity-85 transition-opacity shrink-0"
+                              onClick={() => setEvidenceModal({ isOpen: true, imageUrl: ret.evidenceImage, returnDoc: ret })}
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                            <div>
+                              <span className="font-bold text-slate-900 block">Customer Evidence Photo</span>
+                              <span className="text-[10px] text-slate-500">Tap to inspect defect photo</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEvidenceModal({ isOpen: true, imageUrl: ret.evidenceImage, returnDoc: ret })}
+                            className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Photo</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="pt-2 border-t border-[#D6E6EC] flex flex-wrap items-center justify-end gap-2">
+                        {/* Step 1: Heading to customer */}
+                        {isAssigned && (
+                          <button
+                            type="button"
+                            onClick={() => handleStartReturnPickup(ret._id)}
+                            disabled={submittingAction}
+                            className="flex-1 py-2.5 bg-[#0F291E] hover:bg-[#1E3E62] text-white font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <Navigation className="w-3.5 h-3.5" />
+                            <span>Start Pickup (Heading to Customer)</span>
+                          </button>
+                        )}
+
+                        {/* Step 2: Confirm Picked Up from Customer */}
+                        {(isAssigned || isOut) && (
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmReturnPickup(ret._id)}
+                            disabled={submittingAction}
+                            className="flex-1 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Confirm Product Picked Up</span>
+                          </button>
+                        )}
+
+                        {/* Step 3: Deliver to Warehouse */}
+                        {isPicked && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeliverReturnToWarehouse(ret._id)}
+                            disabled={submittingAction}
+                            className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-sky-700 hover:from-emerald-700 hover:to-sky-800 text-white font-extrabold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <Package className="w-3.5 h-3.5" />
+                            <span>Deliver to Warehouse (Handover for Inspection)</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Completed Return Pickups History Section */}
+            {completedReturnPickupsList.length > 0 && (
+              <div className="pt-4 border-t border-[#D6E6EC] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-serif font-bold text-sm text-slate-800 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Completed Return Pickups ({completedReturnPickupsList.length})</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-400">Delivered to warehouse</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {completedReturnPickupsList.map((ret) => (
+                    <div
+                      key={ret._id}
+                      className="p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2 text-xs opacity-90 hover:opacity-100 transition-opacity"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-slate-900">{ret.returnNumber}</span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          {ret.status === 'RETURN_RECEIVED' ? 'Received at Warehouse' : ret.status?.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="font-semibold text-slate-800 truncate">{ret.productName || ret.product?.name}</p>
+                      <p className="text-[11px] text-slate-500">
+                        Customer: {ret.customer?.fullName || 'Customer'} • Qty: {ret.quantity}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* TAB 1: ASSIGNED DELIVERIES */}
         {activeTab === 'assigned' && (
@@ -1113,6 +1516,14 @@ export const DeliveryDashboardPage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* MODAL 4: EVIDENCE PHOTO LIGHTBOX MODAL */}
+      <EvidencePhotoModal
+        isOpen={evidenceModal.isOpen}
+        onClose={() => setEvidenceModal({ isOpen: false, imageUrl: '', returnDoc: null })}
+        imageUrl={evidenceModal.imageUrl}
+        returnDoc={evidenceModal.returnDoc}
+      />
     </div>
   );
 };

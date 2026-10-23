@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
 import { marketingProductService } from '../../services/marketingProductService';
 import { useToast } from '../../context/ToastContext';
 import { X, Wand2, RefreshCw, Download, Image as ImageIcon } from 'lucide-react';
 
 export const AdPosterModal = ({ productId, onClose }) => {
   const { addToast } = useToast();
+  const posterCanvasRef = useRef(null);
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [posterData, setPosterData] = useState(null);
 
@@ -18,8 +21,8 @@ export const AdPosterModal = ({ productId, onClose }) => {
   const fetchPoster = async () => {
     try {
       const res = await marketingProductService.getAdPoster(productId);
-      if (res.success && res.data.poster) {
-        setPosterData(res.data.poster);
+      if (res.success && (res.data.adPosterData || res.data.poster)) {
+        setPosterData(res.data.adPosterData || res.data.poster);
       }
     } catch (err) {
       // If 404, it just means it hasn't been generated yet, which is fine.
@@ -39,8 +42,8 @@ export const AdPosterModal = ({ productId, onClose }) => {
         : marketingProductService.generateAdPoster(productId);
         
       const res = await apiCall;
-      if (res.success && res.data.poster) {
-        setPosterData(res.data.poster);
+      if (res.success && (res.data.adPosterData || res.data.poster)) {
+        setPosterData(res.data.adPosterData || res.data.poster);
         addToast(`Ad Poster ${isRegenerate ? 'regenerated' : 'generated'} successfully!`, 'success');
       }
     } catch (err) {
@@ -48,6 +51,30 @@ export const AdPosterModal = ({ productId, onClose }) => {
       addToast(err.response?.data?.message || 'Failed to generate ad poster.', 'error');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!posterCanvasRef.current) return;
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(posterCanvasRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+      });
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `${(posterData?.brandNameText || 'product').toLowerCase().replace(/\s+/g, '_')}_ad_poster.png`;
+      link.click();
+      addToast('Ad Poster PNG downloaded successfully!', 'success');
+    } catch (e) {
+      console.error('Download error:', e);
+      addToast('Failed to download poster image.', 'error');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -112,6 +139,7 @@ export const AdPosterModal = ({ productId, onClose }) => {
               {/* Poster Preview Canvas */}
               <div className="lg:col-span-8 flex justify-center">
                 <div 
+                  ref={posterCanvasRef}
                   className="w-full aspect-[4/5] sm:aspect-square md:aspect-[4/3] rounded-3xl shadow-xl overflow-hidden relative flex flex-col justify-between p-8 sm:p-12 transition-all"
                   style={{ backgroundColor: posterData.themeColors?.bg || '#F8FAFC' }}
                 >
@@ -240,13 +268,12 @@ export const AdPosterModal = ({ productId, onClose }) => {
                     Regenerate Variation
                   </button>
                   <button 
-                    onClick={() => {
-                      addToast('Export to PDF feature is a placeholder.', 'info');
-                    }}
-                    className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer"
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    className="py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer"
                   >
                     <Download className="w-4 h-4" />
-                    Export Concept (PDF)
+                    {downloading ? 'Downloading PNG...' : 'Download Ad Poster (PNG)'}
                   </button>
                 </div>
               </div>

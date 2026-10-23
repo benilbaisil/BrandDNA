@@ -26,10 +26,10 @@ router.post('/:id/generate-ad-poster', protect, authorize('marketing_staff', 'ad
 router.post('/:id/regenerate-ad-poster', protect, authorize('marketing_staff', 'admin'), regenerateProductAdPosterController);
 router.post('/:id/save-ad-poster', protect, authorize('marketing_staff', 'admin'), saveProductAdPosterController);
 
-router.post('/', protect, authorize('admin', 'inventory_staff', 'marketing_staff'), createProduct);
-router.put('/:id', protect, authorize('admin', 'inventory_staff', 'marketing_staff'), updateProduct);
-router.delete('/:id', protect, authorize('admin', 'inventory_staff', 'marketing_staff'), deleteProduct);
+router.post('/', protect, authorize('admin', 'inventory_staff'), createProduct);
+router.put('/:id', protect, authorize('admin', 'inventory_staff'), updateProduct);
+router.delete('/:id', protect, authorize('admin', 'inventory_staff'), deleteProduct);
 
-router.post('/categories', protect, authorize('admin', 'inventory_staff', 'marketing_staff'), createCategory);
+router.post('/categories', protect, authorize('admin', 'inventory_staff'), createCategory);
 
 export default router;

@@ -25,13 +25,19 @@ import {
   ArrowDownRight,
   Check,
   Building2,
-  UserCheck
+  UserCheck,
+  ExternalLink,
+  CreditCard,
+  CheckCircle
 } from 'lucide-react';
 import { businessService } from '../../services/businessService';
+import { paymentService } from '../../services/paymentService';
+import { deliveryService } from '../../services/deliveryService';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { DeliveryManagementTab } from '../../components/delivery/DeliveryManagementTab';
 import { storageCache } from '../../utils/storageCache';
+import { EvidencePhotoModal } from '../../components/common/EvidencePhotoModal';
 import { INITIAL_PRODUCTS, INITIAL_INVENTORY_TELEMETRY } from '../../constants/initialProducts';
 
 const CATEGORIES_LIST = [
@@ -99,8 +105,8 @@ export const InventoryStaffApp = () => {
   });
   const [submittingReceiving, setSubmittingReceiving] = useState(false);
 
-  // Combined Returns & Damaged Stock Sub-Tab State
-  const [rdSubTab, setRdSubTab] = useState('returns'); // 'returns' | 'damaged'
+  // Combined Returns, Refunds & Damaged Stock Sub-Tab State
+  const [rdSubTab, setRdSubTab] = useState('returns'); // 'returns' | 'refunds' | 'damaged'
 
   // Damage Form State (Inside Returns & Damaged Stock Page)
   const [damageForm, setDamageForm] = useState({
@@ -119,7 +125,17 @@ export const InventoryStaffApp = () => {
   const [inspectionNotes, setInspectionNotes] = useState('');
   const [refundModalReturn, setRefundModalReturn] = useState(null);
   const [refundAmount, setRefundAmount] = useState(0);
+  const [razorpayRefundTestModalData, setRazorpayRefundTestModalData] = useState(null);
+  const [assignAgentModalReturn, setAssignAgentModalReturn] = useState(null);
+  const [deliveryAgentsList, setDeliveryAgentsList] = useState([]);
+  const [selectedDeliveryAgentId, setSelectedDeliveryAgentId] = useState('');
+  const [assignAgentNotes, setAssignAgentNotes] = useState('');
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [evidenceModal, setEvidenceModal] = useState({
+    isOpen: false,
+    imageUrl: '',
+    returnDoc: null,
+  });
 
   // Fetch initial telemetry & real data from MongoDB with decoupled Stale-While-Revalidate (SWR)
   const fetchAllInventoryData = () => {
@@ -178,6 +194,15 @@ export const InventoryStaffApp = () => {
         }
       })
       .catch((e) => console.warn('Returns sync notice:', e.message));
+
+    // 6. Fetch Delivery Agents for Return Pickup assignment
+    deliveryService.getDeliveryAgents()
+      .then((res) => {
+        if (res?.success && res.data?.agents) {
+          setDeliveryAgentsList(res.data.agents);
+        }
+      })
+      .catch((e) => console.warn('Delivery agents sync notice:', e.message));
   };
 
   useEffect(() => {
@@ -269,8 +294,8 @@ export const InventoryStaffApp = () => {
           stockOpType === 'stockIn'
             ? `Stock In recorded successfully (+${qty} units)!`
             : stockOpType === 'stockOut'
-            ? `Stock Out completed successfully (-${qty} units)!`
-            : `Stock adjustment recorded cleanly!`,
+              ? `Stock Out completed successfully (-${qty} units)!`
+              : `Stock adjustment recorded cleanly!`,
           'success'
         );
         // Reset quantity/notes
@@ -372,13 +397,52 @@ export const InventoryStaffApp = () => {
     try {
       const res = await businessService.approveReturn(returnId, { note: 'Approved by inventory staff' });
       if (res?.success) {
-        addToast('Return approved successfully! Warehouse can now receive the package.', 'success');
+        const updatedReturn = res.data?.returnDoc || returnsList.find(r => r._id === returnId);
+        addToast(
+          `Return approved! Assign a delivery agent below to pick up the item from customer.`,
+          'success'
+        );
         fetchAllInventoryData();
+        // Automatically prompt agent assignment for convenience
+        if (updatedReturn) {
+          setAssignAgentModalReturn(updatedReturn);
+          if (deliveryAgentsList.length > 0) {
+            setSelectedDeliveryAgentId(deliveryAgentsList[0]._id || deliveryAgentsList[0].id);
+          }
+        }
       } else {
         addToast(res?.message || 'Failed to approve return', 'error');
       }
     } catch (err) {
       addToast(err.response?.data?.message || 'Failed to approve return', 'error');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleAssignAgentSubmit = async (e) => {
+    e.preventDefault();
+    if (!assignAgentModalReturn || !selectedDeliveryAgentId) {
+      addToast('Please select a delivery agent', 'error');
+      return;
+    }
+    setIsProcessingAction(true);
+    try {
+      const res = await businessService.assignReturnDeliveryAgent(assignAgentModalReturn._id, {
+        deliveryAgentId: selectedDeliveryAgentId,
+        notes: assignAgentNotes.trim(),
+      });
+      if (res?.success) {
+        addToast(res.message || 'Delivery agent assigned for customer pickup!', 'success');
+        setAssignAgentModalReturn(null);
+        setSelectedDeliveryAgentId('');
+        setAssignAgentNotes('');
+        fetchAllInventoryData();
+      } else {
+        addToast(res?.message || 'Failed to assign delivery agent', 'error');
+      }
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to assign delivery agent', 'error');
     } finally {
       setIsProcessingAction(false);
     }
@@ -441,8 +505,8 @@ export const InventoryStaffApp = () => {
           inspectionResult === 'Resellable'
             ? 'Inspected as Resellable: Stock increased in available inventory (+Stock)!'
             : inspectionResult === 'Damaged'
-            ? 'Inspected as Damaged: Recorded in damage audit ledger without increasing sellable stock.'
-            : 'Marked as Inspection Required: Kept unavailable for sale until final review.',
+              ? 'Inspected as Damaged: Recorded in damage audit ledger without increasing sellable stock.'
+              : 'Marked as Inspection Required: Kept unavailable for sale until final review.',
           'success'
         );
         setInspectionModalReturn(null);
@@ -458,6 +522,21 @@ export const InventoryStaffApp = () => {
     }
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleRazorpayRefundSubmit = async (e) => {
     e.preventDefault();
     if (!refundModalReturn) return;
@@ -468,19 +547,154 @@ export const InventoryStaffApp = () => {
     }
     setIsProcessingAction(true);
     try {
-      const res = await businessService.refundReturn(refundModalReturn._id, { amount: amt });
-      if (res?.success) {
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        addToast('Razorpay Checkout SDK failed to load. Check network connection.', 'error');
+        setIsProcessingAction(false);
+        return;
+      }
+
+      // Step 1: Create Razorpay Order for Refund Checkout on server
+      const orderRes = await businessService.createRefundOrder(refundModalReturn._id, { amount: amt });
+      if (!orderRes?.success || !orderRes?.data) {
+        addToast(orderRes?.message || 'Failed to prepare Razorpay refund payment order', 'error');
+        setIsProcessingAction(false);
+        return;
+      }
+
+      const { razorpayOrderId, amount, currency, keyId, customer } = orderRes.data;
+
+      // If backend returned a test/simulated mock order (e.g. without live keys)
+      if (razorpayOrderId && razorpayOrderId.startsWith('order_test_')) {
+        setRazorpayRefundTestModalData({
+          returnId: refundModalReturn._id,
+          razorpayOrderId,
+          amount,
+          refundAmount: amt,
+          currency: currency || 'INR',
+          orderNumber: refundModalReturn.order?.orderNumber,
+          returnNumber: refundModalReturn.returnNumber,
+          customerName: customer?.fullName || refundModalReturn.customer?.fullName,
+        });
+        setIsProcessingAction(false);
+        return;
+      }
+
+      // Step 2: Launch the interactive Razorpay Checkout Gateway Modal
+      const options = {
+        key: keyId || 'rzp_test_enBJVcajFSH1Ci',
+        amount: amount,
+        currency: currency || 'INR',
+        name: 'BrandDNA Store',
+        description: `Refund Payout for Return ${refundModalReturn.returnNumber} (Order #${refundModalReturn.order?.orderNumber || 'N/A'})`,
+        image: '/favicon.ico',
+        order_id: razorpayOrderId,
+        prefill: {
+          name: customer?.fullName || refundModalReturn.customer?.fullName || 'Customer',
+          email: customer?.email || refundModalReturn.customer?.email || 'customer@branddna.ai',
+          contact: customer?.phone || refundModalReturn.customer?.phone || refundModalReturn.order?.shippingAddress?.phone || '9999999999',
+        },
+        notes: {
+          returnId: refundModalReturn._id,
+          returnNumber: refundModalReturn.returnNumber,
+          orderNumber: refundModalReturn.order?.orderNumber,
+          type: 'RETURN_REFUND',
+        },
+        theme: {
+          color: '#0F291E',
+        },
+        handler: async function (response) {
+          try {
+            setIsProcessingAction(true);
+            const verifyRes = await businessService.refundReturn(refundModalReturn._id, {
+              amount: amt,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id || razorpayOrderId,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            if (verifyRes?.success) {
+              addToast(
+                `Razorpay payment of ₹${amt} completed successfully! (Payment ID: ${response.razorpay_payment_id})`,
+                'success'
+              );
+              setRefundModalReturn(null);
+              fetchAllInventoryData();
+            } else {
+              addToast(verifyRes?.message || 'Payment verification failed on server', 'error');
+            }
+          } catch (verifyErr) {
+            addToast(
+              verifyErr.response?.data?.message || 'Server refund signature verification failed',
+              'error'
+            );
+          } finally {
+            setIsProcessingAction(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            addToast('Razorpay payment modal closed.', 'info');
+            setIsProcessingAction(false);
+          },
+        },
+      };
+
+      const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.on('payment.failed', function (resp) {
         addToast(
-          `Razorpay refund of ₹${amt} initiated successfully! (Refund ID: ${res.data?.refundResponse?.id || 'Processed'})`,
+          `Payment Failed: ${resp.error?.description || resp.error?.reason || 'Transaction declined'}`,
+          'error'
+        );
+        setIsProcessingAction(false);
+      });
+      razorpayInstance.open();
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to launch Razorpay checkout', 'error');
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleSimulateTestRefundSuccess = async () => {
+    if (!razorpayRefundTestModalData) return;
+    try {
+      setIsProcessingAction(true);
+      const razorpay_payment_id = `pay_test_${Date.now().toString().slice(-8)}`;
+      const { returnId, razorpayOrderId, refundAmount } = razorpayRefundTestModalData;
+
+      let razorpay_signature = `test_sig_${Date.now()}`;
+      try {
+        const sigRes = await paymentService.generateTestSignature({
+          razorpay_order_id: razorpayOrderId,
+          razorpay_payment_id,
+        });
+        if (sigRes?.success && sigRes?.data?.signature) {
+          razorpay_signature = sigRes.data.signature;
+        }
+      } catch (sigErr) {
+        // Fallback for simulation
+      }
+
+      const verifyRes = await businessService.refundReturn(returnId, {
+        amount: refundAmount,
+        razorpay_payment_id,
+        razorpay_order_id: razorpayOrderId,
+        razorpay_signature,
+      });
+
+      if (verifyRes?.success) {
+        addToast(
+          `Simulated Razorpay refund of ₹${refundAmount} verified and recorded! (ID: ${razorpay_payment_id})`,
           'success'
         );
+        setRazorpayRefundTestModalData(null);
         setRefundModalReturn(null);
         fetchAllInventoryData();
       } else {
-        addToast(res?.message || 'Refund processing failed', 'error');
+        addToast(verifyRes?.message || 'Simulated refund processing failed', 'error');
       }
     } catch (err) {
-      addToast(err.response?.data?.message || 'Failed to initiate Razorpay refund', 'error');
+      addToast(err.response?.data?.message || 'Failed to complete simulated refund', 'error');
     } finally {
       setIsProcessingAction(false);
     }
@@ -672,11 +886,10 @@ export const InventoryStaffApp = () => {
                               <span className="text-[10px] text-slate-400 block">{new Date(m.createdAt).toLocaleDateString()} • {m.reference || m.transactionType}</span>
                             </div>
                           </div>
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold shrink-0 ${
-                            isAddition
-                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                              : 'bg-rose-50 text-rose-800 border border-rose-200'
-                          }`}>
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold shrink-0 ${isAddition
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : 'bg-rose-50 text-rose-800 border border-rose-200'
+                            }`}>
                             {isAddition ? `+${m.quantity}` : `-${m.quantity}`} {m.transactionType}
                           </span>
                         </div>
@@ -795,11 +1008,10 @@ export const InventoryStaffApp = () => {
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
-                        selectedCategory === cat
-                          ? 'bg-[#0F291E] text-white shadow-xs font-bold'
-                          : 'bg-stone-100 hover:bg-stone-200 text-slate-700'
-                      }`}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${selectedCategory === cat
+                        ? 'bg-[#0F291E] text-white shadow-xs font-bold'
+                        : 'bg-stone-100 hover:bg-stone-200 text-slate-700'
+                        }`}
                     >
                       {cat}
                     </button>
@@ -863,13 +1075,12 @@ export const InventoryStaffApp = () => {
                             className="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
                           />
                           <span
-                            className={`absolute top-3 right-3 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                              isOut
-                                ? 'bg-rose-50 text-rose-800 border border-rose-200'
-                                : isLow
+                            className={`absolute top-3 right-3 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${isOut
+                              ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                              : isLow
                                 ? 'bg-amber-50 text-amber-800 border border-amber-200'
                                 : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                            }`}
+                              }`}
                           >
                             {isOut ? 'Out of Stock' : isLow ? 'Low Stock' : 'In Stock'}
                           </span>
@@ -927,44 +1138,29 @@ export const InventoryStaffApp = () => {
             </div>
 
             {/* Operation Selector Pills */}
-            <div className="grid grid-cols-3 gap-3 p-1.5 bg-stone-100 rounded-2xl border border-stone-200">
+            <div className="grid grid-cols-2 gap-3 p-1.5 bg-stone-100 rounded-2xl border border-stone-200">
               <button
                 type="button"
                 onClick={() => setStockOpType('stockIn')}
-                className={`py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  stockOpType === 'stockIn'
-                    ? 'bg-[#0F291E] text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${stockOpType === 'stockIn'
+                  ? 'bg-[#0F291E] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 <PlusCircle className={`w-4 h-4 ${stockOpType === 'stockIn' ? 'text-emerald-400' : 'text-slate-400'}`} />
-                <span>Stock In</span>
+                <span>Stock In (+Inventory)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setStockOpType('stockOut')}
-                className={`py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  stockOpType === 'stockOut'
-                    ? 'bg-[#0F291E] text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${stockOpType === 'stockOut'
+                  ? 'bg-[#0F291E] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 <MinusCircle className={`w-4 h-4 ${stockOpType === 'stockOut' ? 'text-rose-400' : 'text-slate-400'}`} />
-                <span>Stock Out</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStockOpType('stockAdjust')}
-                className={`py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  stockOpType === 'stockAdjust'
-                    ? 'bg-[#0F291E] text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Sliders className={`w-4 h-4 ${stockOpType === 'stockAdjust' ? 'text-sky-400' : 'text-slate-400'}`} />
-                <span>Stock Adjustment</span>
+                <span>Stock Out (-Inventory)</span>
               </button>
             </div>
 
@@ -1004,41 +1200,10 @@ export const InventoryStaffApp = () => {
                 </div>
               )}
 
-              {/* Operation Specific Fields */}
-              {stockOpType === 'stockAdjust' && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 block">Adjustment Mode</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setStockOpForm({ ...stockOpForm, adjustmentMode: 'Addition' })}
-                      className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
-                        stockOpForm.adjustmentMode === 'Addition'
-                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                          : 'bg-stone-50 border-stone-200 text-slate-600'
-                      }`}
-                    >
-                      + Add Stock (Addition)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStockOpForm({ ...stockOpForm, adjustmentMode: 'Deduction' })}
-                      className={`py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
-                        stockOpForm.adjustmentMode === 'Deduction'
-                          ? 'bg-rose-50 border-rose-300 text-rose-800'
-                          : 'bg-stone-50 border-stone-200 text-slate-600'
-                      }`}
-                    >
-                      - Deduct Stock (Deduction)
-                    </button>
-                  </div>
-                </div>
-              )}
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 block">
-                    {stockOpType === 'stockIn' ? 'Quantity to Add' : stockOpType === 'stockOut' ? 'Quantity to Remove' : 'Quantity / Delta'}
+                    {stockOpType === 'stockIn' ? 'Quantity to Add (+)' : 'Quantity to Remove (-)'}
                   </label>
                   <input
                     type="number"
@@ -1060,8 +1225,8 @@ export const InventoryStaffApp = () => {
                       stockOpType === 'stockIn'
                         ? 'e.g. Supplier PO #1042'
                         : stockOpType === 'stockOut'
-                        ? 'e.g. Customer Order #ORD-88'
-                        : 'e.g. Inventory Audit Count'
+                          ? 'e.g. Customer Order #ORD-88'
+                          : 'e.g. Inventory Audit Count'
                     }
                     className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-none focus:border-[#0F291E]"
                   />
@@ -1088,10 +1253,8 @@ export const InventoryStaffApp = () => {
                 {submittingStockOp
                   ? 'Processing Stock Transaction...'
                   : stockOpType === 'stockIn'
-                  ? 'Confirm Stock In (+Inventory)'
-                  : stockOpType === 'stockOut'
-                  ? 'Confirm Stock Out (-Inventory)'
-                  : 'Confirm Stock Adjustment'}
+                    ? 'Confirm Stock In (+Inventory)'
+                    : 'Confirm Stock Out (-Inventory)'}
               </button>
             </form>
           </div>
@@ -1119,7 +1282,6 @@ export const InventoryStaffApp = () => {
           // Dynamic statistics calculated directly from filteredLedger
           const totalAdditions = filteredLedger.filter(m => ['Purchase', 'Return', 'Stock In'].includes(m.transactionType)).reduce((acc, m) => acc + (m.quantity || 0), 0);
           const totalDeductions = filteredLedger.filter(m => ['Sale', 'Damage', 'Stock Out'].includes(m.transactionType)).reduce((acc, m) => acc + (m.quantity || 0), 0);
-          const totalAdjustments = filteredLedger.filter(m => m.transactionType === 'Adjustment').length;
 
           const isFiltered = historyCategoryFilter !== 'ALL' || historyTypeFilter !== 'ALL' || historySearchQuery.trim() !== '';
 
@@ -1132,7 +1294,7 @@ export const InventoryStaffApp = () => {
           return (
             <div className="space-y-6">
               {/* Dynamic Summary Stats Counter Header */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white rounded-3xl p-5 border border-stone-200 shadow-xs flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
                     <History className="w-6 h-6 text-emerald-400" />
@@ -1167,17 +1329,6 @@ export const InventoryStaffApp = () => {
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-800 block">Units Dispatched (-)</span>
                     <span className="text-2xl font-black text-rose-950">-{totalDeductions}</span>
                     <span className="text-[10px] text-rose-700 block font-bold">Sales & Damages</span>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-3xl p-5 border border-sky-100 bg-sky-50/20 shadow-xs flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-sky-500 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
-                    <Sliders className="w-6 h-6 text-[#060D1A]" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 block">Audit Corrections</span>
-                    <span className="text-2xl font-black text-sky-950">{totalAdjustments}</span>
-                    <span className="text-[10px] text-sky-700 block font-bold">Manual Adjustments</span>
                   </div>
                 </div>
               </div>
@@ -1266,7 +1417,6 @@ export const InventoryStaffApp = () => {
                       <option value="Sale">Sale (Stock Out)</option>
                       <option value="Return">Return</option>
                       <option value="Damage">Damage</option>
-                      <option value="Adjustment">Adjustment</option>
                     </select>
 
                     <button
@@ -1357,13 +1507,12 @@ export const InventoryStaffApp = () => {
                               {/* Operation Type */}
                               <td className="py-3.5 px-4 whitespace-nowrap">
                                 <span
-                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold shadow-2xs border ${
-                                    isAdd
-                                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300/80'
-                                      : isDamage || isSale
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold shadow-2xs border ${isAdd
+                                    ? 'bg-emerald-50 text-emerald-900 border-emerald-300/80'
+                                    : isDamage || isSale
                                       ? 'bg-rose-50 text-rose-900 border-rose-300/80'
                                       : 'bg-sky-50 text-sky-900 border-sky-300/80'
-                                  }`}
+                                    }`}
                                 >
                                   {isAdd ? (
                                     <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -1379,13 +1528,12 @@ export const InventoryStaffApp = () => {
                               {/* Quantity */}
                               <td className="py-3.5 px-4 text-center whitespace-nowrap">
                                 <span
-                                  className={`font-black text-sm px-2.5 py-0.5 rounded-lg ${
-                                    isAdd
-                                      ? 'text-emerald-700 bg-emerald-50'
-                                      : isDamage || isSale
+                                  className={`font-black text-sm px-2.5 py-0.5 rounded-lg ${isAdd
+                                    ? 'text-emerald-700 bg-emerald-50'
+                                    : isDamage || isSale
                                       ? 'text-rose-700 bg-rose-50'
                                       : 'text-slate-900 bg-stone-100'
-                                  }`}
+                                    }`}
                                 >
                                   {isAdd ? `+${m.quantity}` : isDamage || isSale ? `-${m.quantity}` : `${m.quantity}`}
                                 </span>
@@ -1584,23 +1732,36 @@ export const InventoryStaffApp = () => {
                 <button
                   type="button"
                   onClick={() => setRdSubTab('returns')}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                    rdSubTab === 'returns'
-                      ? 'bg-[#0F291E] text-white shadow-xs'
-                      : 'bg-stone-100 hover:bg-stone-200 text-slate-700'
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${rdSubTab === 'returns'
+                    ? 'bg-[#0F291E] text-white shadow-xs'
+                    : 'bg-stone-100 hover:bg-stone-200 text-slate-700'
+                    }`}
                 >
                   Customer Returns Inspection
                 </button>
 
                 <button
                   type="button"
+                  onClick={() => setRdSubTab('refunds')}
+                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${rdSubTab === 'refunds'
+                    ? 'bg-sky-700 text-white shadow-xs'
+                    : 'bg-stone-100 hover:bg-stone-200 text-slate-700'
+                    }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Razorpay Gateway Refunds</span>
+                  <span className="font-mono text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full">
+                    {returnsList.filter(r => ['Processed', 'Refunded'].includes(r.refundStatus)).length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setRdSubTab('damaged')}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                    rdSubTab === 'damaged'
-                      ? 'bg-rose-700 text-white shadow-xs'
-                      : 'bg-stone-100 hover:bg-stone-200 text-slate-700'
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${rdSubTab === 'damaged'
+                    ? 'bg-rose-700 text-white shadow-xs'
+                    : 'bg-stone-100 hover:bg-stone-200 text-slate-700'
+                    }`}
                 >
                   Damaged Stock Log & Control
                 </button>
@@ -1630,10 +1791,16 @@ export const InventoryStaffApp = () => {
                       const pImg = ret.productImage || ret.product?.images?.[0] || '/images/cat_workout_essentials.jpg';
                       const isPending = ['RETURN_REQUESTED', 'UNDER_REVIEW', 'Pending'].includes(ret.status);
                       const isApproved = ['APPROVED', 'Approved'].includes(ret.status);
+                      const isPickupAssigned = ret.status === 'PICKUP_ASSIGNED';
+                      const isOutForPickup = ret.status === 'OUT_FOR_PICKUP';
+                      const isPickedUp = ret.status === 'PICKED_UP';
                       const isReceived = ret.status === 'RETURN_RECEIVED';
                       const isInspected = ret.status === 'INSPECTED';
+                      const isInspectedOk = isInspected && ret.inspectStatus === 'Resellable';
+                      const isInspectedDamaged = isInspected && ret.inspectStatus === 'Damaged';
                       const isRefunded = ['Processed', 'Refunded'].includes(ret.refundStatus);
-                      const isRefundEligible = (isApproved || isReceived || isInspected) && !isRefunded && ret.status !== 'REJECTED' && ret.status !== 'Rejected';
+                      // Strict refund eligibility: Product must be inspected and verified OK
+                      const isRefundEligible = isInspectedOk && !isRefunded && ret.status !== 'REJECTED' && ret.status !== 'Rejected';
 
                       return (
                         <div
@@ -1674,19 +1841,22 @@ export const InventoryStaffApp = () => {
                             <div className="flex flex-wrap items-center gap-2">
                               {/* Lifecycle Badge */}
                               <span
-                                className={`px-3 py-1 rounded-full text-[11px] font-extrabold border ${
-                                  isApproved
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                    : ret.status === 'REJECTED' || ret.status === 'Rejected'
-                                    ? 'bg-rose-50 text-rose-800 border-rose-300'
-                                    : ret.status === 'UNDER_REVIEW'
-                                    ? 'bg-amber-50 text-amber-800 border-amber-300'
-                                    : isInspected
-                                    ? 'bg-purple-50 text-purple-800 border-purple-300'
-                                    : isReceived
-                                    ? 'bg-sky-50 text-sky-800 border-sky-300'
-                                    : 'bg-stone-100 text-stone-700 border-stone-300'
-                                }`}
+                                className={`px-3 py-1 rounded-full text-[11px] font-extrabold border ${isApproved
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                  : isPickupAssigned || isOutForPickup
+                                    ? 'bg-blue-50 text-blue-800 border-blue-300'
+                                    : isPickedUp
+                                      ? 'bg-indigo-50 text-indigo-800 border-indigo-300'
+                                      : isReceived
+                                        ? 'bg-sky-50 text-sky-800 border-sky-300'
+                                        : isInspected
+                                          ? 'bg-purple-50 text-purple-800 border-purple-300'
+                                          : ret.status === 'REJECTED' || ret.status === 'Rejected'
+                                            ? 'bg-rose-50 text-rose-800 border-rose-300'
+                                            : ret.status === 'UNDER_REVIEW'
+                                              ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                              : 'bg-stone-100 text-stone-700 border-stone-300'
+                                  }`}
                               >
                                 {ret.status?.replace('_', ' ')}
                               </span>
@@ -1694,13 +1864,12 @@ export const InventoryStaffApp = () => {
                               {/* Inspection Result Badge */}
                               {ret.inspectStatus && ret.inspectStatus !== 'PendingInspection' && (
                                 <span
-                                  className={`px-3 py-1 rounded-full text-[11px] font-extrabold border ${
-                                    ret.inspectStatus === 'Resellable'
-                                      ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
-                                      : ret.inspectStatus === 'Damaged'
+                                  className={`px-3 py-1 rounded-full text-[11px] font-extrabold border ${ret.inspectStatus === 'Resellable'
+                                    ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                                    : ret.inspectStatus === 'Damaged'
                                       ? 'bg-rose-100 text-rose-950 border-rose-300'
                                       : 'bg-amber-100 text-amber-950 border-amber-300'
-                                  }`}
+                                    }`}
                                 >
                                   {ret.inspectStatus === 'Resellable' ? '✓ Resellable (+Stock)' : ret.inspectStatus === 'Damaged' ? '⚠ Damaged Stock' : '⏳ Inspection Required'}
                                 </span>
@@ -1748,17 +1917,45 @@ export const InventoryStaffApp = () => {
                                 Refund Value: <strong className="text-slate-900">₹{ret.refundAmount || (ret.quantity * (ret.unitPrice || 0))}</strong>
                               </span>
                               {ret.evidenceImage && (
-                                <a
-                                  href={ret.evidenceImage}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sky-600 hover:text-sky-800 font-bold text-[11px] inline-flex items-center gap-1 mt-1"
-                                >
-                                  <ExternalLink className="w-3 h-3" /> View Customer Evidence
-                                </a>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <img
+                                    src={ret.evidenceImage}
+                                    alt="Evidence"
+                                    className="w-7 h-7 rounded-lg object-cover border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity shrink-0 bg-white"
+                                    onClick={() => setEvidenceModal({ isOpen: true, imageUrl: ret.evidenceImage, returnDoc: ret })}
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setEvidenceModal({ isOpen: true, imageUrl: ret.evidenceImage, returnDoc: ret })}
+                                    className="text-sky-600 hover:text-sky-800 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer bg-sky-50 px-2 py-1 rounded-lg border border-sky-200 hover:bg-sky-100 transition-colors"
+                                  >
+                                    <ExternalLink className="w-3 h-3" /> View Customer Evidence Photo
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
+
+                          {/* Assigned Delivery Agent Banner */}
+                          {ret.assignedDeliveryAgent && (
+                            <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-2xl text-xs text-blue-950 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                              <div className="flex items-center gap-2">
+                                <Truck className="w-4 h-4 text-blue-700 shrink-0" />
+                                <span>
+                                  Pickup Agent: <strong>{ret.assignedDeliveryAgent.fullName}</strong> ({ret.assignedDeliveryAgent.phone || 'Contact pending'})
+                                </span>
+                                {ret.assignedDeliveryAgent.vehicleNumber && (
+                                  <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md font-mono font-bold">
+                                    {ret.assignedDeliveryAgent.vehicleNumber} ({ret.assignedDeliveryAgent.vehicleType || 'Bike'})
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] bg-blue-200/80 text-blue-900 px-2.5 py-0.5 rounded-full font-bold">
+                                Status: {ret.status?.replace('_', ' ')}
+                              </span>
+                            </div>
+                          )}
 
                           {/* Rejection Note if Rejected */}
                           {ret.rejectionReason && (
@@ -1810,8 +2007,42 @@ export const InventoryStaffApp = () => {
                               </>
                             )}
 
-                            {/* Step 2: Approved -> Record Physical Receipt */}
+                            {/* Step 2: Approved -> Option to Assign Delivery Agent */}
                             {isApproved && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAssignAgentModalReturn(ret);
+                                  setSelectedDeliveryAgentId(ret.assignedDeliveryAgent?._id || (deliveryAgentsList[0]?._id || deliveryAgentsList[0]?.id || ''));
+                                  setAssignAgentNotes('');
+                                }}
+                                disabled={isProcessingAction}
+                                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs active:scale-95 disabled:opacity-50"
+                              >
+                                <Truck className="w-3.5 h-3.5" />
+                                <span>Assign Delivery Agent for Pickup</span>
+                              </button>
+                            )}
+
+                            {/* Step 2b: Pickup Assigned -> Option to Reassign */}
+                            {(isPickupAssigned || isOutForPickup) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAssignAgentModalReturn(ret);
+                                  setSelectedDeliveryAgentId(ret.assignedDeliveryAgent?._id || '');
+                                  setAssignAgentNotes('');
+                                }}
+                                disabled={isProcessingAction}
+                                className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-slate-700 border border-stone-300 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                <span>Reassign Agent</span>
+                              </button>
+                            )}
+
+                            {/* Step 3: Picked Up by Agent -> Record Arrival at Warehouse */}
+                            {isPickedUp && (
                               <button
                                 type="button"
                                 onClick={() => handleReceiveReturn(ret._id)}
@@ -1819,11 +2050,11 @@ export const InventoryStaffApp = () => {
                                 className="px-4 py-2 bg-sky-700 hover:bg-sky-800 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs active:scale-95 disabled:opacity-50"
                               >
                                 <Package className="w-3.5 h-3.5" />
-                                <span>Record Receipt (Package Arrived)</span>
+                                <span>Record Receipt at Warehouse (Handover)</span>
                               </button>
                             )}
 
-                            {/* Step 3: Received -> Inspect Product */}
+                            {/* Step 4: Received at Warehouse -> Inspect Product */}
                             {(isReceived || (isInspected && ret.inspectStatus === 'Inspection Required')) && (
                               <button
                                 type="button"
@@ -1840,7 +2071,7 @@ export const InventoryStaffApp = () => {
                               </button>
                             )}
 
-                            {/* Step 4: Refund via Razorpay button */}
+                            {/* Step 5: Inspected & OK (Resellable) -> Refund Customer via Razorpay */}
                             {isRefundEligible && (
                               <button
                                 type="button"
@@ -1852,8 +2083,15 @@ export const InventoryStaffApp = () => {
                                 className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-sky-700 hover:from-emerald-700 hover:to-sky-800 text-white rounded-xl text-xs font-extrabold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs active:scale-95 disabled:opacity-50"
                               >
                                 <RotateCcw className="w-3.5 h-3.5" />
-                                <span>Refund via Razorpay</span>
+                                <span>Refund via Razorpay (Product OK)</span>
                               </button>
+                            )}
+
+                            {/* If Inspected as Damaged -> Deny refund notice */}
+                            {isInspectedDamaged && !isRefunded && (
+                              <span className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl">
+                                ⚠ Inspected Damaged — Refund Denied
+                              </span>
                             )}
                           </div>
                         </div>
@@ -1861,6 +2099,102 @@ export const InventoryStaffApp = () => {
                     })}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Sub-Tab: Razorpay Gateway Refunds Ledger */}
+            {rdSubTab === 'refunds' && (
+              <div className="space-y-6 text-left">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+                  <div className="space-y-1">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 w-fit">
+                      <CheckCircle className="w-3 h-3 text-emerald-600" /> Razorpay Direct Gateway Disbursals
+                    </span>
+                    <h4 className="font-serif font-bold text-slate-900 text-lg flex items-center gap-2 mt-1">
+                      <CreditCard className="w-5 h-5 text-sky-700" /> Razorpay Gateway Refund History
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      View all customer refunds disbursed via Razorpay after quality inspection.
+                    </p>
+                  </div>
+
+                  <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 sm:text-right">
+                    <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block font-mono">
+                      Total Disbursed Volume
+                    </span>
+                    <strong className="text-xl font-black text-emerald-950 font-mono block">
+                      ₹{returnsList
+                        .filter(r => ['Processed', 'Refunded'].includes(r.refundStatus))
+                        .reduce((sum, r) => sum + (r.refundDetails?.amount || r.refundAmount || 0), 0)
+                        .toLocaleString('en-IN')}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Table of Refunded Items */}
+                {(() => {
+                  const refundedList = returnsList.filter(r => ['Processed', 'Refunded'].includes(r.refundStatus));
+
+                  if (refundedList.length === 0) {
+                    return (
+                      <div className="p-12 text-center bg-stone-50 rounded-2xl text-slate-400 text-xs border border-stone-200/60 space-y-2">
+                        <CreditCard className="w-10 h-10 text-slate-300 mx-auto" />
+                        <p className="font-bold text-slate-700 text-sm">No Razorpay refunds disbursed yet.</p>
+                        <p className="text-xs text-slate-400">
+                          Inspect received returns as "Resellable" to issue instant Razorpay refunds to customers.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="overflow-x-auto rounded-2xl border border-stone-200/80">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-[#0F291E] text-slate-300 font-mono text-[11px] uppercase tracking-wider">
+                            <th className="py-3 px-4 font-bold">Razorpay Refund ID</th>
+                            <th className="py-3 px-4 font-bold">Return Number</th>
+                            <th className="py-3 px-4 font-bold">Customer</th>
+                            <th className="py-3 px-4 font-bold">Product Item</th>
+                            <th className="py-3 px-4 font-bold">Amount</th>
+                            <th className="py-3 px-4 font-bold">Disbursed Date</th>
+                            <th className="py-3 px-4 font-bold text-right">Gateway Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-100 bg-white">
+                          {refundedList.map(ret => (
+                            <tr key={ret._id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="py-3 px-4 font-mono font-bold text-sky-800">
+                                {ret.refundDetails?.razorpayRefundId || 'rfnd_processed'}
+                              </td>
+                              <td className="py-3 px-4 font-mono text-slate-800 font-bold">
+                                {ret.returnNumber}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="font-bold text-slate-800 block">{ret.customer?.fullName || 'Customer'}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{ret.customer?.email}</span>
+                              </td>
+                              <td className="py-3 px-4 font-medium text-slate-700">
+                                {ret.productName || ret.product?.name} ({ret.quantity} unit)
+                              </td>
+                              <td className="py-3 px-4 font-mono font-bold text-emerald-700 text-sm">
+                                ₹{(ret.refundDetails?.amount || ret.refundAmount || 0).toLocaleString('en-IN')}
+                              </td>
+                              <td className="py-3 px-4 text-slate-500 whitespace-nowrap text-[11px]">
+                                {ret.refundDetails?.refundedAt ? new Date(ret.refundDetails.refundedAt).toLocaleString() : 'Recent'}
+                              </td>
+                              <td className="py-3 px-4 text-right whitespace-nowrap">
+                                <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3 text-emerald-600" /> Settled via Razorpay
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -2061,11 +2395,10 @@ export const InventoryStaffApp = () => {
                   <label className="font-bold text-slate-700 block mb-2">Inspection Outcome</label>
                   <div className="space-y-2">
                     <label
-                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
-                        inspectionResult === 'Resellable'
-                          ? 'border-emerald-500 bg-emerald-50/40 text-emerald-950 font-bold'
-                          : 'border-stone-200 hover:bg-stone-50'
-                      }`}
+                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${inspectionResult === 'Resellable'
+                        ? 'border-emerald-500 bg-emerald-50/40 text-emerald-950 font-bold'
+                        : 'border-stone-200 hover:bg-stone-50'
+                        }`}
                     >
                       <input
                         type="radio"
@@ -2084,11 +2417,10 @@ export const InventoryStaffApp = () => {
                     </label>
 
                     <label
-                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
-                        inspectionResult === 'Damaged'
-                          ? 'border-rose-500 bg-rose-50/40 text-rose-950 font-bold'
-                          : 'border-stone-200 hover:bg-stone-50'
-                      }`}
+                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${inspectionResult === 'Damaged'
+                        ? 'border-rose-500 bg-rose-50/40 text-rose-950 font-bold'
+                        : 'border-stone-200 hover:bg-stone-50'
+                        }`}
                     >
                       <input
                         type="radio"
@@ -2107,26 +2439,25 @@ export const InventoryStaffApp = () => {
                     </label>
 
                     <label
-                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
-                        inspectionResult === 'Inspection Required'
-                          ? 'border-amber-500 bg-amber-50/40 text-amber-950 font-bold'
-                          : 'border-stone-200 hover:bg-stone-50'
-                      }`}
+                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${inspectionResult === 'Inspection Required'
+                        ? 'border-amber-500 bg-amber-50/40 text-amber-950 font-bold'
+                        : 'border-stone-200 hover:bg-stone-50'
+                        }`}
                     >
-                      <input
+                      {/* <input
                         type="radio"
                         name="inspectOutcome"
                         value="Inspection Required"
                         checked={inspectionResult === 'Inspection Required'}
                         onChange={(e) => setInspectionResult(e.target.value)}
                         className="mt-0.5"
-                      />
-                      <div>
+                      /> */}
+                      {/* <div>
                         <span className="block font-bold">Inspection Required (Hold Quarantine)</span>
                         <span className="text-[11px] text-slate-500 font-normal">
                           Needs further testing by senior technician. Keeps item unavailable for sale.
                         </span>
-                      </div>
+                      </div> */}
                     </label>
                   </div>
                 </div>
@@ -2237,9 +2568,9 @@ export const InventoryStaffApp = () => {
                 </div>
 
                 <div className="p-3 bg-sky-50/70 border border-sky-200 rounded-xl text-[11px] text-sky-900 space-y-1">
-                  <p className="font-bold">Automated Gateway Verification</p>
+                  <p className="font-bold">Razorpay API Gateway Verification</p>
                   <p className="text-sky-800">
-                    The backend verifies staff authorization, checks captured payment status on Razorpay, and saves transaction audit details.
+                    Clicking Execute opens the secure Razorpay payment gateway to process the payment to the customer, verifying authorization and logging transaction details.
                   </p>
                 </div>
 
@@ -2254,12 +2585,80 @@ export const InventoryStaffApp = () => {
                   <button
                     type="submit"
                     disabled={isProcessingAction || !refundAmount || Number(refundAmount) <= 0}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-sky-700 hover:from-emerald-700 hover:to-sky-800 text-white font-extrabold rounded-xl shadow-md cursor-pointer disabled:opacity-50"
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-sky-700 hover:from-emerald-700 hover:to-sky-800 text-white font-extrabold rounded-xl shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {isProcessingAction ? 'Calling Razorpay Gateway...' : 'Execute Razorpay Refund'}
+                    <CreditCard className="w-4 h-4" />
+                    {isProcessingAction ? 'Opening Razorpay Gateway...' : 'Execute Razorpay Refund'}
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 2B. RAZORPAY TEST MODE MODAL SIMULATION */}
+      <AnimatePresence>
+        {razorpayRefundTestModalData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl relative border border-slate-100"
+            >
+              <div className="flex items-center justify-between border-b border-stone-200/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center font-bold">
+                    <RotateCcw className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif font-bold text-slate-900 text-sm">Razorpay Payment Gateway</h3>
+                    <p className="text-[10px] text-slate-500">Refund Payout Simulation</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRazorpayRefundTestModalData(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-stone-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="p-3 bg-sky-50 text-indigo-900 rounded-xl border border-sky-200">
+                  <p className="font-bold">Razorpay Test Mode Active</p>
+                  <p className="text-[11px] text-indigo-700 font-mono">Order ID: {razorpayRefundTestModalData.razorpayOrderId}</p>
+                  <p className="text-[11px] text-indigo-700">Return: {razorpayRefundTestModalData.returnNumber}</p>
+                </div>
+                <div className="flex justify-between font-bold text-sm text-slate-900">
+                  <span>Refund Amount</span>
+                  <span className="text-emerald-700 font-extrabold">₹{razorpayRefundTestModalData.refundAmount}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleSimulateTestRefundSuccess}
+                  disabled={isProcessingAction}
+                  className="w-full py-3 bg-[#0F291E] hover:bg-[#1E3E62] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  {isProcessingAction ? 'Verifying Gateway Signature...' : 'Complete Razorpay Payment (Test Success)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    addToast('Refund payment cancelled by staff', 'info');
+                    setRazorpayRefundTestModalData(null);
+                  }}
+                  className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Cancel Payment
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
@@ -2326,6 +2725,132 @@ export const InventoryStaffApp = () => {
           </div>
         )}
       </AnimatePresence>
+      {/* 4. ASSIGN DELIVERY AGENT MODAL */}
+      <AnimatePresence>
+        {assignAgentModalReturn && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl relative"
+            >
+              <button
+                type="button"
+                onClick={() => setAssignAgentModalReturn(null)}
+                className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-900 rounded-full hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div>
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-800 border border-blue-200">
+                  <Truck className="w-3 h-3 text-blue-600" /> Return Pickup Dispatch
+                </span>
+                <h3 className="font-serif text-xl font-bold text-slate-900 mt-1">Assign Delivery Agent</h3>
+                <p className="text-xs text-slate-500">
+                  Select an authorized delivery agent to collect this returned product from the customer.
+                </p>
+              </div>
+
+              {/* Pickup Location & Customer Info */}
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2 text-xs">
+                <div className="flex justify-between border-b border-stone-200/60 pb-1.5">
+                  <span className="text-slate-500">Return Request:</span>
+                  <strong className="font-mono text-slate-900">{assignAgentModalReturn.returnNumber}</strong>
+                </div>
+                <div className="flex justify-between border-b border-stone-200/60 pb-1.5">
+                  <span className="text-slate-500">Product:</span>
+                  <strong className="text-slate-900 truncate max-w-[240px]">
+                    {assignAgentModalReturn.productName || 'Product'} (Qty: {assignAgentModalReturn.quantity})
+                  </strong>
+                </div>
+                <div className="flex justify-between border-b border-stone-200/60 pb-1.5">
+                  <span className="text-slate-500">Customer Name:</span>
+                  <strong className="text-slate-900">{assignAgentModalReturn.customer?.fullName}</strong>
+                </div>
+                <div className="flex justify-between border-b border-stone-200/60 pb-1.5">
+                  <span className="text-slate-500">Contact Phone:</span>
+                  <strong className="text-slate-900">
+                    {assignAgentModalReturn.order?.shippingAddress?.phone || assignAgentModalReturn.customer?.phone || 'N/A'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block mb-0.5">Customer Pickup Address:</span>
+                  <p className="text-slate-800 font-medium">
+                    {assignAgentModalReturn.order?.shippingAddress
+                      ? `${assignAgentModalReturn.order.shippingAddress.street}, ${assignAgentModalReturn.order.shippingAddress.city}, ${assignAgentModalReturn.order.shippingAddress.state} - ${assignAgentModalReturn.order.shippingAddress.zipCode}`
+                      : 'Customer registered delivery address'}
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAssignAgentSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Select Delivery Agent</label>
+                  {deliveryAgentsList.length === 0 ? (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
+                      No delivery agents found. Please ensure delivery agents are registered.
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedDeliveryAgentId}
+                      onChange={(e) => setSelectedDeliveryAgentId(e.target.value)}
+                      className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-bold text-slate-900 focus:border-blue-600 cursor-pointer"
+                      required
+                    >
+                      <option value="">-- Choose an Available Agent --</option>
+                      {deliveryAgentsList.map((agent) => (
+                        <option key={agent._id || agent.id} value={agent._id || agent.id}>
+                          {agent.fullName} ({agent.phone || 'No phone'}) - {agent.vehicleType || 'Vehicle'} [{agent.vehicleNumber || 'No plate'}] - {agent.availabilityStatus || 'Available'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Pickup Instructions <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    rows="2"
+                    value={assignAgentNotes}
+                    onChange={(e) => setAssignAgentNotes(e.target.value)}
+                    placeholder="e.g. Call customer before pickup, check tags, collect box..."
+                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-medium text-slate-800 focus:border-blue-600"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setAssignAgentModalReturn(null)}
+                    className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isProcessingAction || !selectedDeliveryAgentId}
+                    className="flex-1 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-extrabold rounded-xl shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessingAction ? 'Assigning...' : 'Confirm Agent Assignment'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* EVIDENCE PHOTO LIGHTBOX MODAL */}
+      <EvidencePhotoModal
+        isOpen={evidenceModal.isOpen}
+        onClose={() => setEvidenceModal({ isOpen: false, imageUrl: '', returnDoc: null })}
+        imageUrl={evidenceModal.imageUrl}
+        returnDoc={evidenceModal.returnDoc}
+      />
     </div>
   );
 };

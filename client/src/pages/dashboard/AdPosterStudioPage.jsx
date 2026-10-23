@@ -21,7 +21,8 @@ import {
   Cloud,
   Eye,
   Tag,
-  Boxes
+  Boxes,
+  BookmarkCheck
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { marketingProductService } from '../../services/marketingProductService';
@@ -317,8 +318,14 @@ export const AdPosterStudioPage = () => {
   const location = useLocation();
   const posterRef = useRef(null);
 
-  // Mode: 'existing' | 'upcoming' (defaults to existing as requested)
-  const initialMode = location.state?.mode || 'existing';
+  // Mode: 'existing' | 'upcoming'
+  const queryParams = new URLSearchParams(location.search);
+  const initialMode =
+    location.state?.mode ||
+    queryParams.get('mode') ||
+    (location.state?.productId || queryParams.get('productId') || location.state?.strategyData
+      ? 'upcoming'
+      : 'existing');
   const [mode, setMode] = useState(initialMode);
 
   // Active theme and view tab ('canvas' | 'cloud_only')
@@ -359,9 +366,29 @@ export const AdPosterStudioPage = () => {
   const fetchStrategy = async () => {
     setStrategyLoading(true);
     try {
-      const res = await marketingProductService.getLatestStrategy();
+      if (location.state?.strategyData) {
+        setStrategyData(location.state.strategyData);
+        if (location.state.strategyData.adPosterData?.headline) {
+          setAdPosterData(location.state.strategyData.adPosterData);
+          setUpcomingPosterStatus(location.state.strategyData.adPosterStatus || 'Saved');
+        }
+      }
+
+      const qParams = new URLSearchParams(location.search);
+      const targetProductId = location.state?.productId || qParams.get('productId');
+      let res;
+      if (targetProductId) {
+        res = await marketingProductService.getProductById(targetProductId);
+      } else if (!location.state?.strategyData) {
+        res = await marketingProductService.getLatestStrategy();
+      }
+
       if (res?.success && res?.data?.product) {
         setStrategyData(res.data.product);
+        if (res.data.product.adPosterData?.headline) {
+          setAdPosterData(res.data.product.adPosterData);
+          setUpcomingPosterStatus(res.data.product.adPosterStatus || 'Saved');
+        }
       }
     } catch (e) {
       console.error('Error loading strategy:', e);
@@ -428,16 +455,33 @@ export const AdPosterStudioPage = () => {
     setGenStepText('Synthesizing launch ad strategy...');
 
     try {
-      const pid = strategyData._id;
+      let pid = strategyData?._id || location.state?.productId;
+      if (!pid) {
+        // Auto-save strategy to MongoDB to ensure it has a product ID
+        const saveRes = await marketingProductService.saveStrategy({
+          productIdea: strategyData?.productIdea || strategyData?.productName || 'New Product',
+          productName: strategyData?.productName || 'New Product',
+          shortDescription: strategyData?.shortDescription || '',
+          detailedDescription: strategyData?.detailedDescription || '',
+          usps: strategyData?.usps || [],
+          positioningStatement: strategyData?.positioningStatement || '',
+        });
+        if (saveRes?.success && saveRes?.data?.product?._id) {
+          pid = saveRes.data.product._id;
+          setStrategyData((prev) => ({ ...prev, _id: pid }));
+        }
+      }
+
       if (!pid) throw new Error('Strategy not saved yet. Please save from the New Product page first.');
       const apiCall = isRegen
         ? marketingProductService.regenerateAdPoster(pid)
         : marketingProductService.generateAdPoster(pid);
       const res = await apiCall;
-      if (res?.success && res?.data?.adPosterData) {
-        setAdPosterData(res.data.adPosterData);
-        setUpcomingPosterStatus('done');
-        addToast('Upcoming product ad poster generated!', 'success');
+      if (res?.success && (res?.data?.adPosterData || res?.data?.poster)) {
+        const poster = res.data.adPosterData || res.data.poster;
+        setAdPosterData(poster);
+        setUpcomingPosterStatus('Saved');
+        addToast('Upcoming product ad poster generated & saved to MongoDB collection!', 'success');
       }
     } catch (e) {
       console.error(e);
@@ -999,26 +1043,37 @@ export const AdPosterStudioPage = () => {
 
                   {/* Secondary Save & Download Actions */}
                   {adPosterData && (
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <button
-                        id="btn-save-poster"
-                        onClick={handleSavePoster}
-                        disabled={saving}
-                        className="py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
-                      >
-                        <Save className="w-3.5 h-3.5" />
-                        <span>{saving ? 'Saving...' : 'Save to MongoDB'}</span>
-                      </button>
+                    <div className="space-y-2.5">
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <button
+                          id="btn-save-poster"
+                          onClick={handleSavePoster}
+                          disabled={saving}
+                          className="py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>{saving ? 'Saving...' : 'Save to MongoDB'}</span>
+                        </button>
 
-                      <button
-                        id="btn-download-poster"
-                        onClick={handleDownload}
-                        disabled={downloading}
-                        className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+                        <button
+                          id="btn-download-poster"
+                          onClick={handleDownload}
+                          disabled={downloading}
+                          className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>{downloading ? 'Exporting...' : 'Download PNG'}</span>
+                        </button>
+                      </div>
+
+                      <Link
+                        to="/marketing/saved-strategies"
+                        className="w-full py-3 bg-[#0F291E] hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                       >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>{downloading ? 'Exporting...' : 'Download PNG'}</span>
-                      </button>
+                        <BookmarkCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>View in Saved Strategies & Ads</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-white" />
+                      </Link>
                     </div>
                   )}
                 </div>

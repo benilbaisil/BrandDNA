@@ -22,10 +22,30 @@ import {
   Copy,
   Award,
   Lightbulb,
-  ChevronRight
+  ChevronRight,
+  RotateCcw
 } from 'lucide-react';
 import { productStrategyService } from '../../services/productStrategyService';
+import { marketingProductService } from '../../services/marketingProductService';
 import { useToast } from '../../context/ToastContext';
+
+const EMPTY_STRATEGY = {
+  productName: '',
+  productTagline: '',
+  shortDescription: '',
+  detailedDescription: '',
+  usps: [],
+  positioningStatement: '',
+  targetSegment: '',
+  keyBenefit: '',
+  competitiveMoat: '',
+  perceptualAngle: '',
+  valuePillars: [],
+  productNameSuggestions: [],
+  descriptionSuggestions: [],
+  uspSuggestions: [],
+  positioningSuggestions: [],
+};
 
 export const ProductStrategyPage = () => {
   const navigate = useNavigate();
@@ -70,7 +90,7 @@ export const ProductStrategyPage = () => {
     positioning: null,
   });
 
-  // User input prompt direction / product idea
+  // User input prompt direction / product idea (starts blank in New Product)
   const [productIdea, setProductIdea] = useState('');
 
   // Loaded Brand Context (from MongoDB)
@@ -85,24 +105,9 @@ export const ProductStrategyPage = () => {
     industry: '',
   });
 
-  // Currently Selected & Saved Strategy Data
-  const [strategy, setStrategy] = useState({
-    productName: '',
-    productTagline: '',
-    shortDescription: '',
-    detailedDescription: '',
-    usps: [],
-    positioningStatement: '',
-    targetSegment: '',
-    keyBenefit: '',
-    competitiveMoat: '',
-    perceptualAngle: '',
-    valuePillars: [],
-    productNameSuggestions: [],
-    descriptionSuggestions: [],
-    uspSuggestions: [],
-    positioningSuggestions: [],
-  });
+  // Currently Selected & Saved Strategy Data (Starts completely empty for New Product)
+  const [strategy, setStrategy] = useState(EMPTY_STRATEGY);
+  const [savedProductId, setSavedProductId] = useState(null);
 
   // Copy indicator state
   const [copiedKey, setCopiedKey] = useState(null);
@@ -113,25 +118,80 @@ export const ProductStrategyPage = () => {
   const [customUspCategory, setCustomUspCategory] = useState('Differentiation');
   const [customUspImpact, setCustomUspImpact] = useState('High');
 
+  // Determine if a product idea has been typed
+  const hasProductIdea = Boolean(productIdea && productIdea.trim().length > 0);
+
   // Load Initial Strategy & Context Data
   useEffect(() => {
     fetchStrategyData();
-    const handleGlobalSync = () => fetchStrategyData();
-    window.addEventListener('brand_dna_updated', handleGlobalSync);
-    return () => window.removeEventListener('brand_dna_updated', handleGlobalSync);
-  }, []);
-
-  const fetchStrategyData = async () => {
-    try {
-      const res = await productStrategyService.getStrategy();
-      if (res.success) {
-        if (res.data.strategy) {
-          setStrategy(res.data.strategy);
-        }
-        if (res.data.brandContext) {
+    const handleGlobalSync = async () => {
+      try {
+        const res = await productStrategyService.getStrategy();
+        if (res?.success && res?.data?.brandContext) {
           setBrandContext(res.data.brandContext);
         }
+      } catch (e) {
+        // silent
       }
+    };
+    window.addEventListener('brand_dna_updated', handleGlobalSync);
+    return () => window.removeEventListener('brand_dna_updated', handleGlobalSync);
+  }, [location.search]);
+
+  const fetchStrategyData = async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams(location.search);
+      const strategyId = queryParams.get('id');
+      const loadSaved = queryParams.get('loadSaved');
+
+      // Fetch master brand context so it is always available
+      const res = await productStrategyService.getStrategy();
+      if (res?.success && res?.data?.brandContext) {
+        setBrandContext(res.data.brandContext);
+      }
+
+      // If user navigated here with a specific saved product ID (e.g. from Saved Strategies)
+      if (strategyId) {
+        try {
+          const prodRes = await marketingProductService.getProductById(strategyId);
+          if (prodRes?.success && prodRes?.data?.product) {
+            const p = prodRes.data.product;
+            setSavedProductId(p._id);
+            setProductIdea(p.productIdea || p.name || '');
+            setStrategy({
+              productName: p.name || '',
+              productTagline: p.tagline || '',
+              shortDescription: p.shortDescription || p.description || '',
+              detailedDescription: p.detailedDescription || p.description || '',
+              usps: p.usps || [],
+              positioningStatement: p.positioning?.positioningStatement || p.positioningStatement || '',
+              targetSegment: p.positioning?.targetSegment || p.targetSegment || '',
+              keyBenefit: p.positioning?.keyBenefit || p.keyBenefit || '',
+              competitiveMoat: p.positioning?.competitiveMoat || p.competitiveMoat || '',
+              perceptualAngle: p.positioning?.perceptualAngle || p.perceptualAngle || '',
+              valuePillars: p.positioning?.valuePillars || p.valuePillars || [],
+              productNameSuggestions: [],
+              descriptionSuggestions: [],
+              uspSuggestions: [],
+              positioningSuggestions: [],
+            });
+            return;
+          }
+        } catch (err) {
+          console.error('Error fetching specific product by id:', err);
+        }
+      } else if (loadSaved === 'true') {
+        if (res?.success && res?.data?.strategy) {
+          setStrategy(res.data.strategy);
+          setProductIdea(res.data.strategy.productName || '');
+          return;
+        }
+      }
+
+      // Default for "New Product": Completely clean & empty fields until user types an idea
+      setStrategy(EMPTY_STRATEGY);
+      setProductIdea('');
     } catch (err) {
       console.error('Error fetching product strategy:', err);
       showToast('Failed to load product strategy context.', 'error');
@@ -151,8 +211,33 @@ export const ProductStrategyPage = () => {
     }
   };
 
+  // Reset all fields to blank for a fresh product creation
+  const handleResetToEmpty = () => {
+    setProductIdea('');
+    setSavedProductId(null);
+    setStrategy(EMPTY_STRATEGY);
+    setSaveSuccess({
+      names: false,
+      description: false,
+      usps: false,
+      positioning: false,
+    });
+    setErrors({
+      names: null,
+      description: null,
+      usps: null,
+      positioning: null,
+    });
+    showToast('All fields cleared. Type a product idea above to start fresh.', 'info');
+  };
+
   // Handler for Regenerating a specific section via AI
   const handleRegenerate = async (sectionKey) => {
+    if (!productIdea || !productIdea.trim()) {
+      showToast('Please type a product idea first in the input above.', 'warning');
+      return;
+    }
+
     setRegenerating((prev) => ({ ...prev, [sectionKey]: true }));
     setErrors((prev) => ({ ...prev, [sectionKey]: null }));
 
@@ -165,12 +250,15 @@ export const ProductStrategyPage = () => {
           setStrategy((prev) => ({
             ...prev,
             productNameSuggestions: res.data.suggestions,
+            productName: prev.productName || res.data.suggestions[0]?.name || '',
+            productTagline: prev.productTagline || res.data.suggestions[0]?.tagline || '',
           }));
-          showToast('Product Name suggestions regenerated!', 'success');
+          showToast(`5 Product Name suggestions generated for "${userHint}"!`, 'success');
         }
       } else if (sectionKey === 'description') {
+        const activeName = strategy.productName?.trim() || userHint;
         const res = await productStrategyService.generateDescription({
-          productName: strategy.productName || brandContext.brandName,
+          productName: activeName,
           userHint,
           applySelection: true,
         });
@@ -178,16 +266,18 @@ export const ProductStrategyPage = () => {
           const d = res.data.description;
           setStrategy((prev) => ({
             ...prev,
+            productName: prev.productName || activeName,
             shortDescription: d.shortPitch,
             detailedDescription: d.fullDescription,
             descriptionSuggestions: [d],
           }));
-          showToast('Product Description regenerated!', 'success');
+          showToast(`Product Description generated for "${activeName}"!`, 'success');
         }
       } else if (sectionKey === 'usps') {
+        const activeName = strategy.productName?.trim() || userHint;
         const res = await productStrategyService.generateUSP({
-          productName: strategy.productName || brandContext.brandName,
-          description: strategy.shortDescription || strategy.detailedDescription,
+          productName: activeName,
+          description: strategy.shortDescription || strategy.detailedDescription || userHint,
           userHint,
           applySelection: true,
         });
@@ -197,12 +287,13 @@ export const ProductStrategyPage = () => {
             usps: res.data.usps,
             uspSuggestions: res.data.usps,
           }));
-          showToast('USPs regenerated!', 'success');
+          showToast(`USPs synthesized for "${activeName}"!`, 'success');
         }
       } else if (sectionKey === 'positioning') {
+        const activeName = strategy.productName?.trim() || userHint;
         const res = await productStrategyService.generatePositioning({
-          productName: strategy.productName || brandContext.brandName,
-          description: strategy.shortDescription,
+          productName: activeName,
+          description: strategy.shortDescription || userHint,
           usps: strategy.usps,
           userHint,
           applySelection: true,
@@ -219,7 +310,7 @@ export const ProductStrategyPage = () => {
             valuePillars: p.valuePillars || [],
             positioningSuggestions: [p],
           }));
-          showToast('Product Positioning Framework regenerated!', 'success');
+          showToast('Product Positioning Framework generated!', 'success');
         }
       }
     } catch (err) {
@@ -236,16 +327,22 @@ export const ProductStrategyPage = () => {
 
   // Handler for 1-Click Full Chained Regeneration
   const handleRegenerateAll = async () => {
+    if (!productIdea || !productIdea.trim()) {
+      showToast('Please type a product idea first in the input above.', 'warning');
+      return;
+    }
+
     setRegenerating((prev) => ({ ...prev, all: true }));
     try {
+      const userHint = productIdea.trim();
       const res = await productStrategyService.generateProductStrategy({
-        productIdea,
-        userHint: productIdea,
+        productIdea: userHint,
+        userHint,
       });
       if (res.success && (res.data.strategy || res.data.chainedResult)) {
         const updated = res.data.strategy || res.data.chainedResult;
         setStrategy({
-          productName: updated.productName || strategy.productName,
+          productName: updated.productName || strategy.productName || userHint,
           productTagline: updated.productTagline || '',
           shortDescription: updated.shortDescription || '',
           detailedDescription: updated.detailedDescription || '',
@@ -261,7 +358,7 @@ export const ProductStrategyPage = () => {
           uspSuggestions: updated.uspSuggestions || updated.suggestions?.uspSuggestions || [],
           positioningSuggestions: updated.positioningSuggestions || updated.suggestions?.positioningSuggestions || [],
         });
-        showToast('Full 4-Stage Product Strategy Prompt Chain Executed!', 'success');
+        showToast(`Full 4-Stage Product Strategy Generated for "${userHint}"!`, 'success');
       }
     } catch (err) {
       console.error('Error in 1-Click chain:', err);
@@ -271,19 +368,77 @@ export const ProductStrategyPage = () => {
     }
   };
 
-  // Save single section or entire strategy to MongoDB
+  // Save strategy to both user active strategy & MongoDB MarketingProduct collection (Saved Strategies page)
+  const saveStrategyToCollection = async (showToastMessage = true) => {
+    if (!productIdea.trim() && !strategy.productName?.trim()) {
+      if (showToastMessage) showToast('Please enter a product idea or name before saving.', 'warning');
+      return null;
+    }
+
+    setSaving((prev) => ({ ...prev, all: true }));
+    try {
+      // 1. Save user active strategy in ProductStrategy model
+      await productStrategyService.saveStrategy(strategy);
+
+      // 2. Save into MarketingProduct collection so it appears on Saved Strategies & Ads page
+      const mktPayload = {
+        productId: savedProductId || undefined,
+        productIdea: productIdea.trim() || strategy.productName.trim(),
+        productName: strategy.productName?.trim() || productIdea.trim(),
+        tagline: strategy.productTagline || '',
+        shortDescription: strategy.shortDescription || '',
+        detailedDescription: strategy.detailedDescription || '',
+        usps: strategy.usps || [],
+        positioningStatement: strategy.positioningStatement || '',
+        targetSegment: strategy.targetSegment || '',
+        keyBenefit: strategy.keyBenefit || '',
+        competitiveMoat: strategy.competitiveMoat || '',
+        positioning: {
+          positioningStatement: strategy.positioningStatement || '',
+          targetMarket: strategy.targetSegment || '',
+          competitiveAdvantage: strategy.competitiveMoat || '',
+          customerNeed: strategy.keyBenefit || '',
+          perceptualAngle: strategy.perceptualAngle || '',
+          valuePillars: strategy.valuePillars || [],
+        },
+        productNamesSuggestions: (strategy.productNameSuggestions || []).map((s) => ({
+          name: s.name,
+          reasoning: s.rationale || '',
+          fitWithBrand: String(s.brandAlignmentScore || ''),
+        })),
+      };
+
+      const mktRes = await marketingProductService.saveStrategy(mktPayload);
+      let finalId = savedProductId;
+      if (mktRes?.success && mktRes?.data?.product?._id) {
+        finalId = mktRes.data.product._id;
+        setSavedProductId(finalId);
+      }
+
+      window.dispatchEvent(new CustomEvent('brand_dna_updated'));
+      if (showToastMessage) {
+        showToast('Product Strategy saved to MongoDB! Viewable in Saved Strategies & Ads.', 'success');
+      }
+      return finalId;
+    } catch (err) {
+      console.error('Error saving strategy to collection:', err);
+      if (showToastMessage) showToast('Failed to save product strategy.', 'error');
+      return null;
+    } finally {
+      setSaving((prev) => ({ ...prev, all: false }));
+    }
+  };
+
+  // Save single section to MongoDB
   const handleSaveSection = async (sectionKey) => {
     setSaving((prev) => ({ ...prev, [sectionKey]: true }));
     try {
-      const res = await productStrategyService.saveStrategy(strategy);
-      if (res.success) {
-        window.dispatchEvent(new CustomEvent('brand_dna_updated'));
-        showToast(`${formatSectionTitle(sectionKey)} saved to MongoDB!`, 'success');
-        setSaveSuccess((prev) => ({ ...prev, [sectionKey]: true }));
-        setTimeout(() => {
-          setSaveSuccess((prev) => ({ ...prev, [sectionKey]: false }));
-        }, 3000);
-      }
+      await saveStrategyToCollection(false);
+      showToast(`${formatSectionTitle(sectionKey)} saved to MongoDB!`, 'success');
+      setSaveSuccess((prev) => ({ ...prev, [sectionKey]: true }));
+      setTimeout(() => {
+        setSaveSuccess((prev) => ({ ...prev, [sectionKey]: false }));
+      }, 3000);
     } catch (err) {
       console.error(`Save error for ${sectionKey}:`, err);
       showToast(`Error saving ${formatSectionTitle(sectionKey)}.`, 'error');
@@ -292,16 +447,30 @@ export const ProductStrategyPage = () => {
     }
   };
 
-  // Save & Continue — save strategy then go to ad poster page
+  // Save & Continue — save strategy then proceed to ad poster page
   const handleSaveAndContinue = async () => {
+    if (!strategy.productName?.trim() && !strategy.shortDescription?.trim()) {
+      showToast('Please type a product idea and generate or enter details before proceeding.', 'warning');
+      return;
+    }
+
     setSaving((prev) => ({ ...prev, all: true }));
     try {
-      const res = await productStrategyService.saveStrategy(strategy);
-      if (res.success) {
-        window.dispatchEvent(new CustomEvent('brand_dna_updated'));
-        showToast('Product Strategy saved! Proceeding to Ad Poster Studio...', 'success');
-        navigate('/marketing/ad-poster', { state: { mode: 'upcoming' } });
-      }
+      const finalId = await saveStrategyToCollection(false);
+      showToast('Product Strategy saved! Proceeding to Ad Poster Studio...', 'success');
+      navigate('/marketing/ad-poster', {
+        state: {
+          mode: 'upcoming',
+          productId: finalId,
+          productIdea: productIdea.trim(),
+          strategyData: {
+            ...strategy,
+            _id: finalId,
+            productName: strategy.productName.trim(),
+            productIdea: productIdea.trim(),
+          },
+        },
+      });
     } catch (err) {
       console.error('Error saving strategy:', err);
       showToast('Failed to save product strategy.', 'error');
@@ -358,19 +527,17 @@ export const ProductStrategyPage = () => {
 
   // Progress Checklist Items
   const progressItems = [
-    { key: 'names', label: 'Product Name', completed: Boolean(strategy.productName) },
-    { key: 'description', label: 'Description', completed: Boolean(strategy.shortDescription) },
+    { key: 'names', label: 'Product Name', completed: Boolean(strategy.productName?.trim()) },
+    { key: 'description', label: 'Description', completed: Boolean(strategy.shortDescription?.trim()) },
     { key: 'usps', label: 'USPs', completed: Boolean(strategy.usps?.length > 0) },
-    { key: 'positioning', label: 'Positioning', completed: Boolean(strategy.positioningStatement) },
+    { key: 'positioning', label: 'Positioning', completed: Boolean(strategy.positioningStatement?.trim()) },
   ];
-
-
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 text-left pb-24 font-sans">
       
       {/* ─────────────────────────────────────────────────────────────
-          PAGE HEADER + PROGRESS BAR (Matches Brand Analysis Layout)
+          PAGE HEADER + PROGRESS BAR
          ───────────────────────────────────────────────────────────── */}
       <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-[#D6E6EC] shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -384,27 +551,58 @@ export const ProductStrategyPage = () => {
               Product Strategy & Positioning
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Build your product strategy with AI-powered suggestions. Choose, refine, regenerate each section, or create your own.
+              Build your product strategy with AI-powered suggestions. Start by typing your product idea below to unlock AI features.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0 cursor-pointer self-start sm:self-auto">
+          <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto flex-wrap sm:flex-nowrap">
+            <Link
+              to="/marketing/saved-strategies"
+              className="px-4 py-2.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-all flex items-center gap-1.5 border border-indigo-200 shadow-2xs cursor-pointer"
+              title="View all saved product strategies and generated ads"
+            >
+              <BookmarkCheck className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Saved Strategies & Ads</span>
+            </Link>
+
+            <button
+              onClick={() => saveStrategyToCollection(true)}
+              disabled={saving.all || (!strategy.productName?.trim() && !strategy.shortDescription?.trim())}
+              className={`px-4 py-2.5 rounded-full font-bold text-xs transition-all flex items-center gap-2 border border-[#D6E6EC] ${
+                !strategy.productName?.trim() && !strategy.shortDescription?.trim()
+                  ? 'bg-slate-100 text-slate-400 opacity-40 cursor-not-allowed'
+                  : 'bg-white hover:bg-slate-50 text-[#0F291E] cursor-pointer shadow-2xs'
+              }`}
+            >
+              <Save className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Save Strategy</span>
+            </button>
+
             <button
               onClick={handleRegenerateAll}
-              disabled={regenerating.all}
-              className="px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 font-bold text-xs transition-all flex items-center gap-2 border border-[#D6E6EC] cursor-pointer disabled:opacity-50"
+              disabled={!hasProductIdea || regenerating.all}
+              title={!hasProductIdea ? "Type a product idea below first to activate 1-Click generation" : "Generate complete 4-stage product strategy"}
+              className={`px-4 py-2.5 rounded-full font-bold text-xs transition-all flex items-center gap-2 border border-[#D6E6EC] ${
+                !hasProductIdea
+                  ? 'bg-slate-100 text-slate-400 opacity-40 cursor-not-allowed'
+                  : 'bg-slate-100 hover:bg-slate-200 text-[#0F291E] cursor-pointer'
+              }`}
             >
-              <RefreshCw className={`w-3.5 h-3.5 text-slate-700 ${regenerating.all ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${regenerating.all ? 'animate-spin' : !hasProductIdea ? 'text-slate-400' : 'text-slate-700'}`} />
               <span>{regenerating.all ? 'Running Prompt Chain...' : '1-Click Regenerate All'}</span>
             </button>
 
             <button
               onClick={handleSaveAndContinue}
-              disabled={saving.all}
-              className="px-5 py-2.5 rounded-full bg-[#0F291E] hover:bg-slate-800 text-white font-bold text-xs transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+              disabled={saving.all || (!strategy.productName?.trim() && !strategy.shortDescription?.trim())}
+              className={`px-5 py-2.5 rounded-full font-bold text-xs transition-all flex items-center gap-2 shadow-md ${
+                !strategy.productName?.trim() && !strategy.shortDescription?.trim()
+                  ? 'bg-[#0F291E]/60 text-white/50 cursor-not-allowed'
+                  : 'bg-[#0F291E] hover:bg-slate-800 text-white cursor-pointer'
+              }`}
             >
               <Save className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Save & Continue</span>
+              <span>Save & Generate Ad</span>
               <ArrowRight className="w-3.5 h-3.5 text-white" />
             </button>
           </div>
@@ -418,8 +616,8 @@ export const ProductStrategyPage = () => {
                 key={item.key}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                   item.completed
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-[#FAF8F5]/40 text-slate-500 border-[#D6E6EC]'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-2xs'
+                    : 'bg-[#FAF8F5]/40 text-slate-400 border-[#D6E6EC]'
                 }`}
               >
                 {item.completed ? (
@@ -471,37 +669,77 @@ export const ProductStrategyPage = () => {
         </div>
       </div>
 
-
-      {/* User Specific Product Idea Input Bar */}
+      {/* ─────────────────────────────────────────────────────────────
+          PRODUCT IDEA INPUT BAR (Required gate for all AI features)
+         ───────────────────────────────────────────────────────────── */}
       <div className="p-5 rounded-2xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-3">
-        <div className="flex items-center gap-2">
-          <Lightbulb className="w-4 h-4 text-amber-500" />
-          <span className="text-xs font-mono font-bold text-[#0F291E] uppercase tracking-wider">
-            Product Idea or Specific Feature Focus
-          </span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Lightbulb className="w-4 h-4 text-amber-500" />
+            <span className="text-xs font-mono font-bold text-[#0F291E] uppercase tracking-wider">
+              Product Idea or Specific Feature Focus
+            </span>
+          </div>
+          {hasProductIdea && (
+            <button
+              type="button"
+              onClick={handleResetToEmpty}
+              className="text-slate-400 hover:text-rose-600 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              title="Clear all fields and start fresh"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Clear / Start Fresh</span>
+            </button>
+          )}
         </div>
+
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <input
             type="text"
             value={productIdea}
             onChange={(e) => setProductIdea(e.target.value)}
-            placeholder='e.g., "Enter your specific product idea or feature" (e.g., AI-powered strategy engine)'
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && hasProductIdea && !regenerating.names) {
+                e.preventDefault();
+                handleRegenerate('names');
+              }
+            }}
+            placeholder='e.g., "trek bag", "smart leather sleeve", "organic energy bar"...'
             className="flex-1 w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] placeholder-slate-400 rounded-xl px-3.5 py-2.5 outline-none focus:border-slate-900 focus:glass-panel transition-all font-medium"
           />
           <button
             onClick={() => handleRegenerate('names')}
-            disabled={regenerating.names}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shrink-0"
+            disabled={!hasProductIdea || regenerating.names || regenerating.all}
+            title={!hasProductIdea ? 'Type a product idea first' : 'Generate product names with idea'}
+            className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 ${
+              !hasProductIdea
+                ? 'bg-slate-200 text-slate-400 opacity-50 cursor-not-allowed'
+                : 'bg-[#0F291E] text-white hover:bg-slate-800 cursor-pointer shadow-xs'
+            }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Regenerate with Idea</span>
+            <Sparkles className={`w-3.5 h-3.5 ${hasProductIdea ? 'text-amber-400' : 'text-slate-400'}`} />
+            <span>{regenerating.names ? 'Generating...' : 'Regenerate with Idea'}</span>
           </button>
+        </div>
+
+        {/* Status / Activation Guide Message */}
+        <div className="pt-1">
+          {!hasProductIdea ? (
+            <div className="flex items-center gap-1.5 text-xs text-amber-700 font-medium">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+              <span>Type your product idea above (e.g. "trek bag") to unlock AI generation features. All fields remain blank until then.</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+              <span>AI features unlocked for <strong>"{productIdea.trim()}"</strong>. Click "Regenerate with Idea" or "1-Click Regenerate All" to synthesize strategy.</span>
+            </div>
+          )}
         </div>
       </div>
 
-
       {/* ─────────────────────────────────────────────────────────────
-          1. PRODUCT NAME GENERATOR SECTION (With Individual Regenerate)
+          1. PRODUCT NAME GENERATOR SECTION
          ───────────────────────────────────────────────────────────── */}
       <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -513,11 +751,15 @@ export const ProductStrategyPage = () => {
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">01</span>
                 <h3 className="font-serif text-xl font-bold text-[#0F291E]">Product Name Generator</h3>
-                {strategy.productName && (
+                {saveSuccess.names ? (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved
                   </span>
-                )}
+                ) : strategy.productName ? (
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 text-[10px] font-semibold border border-blue-200">
+                    Selected
+                  </span>
+                ) : null}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 Generate 5 catchy, brand-aligned product names matching your Master Brand identity and tone.
@@ -527,10 +769,15 @@ export const ProductStrategyPage = () => {
 
           <button
             onClick={() => handleRegenerate('names')}
-            disabled={regenerating.names}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
+            disabled={!hasProductIdea || regenerating.names || regenerating.all}
+            title={!hasProductIdea ? "Enter a product idea above first" : "Generate 5 brand-aligned product names"}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors border border-[#D6E6EC] shrink-0 ${
+              !hasProductIdea
+                ? 'bg-slate-100 text-slate-400 opacity-40 cursor-not-allowed'
+                : 'bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 cursor-pointer'
+            }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.names ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${regenerating.names ? 'animate-spin' : !hasProductIdea ? 'text-slate-400' : 'text-slate-600'}`} />
             <span>{regenerating.names ? 'Generating suggestions...' : 'Regenerate Product Names'}</span>
           </button>
         </div>
@@ -555,7 +802,20 @@ export const ProductStrategyPage = () => {
         {regenerating.names && (
           <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-amber-500 animate-spin mx-auto" />
-            <p className="text-xs font-medium text-slate-600">Gemini is generating brand-aligned product names...</p>
+            <p className="text-xs font-medium text-slate-600">Gemini is generating brand-aligned product names for "{productIdea.trim()}"...</p>
+          </div>
+        )}
+
+        {/* Empty State placeholder when no names have been generated */}
+        {!regenerating.names && (!strategy.productNameSuggestions || strategy.productNameSuggestions.length === 0) && (
+          <div className="p-6 rounded-2xl bg-[#FAF8F5]/60 border border-dashed border-[#D6E6EC] text-center space-y-2">
+            <Zap className="w-6 h-6 text-slate-300 mx-auto" />
+            <p className="text-xs font-bold text-slate-700">No Product Names Generated Yet</p>
+            <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+              {hasProductIdea
+                ? `Ready! Click "Regenerate with Idea" or "Regenerate Product Names" to synthesize 5 brand-aligned names for "${productIdea.trim()}".`
+                : 'Type your product idea in the field above to activate AI name generation.'}
+            </p>
           </div>
         )}
 
@@ -595,7 +855,7 @@ export const ProductStrategyPage = () => {
                           e.stopPropagation();
                           handleCopy(`${item.name} - ${item.tagline || ''}`, `name-${idx}`);
                         }}
-                        className="text-[10px] font-semibold text-slate-500 hover:text-[#0F291E] flex items-center gap-1"
+                        className="text-[10px] font-semibold text-slate-500 hover:text-[#0F291E] flex items-center gap-1 cursor-pointer"
                       >
                         {copiedKey === `name-${idx}` ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                         <span>Copy</span>
@@ -621,7 +881,7 @@ export const ProductStrategyPage = () => {
               type="text"
               value={strategy.productName}
               onChange={(e) => setStrategy({ ...strategy, productName: e.target.value })}
-              placeholder="e.g. BrandDNA Intelligence"
+              placeholder={hasProductIdea ? `Enter or select product name (e.g. matching ${productIdea.trim()})...` : "Enter or select a product name..."}
               className="flex-1 bg-[#FAF8F5] border border-[#E5E0D8] focus:border-slate-900 focus:glass-panel text-xs font-bold text-[#0F291E] rounded-xl px-3.5 py-2.5 outline-none transition-all"
             />
             {saveSuccess.names && (
@@ -632,8 +892,8 @@ export const ProductStrategyPage = () => {
             )}
             <button
               onClick={() => handleSaveSection('names')}
-              disabled={saving.names || !strategy.productName.trim()}
-              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs shrink-0"
+              disabled={saving.names || !strategy.productName?.trim()}
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer shadow-xs shrink-0"
             >
               {saving.names ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Name</span>
@@ -642,9 +902,8 @@ export const ProductStrategyPage = () => {
         </div>
       </div>
 
-
       {/* ─────────────────────────────────────────────────────────────
-          2. PRODUCT DESCRIPTION & NARRATIVE SECTION (With Individual Regenerate)
+          2. PRODUCT DESCRIPTION & NARRATIVE SECTION
          ───────────────────────────────────────────────────────────── */}
       <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -656,11 +915,15 @@ export const ProductStrategyPage = () => {
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">02</span>
                 <h3 className="font-serif text-xl font-bold text-[#0F291E]">Product Description & Narrative</h3>
-                {strategy.shortDescription && (
+                {saveSuccess.description ? (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved
                   </span>
-                )}
+                ) : strategy.shortDescription ? (
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 text-[10px] font-semibold border border-blue-200">
+                    Draft
+                  </span>
+                ) : null}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 Generate a compelling elevator pitch and full detailed product narrative based on your active product name.
@@ -670,10 +933,15 @@ export const ProductStrategyPage = () => {
 
           <button
             onClick={() => handleRegenerate('description')}
-            disabled={regenerating.description}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
+            disabled={!hasProductIdea || regenerating.description || regenerating.all}
+            title={!hasProductIdea ? "Enter a product idea above first" : "Generate elevator pitch and narrative"}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors border border-[#D6E6EC] shrink-0 ${
+              !hasProductIdea
+                ? 'bg-slate-100 text-slate-400 opacity-40 cursor-not-allowed'
+                : 'bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 cursor-pointer'
+            }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.description ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${regenerating.description ? 'animate-spin' : !hasProductIdea ? 'text-slate-400' : 'text-slate-600'}`} />
             <span>{regenerating.description ? 'Generating description...' : 'Regenerate Description'}</span>
           </button>
         </div>
@@ -708,19 +976,25 @@ export const ProductStrategyPage = () => {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-mono font-bold text-slate-700 uppercase">Elevator Pitch (Short Pitch)</label>
-                <button
-                  onClick={() => handleCopy(strategy.shortDescription, 'shortPitch')}
-                  className="text-[11px] font-semibold text-slate-500 hover:text-[#0F291E] flex items-center gap-1"
-                >
-                  {copiedKey === 'shortPitch' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>Copy</span>
-                </button>
+                {strategy.shortDescription && (
+                  <button
+                    onClick={() => handleCopy(strategy.shortDescription, 'shortPitch')}
+                    className="text-[11px] font-semibold text-slate-500 hover:text-[#0F291E] flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedKey === 'shortPitch' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>Copy</span>
+                  </button>
+                )}
               </div>
               <textarea
                 rows={2}
                 value={strategy.shortDescription}
                 onChange={(e) => setStrategy({ ...strategy, shortDescription: e.target.value })}
-                placeholder="Click 'Regenerate Description' to generate elevator pitch..."
+                placeholder={
+                  hasProductIdea
+                    ? `Click 'Regenerate Description' or '1-Click Regenerate All' to generate elevator pitch for "${productIdea.trim()}"...`
+                    : "Type a product idea above to unlock AI description generation..."
+                }
                 className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl p-3 outline-none focus:border-slate-900 focus:glass-panel transition-all font-medium"
               />
             </div>
@@ -728,19 +1002,25 @@ export const ProductStrategyPage = () => {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-mono font-bold text-slate-700 uppercase">Comprehensive Product Narrative</label>
-                <button
-                  onClick={() => handleCopy(strategy.detailedDescription, 'fullDesc')}
-                  className="text-[11px] font-semibold text-slate-500 hover:text-[#0F291E] flex items-center gap-1"
-                >
-                  {copiedKey === 'fullDesc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>Copy</span>
-                </button>
+                {strategy.detailedDescription && (
+                  <button
+                    onClick={() => handleCopy(strategy.detailedDescription, 'fullDesc')}
+                    className="text-[11px] font-semibold text-slate-500 hover:text-[#0F291E] flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedKey === 'fullDesc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>Copy</span>
+                  </button>
+                )}
               </div>
               <textarea
                 rows={4}
                 value={strategy.detailedDescription}
                 onChange={(e) => setStrategy({ ...strategy, detailedDescription: e.target.value })}
-                placeholder="Click 'Regenerate Description' to generate full narrative..."
+                placeholder={
+                  hasProductIdea
+                    ? `Click 'Regenerate Description' or '1-Click Regenerate All' to generate full narrative for "${productIdea.trim()}"...`
+                    : "Type a product idea above to unlock AI narrative generation..."
+                }
                 className="w-full bg-[#FAF8F5] border border-[#E5E0D8] text-xs text-[#0F291E] rounded-xl p-3 outline-none focus:border-slate-900 focus:glass-panel transition-all leading-relaxed"
               />
             </div>
@@ -757,8 +1037,8 @@ export const ProductStrategyPage = () => {
           <div className="ml-auto">
             <button
               onClick={() => handleSaveSection('description')}
-              disabled={saving.description || (!strategy.shortDescription.trim() && !strategy.detailedDescription.trim())}
-              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-xs"
+              disabled={saving.description || (!strategy.shortDescription?.trim() && !strategy.detailedDescription?.trim())}
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-40 flex items-center gap-2 cursor-pointer shadow-xs"
             >
               {saving.description ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Description</span>
@@ -767,9 +1047,8 @@ export const ProductStrategyPage = () => {
         </div>
       </div>
 
-
       {/* ─────────────────────────────────────────────────────────────
-          3. UNIQUE SELLING PROPOSITIONS (USPs) SECTION (With Individual Regenerate)
+          3. UNIQUE SELLING PROPOSITIONS (USPs) SECTION
          ───────────────────────────────────────────────────────────── */}
       <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -783,7 +1062,7 @@ export const ProductStrategyPage = () => {
                 <h3 className="font-serif text-xl font-bold text-[#0F291E]">Unique Selling Propositions (3 USPs)</h3>
                 {strategy.usps?.length > 0 && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
-                    {strategy.usps.length} USPs
+                    {saveSuccess.usps ? `${strategy.usps.length} USPs (Saved)` : `${strategy.usps.length} USPs`}
                   </span>
                 )}
               </div>
@@ -795,10 +1074,15 @@ export const ProductStrategyPage = () => {
 
           <button
             onClick={() => handleRegenerate('usps')}
-            disabled={regenerating.usps}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
+            disabled={!hasProductIdea || regenerating.usps || regenerating.all}
+            title={!hasProductIdea ? "Enter a product idea above first" : "Generate unique selling propositions"}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors border border-[#D6E6EC] shrink-0 ${
+              !hasProductIdea
+                ? 'bg-slate-100 text-slate-400 opacity-40 cursor-not-allowed'
+                : 'bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 cursor-pointer'
+            }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.usps ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${regenerating.usps ? 'animate-spin' : !hasProductIdea ? 'text-slate-400' : 'text-slate-600'}`} />
             <span>{regenerating.usps ? 'Generating USPs...' : 'Regenerate USPs'}</span>
           </button>
         </div>
@@ -823,14 +1107,27 @@ export const ProductStrategyPage = () => {
         {regenerating.usps && (
           <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin mx-auto" />
-            <p className="text-xs font-medium text-slate-600">Gemini is synthesizing Unique Selling Propositions...</p>
+            <p className="text-xs font-medium text-slate-600">Gemini is synthesizing Unique Selling Propositions for "{productIdea.trim()}"...</p>
+          </div>
+        )}
+
+        {/* Empty State placeholder when no USPs defined */}
+        {!regenerating.usps && (!strategy.usps || strategy.usps.length === 0) && (
+          <div className="p-6 rounded-2xl bg-[#FAF8F5]/60 border border-dashed border-[#D6E6EC] text-center space-y-2">
+            <ShieldCheck className="w-6 h-6 text-slate-300 mx-auto" />
+            <p className="text-xs font-bold text-slate-700">No USPs Defined Yet</p>
+            <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+              {hasProductIdea
+                ? `Click "Regenerate USPs" to let AI synthesize 3 market differentiators for "${productIdea.trim()}", or add custom ones below.`
+                : 'Type your product idea above to enable AI USP generation, or add custom USPs below.'}
+            </p>
           </div>
         )}
 
         {/* USP Cards Grid */}
-        {!regenerating.usps && (
+        {!regenerating.usps && strategy.usps?.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {strategy.usps?.map((usp, idx) => (
+            {strategy.usps.map((usp, idx) => (
               <div key={idx} className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-2 flex flex-col justify-between">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -894,8 +1191,8 @@ export const ProductStrategyPage = () => {
           <div className="ml-auto">
             <button
               onClick={() => handleSaveSection('usps')}
-              disabled={saving.usps || strategy.usps?.length === 0}
-              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-xs"
+              disabled={saving.usps || !strategy.usps || strategy.usps.length === 0}
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-40 flex items-center gap-2 cursor-pointer shadow-xs"
             >
               {saving.usps ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save USPs</span>
@@ -904,9 +1201,8 @@ export const ProductStrategyPage = () => {
         </div>
       </div>
 
-
       {/* ─────────────────────────────────────────────────────────────
-          4. PRODUCT POSITIONING FRAMEWORK SECTION (With Individual Regenerate)
+          4. PRODUCT POSITIONING FRAMEWORK SECTION
          ───────────────────────────────────────────────────────────── */}
       <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[#D6E6EC] shadow-2xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -918,11 +1214,15 @@ export const ProductStrategyPage = () => {
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-slate-400">04</span>
                 <h3 className="font-serif text-xl font-bold text-[#0F291E]">Product Positioning Framework</h3>
-                {strategy.positioningStatement && (
+                {saveSuccess.positioning ? (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold border border-emerald-200">
                     Saved
                   </span>
-                )}
+                ) : strategy.positioningStatement ? (
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 text-[10px] font-semibold border border-blue-200">
+                    Draft
+                  </span>
+                ) : null}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 Define how this product fits into the market and why your target audience should care.
@@ -932,10 +1232,15 @@ export const ProductStrategyPage = () => {
 
           <button
             onClick={() => handleRegenerate('positioning')}
-            disabled={regenerating.positioning}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 cursor-pointer border border-[#D6E6EC]"
+            disabled={!hasProductIdea || regenerating.positioning || regenerating.all}
+            title={!hasProductIdea ? "Enter a product idea above first" : "Generate positioning framework"}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors border border-[#D6E6EC] shrink-0 ${
+              !hasProductIdea
+                ? 'bg-slate-100 text-slate-400 opacity-40 cursor-not-allowed'
+                : 'bg-slate-100 hover:bg-slate-200 text-[#0F291E]/90 cursor-pointer'
+            }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${regenerating.positioning ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${regenerating.positioning ? 'animate-spin' : !hasProductIdea ? 'text-slate-400' : 'text-slate-600'}`} />
             <span>{regenerating.positioning ? 'Generating positioning...' : 'Regenerate Positioning'}</span>
           </button>
         </div>
@@ -960,7 +1265,7 @@ export const ProductStrategyPage = () => {
         {regenerating.positioning && (
           <div className="p-6 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] text-center space-y-2 animate-pulse">
             <RefreshCw className="w-5 h-5 text-purple-600 animate-spin mx-auto" />
-            <p className="text-xs font-medium text-slate-600">Gemini is framing strategic market positioning...</p>
+            <p className="text-xs font-medium text-slate-600">Gemini is framing strategic market positioning for "{productIdea.trim()}"...</p>
           </div>
         )}
 
@@ -972,19 +1277,25 @@ export const ProductStrategyPage = () => {
                 <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
                   Positioning Statement
                 </span>
-                <button
-                  onClick={() => handleCopy(strategy.positioningStatement, 'pos-stmt')}
-                  className="text-[11px] font-semibold text-slate-300 hover:text-white flex items-center gap-1"
-                >
-                  {copiedKey === 'pos-stmt' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>Copy</span>
-                </button>
+                {strategy.positioningStatement && (
+                  <button
+                    onClick={() => handleCopy(strategy.positioningStatement, 'pos-stmt')}
+                    className="text-[11px] font-semibold text-slate-300 hover:text-white flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedKey === 'pos-stmt' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>Copy</span>
+                  </button>
+                )}
               </div>
               <textarea
                 rows={3}
                 value={strategy.positioningStatement}
                 onChange={(e) => setStrategy({ ...strategy, positioningStatement: e.target.value })}
-                placeholder="Click 'Regenerate Positioning' to construct positioning statement..."
+                placeholder={
+                  hasProductIdea
+                    ? `Click 'Regenerate Positioning' or '1-Click Regenerate All' to construct positioning statement for "${productIdea.trim()}"...`
+                    : "Type a product idea above to unlock AI positioning generation..."
+                }
                 className="w-full bg-slate-800 border border-slate-700 text-xs sm:text-sm font-medium text-white rounded-xl p-3 outline-none focus:border-amber-400 transition-all leading-relaxed italic"
               />
             </div>
@@ -996,7 +1307,7 @@ export const ProductStrategyPage = () => {
                   type="text"
                   value={strategy.targetSegment}
                   onChange={(e) => setStrategy({ ...strategy, targetSegment: e.target.value })}
-                  placeholder="Target ICP..."
+                  placeholder={hasProductIdea ? `Target segment for ${productIdea.trim()}...` : "Target ICP..."}
                   className="w-full glass-panel border border-[#E5E0D8] rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#0F291E] outline-none"
                 />
               </div>
@@ -1007,7 +1318,7 @@ export const ProductStrategyPage = () => {
                   type="text"
                   value={strategy.keyBenefit}
                   onChange={(e) => setStrategy({ ...strategy, keyBenefit: e.target.value })}
-                  placeholder="Primary benefit..."
+                  placeholder={hasProductIdea ? `Key benefit of ${productIdea.trim()}...` : "Primary benefit..."}
                   className="w-full glass-panel border border-[#E5E0D8] rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#0F291E] outline-none"
                 />
               </div>
@@ -1018,7 +1329,7 @@ export const ProductStrategyPage = () => {
                   type="text"
                   value={strategy.competitiveMoat}
                   onChange={(e) => setStrategy({ ...strategy, competitiveMoat: e.target.value })}
-                  placeholder="Defensible moat..."
+                  placeholder={hasProductIdea ? `Moat for ${productIdea.trim()}...` : "Defensible moat..."}
                   className="w-full glass-panel border border-[#E5E0D8] rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#0F291E] outline-none"
                 />
               </div>
@@ -1036,8 +1347,8 @@ export const ProductStrategyPage = () => {
           <div className="ml-auto">
             <button
               onClick={() => handleSaveSection('positioning')}
-              disabled={saving.positioning || !strategy.positioningStatement.trim()}
-              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-xs"
+              disabled={saving.positioning || !strategy.positioningStatement?.trim()}
+              className="px-5 py-2.5 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-40 flex items-center gap-2 cursor-pointer shadow-xs"
             >
               {saving.positioning ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>Save Positioning</span>
@@ -1055,8 +1366,12 @@ export const ProductStrategyPage = () => {
 
         <button
           onClick={handleSaveAndContinue}
-          disabled={saving.all}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#0F291E] text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-md cursor-pointer shrink-0 disabled:opacity-50"
+          disabled={saving.all || (!strategy.productName?.trim() && !strategy.shortDescription?.trim())}
+          className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold transition-all shadow-md shrink-0 ${
+            !strategy.productName?.trim() && !strategy.shortDescription?.trim()
+              ? 'bg-[#0F291E]/60 text-white/50 cursor-not-allowed'
+              : 'bg-[#0F291E] text-white hover:bg-slate-800 cursor-pointer'
+          }`}
         >
           <Save className="w-4 h-4 text-emerald-400" />
           <span>Save & Generate Ad</span>
@@ -1067,4 +1382,3 @@ export const ProductStrategyPage = () => {
     </div>
   );
 };
-

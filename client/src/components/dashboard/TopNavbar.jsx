@@ -32,7 +32,9 @@ export const TopNavbar = ({ onOpenMobile }) => {
       role = u && u !== 'undefined' ? JSON.parse(u)?.role : 'customer';
     } catch(e) { role = 'customer'; }
   }
-  const canManageProducts = role === 'admin' || role === 'inventory_staff' || role === 'marketing_staff';
+  const isMarketingRoute = location.pathname.startsWith('/marketing');
+  const isMarketingTeam = role === 'marketing_staff';
+  const canManageProducts = (role === 'admin' || role === 'inventory_staff') && !isMarketingTeam && !isMarketingRoute;
 
   const handleAddProductClick = () => {
     setShowProductModal(true);

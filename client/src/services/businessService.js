@@ -196,8 +196,34 @@ export const businessService = {
     const res = await api.put(`/returns/${id}/inspect`, data);
     return res.data;
   },
+  createRefundOrder: async (id, data = {}) => {
+    const res = await api.post(`/returns/${id}/create-refund-order`, data);
+    return res.data;
+  },
   refundReturn: async (id, data = {}) => {
     const res = await api.post(`/returns/${id}/refund`, data);
+    return res.data;
+  },
+  assignReturnDeliveryAgent: async (id, data) => {
+    const res = await api.put(`/returns/${id}/assign-agent`, data);
+    return res.data;
+  },
+  startReturnPickup: async (id, data = {}) => {
+    const res = await api.put(`/returns/${id}/start-pickup`, data);
+    return res.data;
+  },
+  confirmReturnPickup: async (id, data = {}) => {
+    const res = await api.put(`/returns/${id}/pickup`, data);
+    return res.data;
+  },
+  deliverReturnToWarehouse: async (id, data = {}) => {
+    const res = await api.put(`/returns/${id}/deliver-to-warehouse`, data);
+    return res.data;
+  },
+  uploadReturnEvidence: async (formData) => {
+    const res = await api.post('/returns/upload-evidence', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data;
   },
   processReturn: async (id, data) => {

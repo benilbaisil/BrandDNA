@@ -45,7 +45,10 @@ import {
   Droplets,
   Layers,
   KeyRound,
-  Menu
+  Menu,
+  Upload,
+  Camera,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { businessService } from '../../services/businessService';
 import { deliveryService } from '../../services/deliveryService';
@@ -53,6 +56,7 @@ import { paymentService } from '../../services/paymentService';
 import { useToast } from '../../context/ToastContext';
 import { useAuth, getRoleRedirectPath } from '../../context/AuthContext';
 import { Footer } from '../../components/layout/Footer';
+import { EvidencePhotoModal } from '../../components/common/EvidencePhotoModal';
 import { getDefaultSizesForCategory } from '../../constants/sizes';
 import {
   validatePhoneNumber,
@@ -130,7 +134,7 @@ export const CustomerDashboardPage = () => {
 
   // Storefront loading state - Initialized immediately from cache/fallback for 0ms delay
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('catalogue'); // 'catalogue' | 'cart' | 'orders'
+  const [activeTab, setActiveTab] = useState('catalogue'); // 'catalogue' | 'cart' | 'orders' | 'wishlist'
 
   const [dashboardData, setDashboardData] = useState(() => storageCache.get('cust_dashboard', null));
   const [products, setProducts] = useState(() => storageCache.get('all_products', INITIAL_PRODUCTS));
@@ -219,14 +223,23 @@ export const CustomerDashboardPage = () => {
   const [customerReturns, setCustomerReturns] = useState([]);
   const [selectedProductForReturn, setSelectedProductForReturn] = useState(null);
   const [returnQuantity, setReturnQuantity] = useState(1);
-  const [returnReason, setReturnReason] = useState('Wrong product');
+  const [returnReason, setReturnReason] = useState('Damaged');
   const [returnDescription, setReturnDescription] = useState('');
   const [returnEvidenceImage, setReturnEvidenceImage] = useState('');
+  const [evidenceFile, setEvidenceFile] = useState(null);
+  const [evidencePreview, setEvidencePreview] = useState('');
+  const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
+  const [imageInputMode, setImageInputMode] = useState('file'); // 'file' | 'url'
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
   const [selectedTrackingOrder, setSelectedTrackingOrder] = useState(null);
   const [trackingHistory, setTrackingHistory] = useState([]);
   const [customerOtp, setCustomerOtp] = useState(null);
   const [isSyncingTracking, setIsSyncingTracking] = useState(false);
+  const [evidenceModal, setEvidenceModal] = useState({
+    isOpen: false,
+    imageUrl: '',
+    returnDoc: null,
+  });
 
   // Derived telemetry objects
   const profile = dashboardData?.profile || {};
@@ -287,19 +300,60 @@ export const CustomerDashboardPage = () => {
     }
   };
 
+  // Handle evidence photo selection from device
+  const handleEvidenceFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      addToast('Please select a valid image file (PNG, JPG, WEBP)', 'error');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      addToast('Image size should be less than 10MB', 'error');
+      return;
+    }
+
+    setEvidenceFile(file);
+
+    // Read and create preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setEvidencePreview(event.target.result);
+    };
+    reader.readAsDataURL(file);
+
+    // Proactively upload file to server
+    try {
+      setIsUploadingEvidence(true);
+      const formData = new FormData();
+      formData.append('evidenceImage', file);
+      const res = await businessService.uploadReturnEvidence(formData);
+      if (res?.success && res.data?.imageUrl) {
+        setReturnEvidenceImage(res.data.imageUrl);
+      }
+    } catch (err) {
+      console.warn('Server upload fallback to data URL:', err);
+    } finally {
+      setIsUploadingEvidence(false);
+    }
+  };
+
   // Submit product return request
   const handleCreateReturn = async (e) => {
     e.preventDefault();
     if (!selectedProductForReturn) return;
     setIsSubmittingReturn(true);
     try {
+      const finalEvidence = returnEvidenceImage || evidencePreview || '';
       const payload = {
         orderId: selectedProductForReturn.order._id,
         productId: selectedProductForReturn.item.product?._id || selectedProductForReturn.item.product,
         quantity: Number(returnQuantity),
         reason: returnReason,
         description: returnDescription.trim(),
-        evidenceImage: returnEvidenceImage.trim(),
+        evidenceImage: finalEvidence.trim(),
       };
       const res = await businessService.createReturn(payload);
       if (res?.success) {
@@ -309,9 +363,11 @@ export const CustomerDashboardPage = () => {
         );
         setSelectedProductForReturn(null);
         setReturnQuantity(1);
-        setReturnReason('Wrong product');
+        setReturnReason('Damaged');
         setReturnDescription('');
         setReturnEvidenceImage('');
+        setEvidenceFile(null);
+        setEvidencePreview('');
         fetchCustomerData();
       } else {
         addToast(res?.message || 'Could not submit return request', 'error');
@@ -1766,142 +1822,461 @@ export const CustomerDashboardPage = () => {
                             const totalItemPrice = item.totalPrice || (itemPrice * item.quantity) || order.totalAmount;
 
                             return (
-                              <div key={idx} className="pt-4 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-                                <div className="flex items-center gap-4 sm:gap-6 min-w-0">
-                                  {/* Large Studio Product Image Frame */}
-                                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-gradient-to-br from-white via-slate-50 to-stone-100 p-3 flex items-center justify-center border border-stone-200/90 shadow-md shrink-0 overflow-hidden group hover:border-sky-300 transition-all">
-                                    <img
-                                      src={itemImg}
-                                      alt={item.productName || item.product?.name || 'Ordered Item'}
-                                      className="w-full h-full object-contain filter drop-shadow-md group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                  </div>
-
-                                  {/* Product Details */}
-                                  <div className="space-y-1.5 min-w-0">
-                                    <span className="inline-block bg-sky-50 text-indigo-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border border-sky-200/70 uppercase tracking-wider">
-                                      BrandDNA Original
-                                    </span>
-                                    <p className="font-serif font-extrabold text-slate-900 text-base sm:text-xl leading-snug capitalize truncate">
-                                      {item.productName || item.product?.name || 'Store Product'}
-                                    </p>
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-medium">
-                                      <span>Quantity: <strong className="text-slate-900 font-extrabold text-sm">{item.quantity}</strong></span>
-                                      <span>•</span>
-                                      <span>Price: <strong className="text-slate-800 font-bold">₹{itemPrice.toLocaleString('en-IN')}</strong></span>
-                                      {item.size && (
-                                        <>
-                                          <span>•</span>
-                                          <span>Size: <strong className="text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200 font-mono font-bold text-xs">{item.size}</strong></span>
-                                        </>
-                                      )}
+                              <div key={idx} className="p-4 sm:p-5 rounded-3xl bg-white border border-stone-200/90 shadow-2xs space-y-4">
+                                {/* Top: Product Meta, Image, Line Total & Action */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                                  <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+                                    {/* Studio Product Image Frame */}
+                                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-white via-slate-50 to-stone-100 p-2.5 flex items-center justify-center border border-stone-200 shadow-xs shrink-0 overflow-hidden group hover:border-sky-300 transition-all">
+                                      <img
+                                        src={itemImg}
+                                        alt={item.productName || item.product?.name || 'Ordered Item'}
+                                        className="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
+                                      />
                                     </div>
-                                  </div>
-                                </div>
 
-                                {/* Line Total & Per-Product Return Action */}
-                                <div className="flex flex-col sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-stone-100 pt-3 sm:pt-0 gap-3 shrink-0">
-                                  <div className="flex sm:flex-col items-baseline sm:items-end justify-between sm:justify-center">
-                                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Price</span>
-                                    <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                                      ₹{totalItemPrice?.toLocaleString('en-IN')}
-                                    </span>
-                                  </div>
-
-                                  {/* Product-Level Return Policy & Eligibility Display */}
-                                  {(() => {
-                                    const isDelivered =
-                                      order.status === 'Delivered' ||
-                                      order.status === 'DELIVERED' ||
-                                      order.shipmentStatusText?.toUpperCase() === 'DELIVERED' ||
-                                      order.shipmentStatus?.toUpperCase() === 'DELIVERED';
-
-                                    // Rule: Do not show return options for unpaid, cancelled, undelivered, or ineligible orders
-                                    if (!isDelivered || order.paymentStatus !== 'Paid') {
-                                      return null;
-                                    }
-
-                                    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-                                    const deliveryTimestamp = order.deliveredAt ? new Date(order.deliveredAt).getTime() : null;
-                                    const returnDeadline = deliveryTimestamp ? new Date(deliveryTimestamp + SEVEN_DAYS_MS) : null;
-                                    const now = Date.now();
-                                    const isExpired = !deliveryTimestamp || now > (deliveryTimestamp + SEVEN_DAYS_MS);
-
-                                    // If 7 days expired or no valid delivery timestamp
-                                    if (isExpired) {
-                                      return (
-                                        <div className="flex flex-col sm:items-end gap-1">
-                                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-stone-100 text-stone-600 border border-stone-200">
-                                            Return period expired (7 days)
-                                          </span>
-                                          {order.deliveredAt && (
-                                            <span className="text-[10px] text-stone-400 font-medium">
-                                              Delivered: {new Date(order.deliveredAt).toLocaleDateString()}
-                                            </span>
-                                          )}
-                                        </div>
-                                      );
-                                    }
-
-                                    const prodId = (item.product?._id || item.product).toString();
-                                    const itemReturns = customerReturns.filter(
-                                      (r) =>
-                                        (r.order?._id || r.order)?.toString() === order._id.toString() &&
-                                        (r.product?._id || r.product)?.toString() === prodId &&
-                                        !['REJECTED', 'Rejected'].includes(r.status)
-                                    );
-
-                                    const alreadyReturnedQty = itemReturns.reduce((sum, r) => sum + (r.quantity || 0), 0);
-                                    const remainingReturnable = Math.max(0, item.quantity - alreadyReturnedQty);
-                                    const latestReturn = itemReturns[itemReturns.length - 1];
-
-                                    if (remainingReturnable <= 0) {
-                                      return (
-                                        <div className="flex flex-col sm:items-end gap-1">
-                                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs">
-                                            <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
-                                            <span>Return {latestReturn?.status?.replace('_', ' ') || 'Requested'}</span>
-                                            <span className="text-amber-700 font-mono">({latestReturn?.quantity || item.quantity} unit{item.quantity > 1 ? 's' : ''})</span>
-                                          </span>
-                                          {latestReturn?.refundStatus === 'Processed' && (
-                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
-                                              Refund Processed: ₹{latestReturn?.refundDetails?.amount || latestReturn?.refundAmount}
-                                            </span>
-                                          )}
-                                        </div>
-                                      );
-                                    }
-
-                                    return (
-                                      <div className="flex flex-col sm:items-end gap-1">
-                                        <button
-                                          onClick={() => {
-                                            setSelectedProductForReturn({
-                                              order,
-                                              item,
-                                              remainingReturnable,
-                                              deliveredAt: order.deliveredAt,
-                                              returnDeadline,
-                                            });
-                                            setReturnQuantity(1);
-                                          }}
-                                          className="px-3.5 py-2 bg-[#0B192C] hover:bg-[#1E3E62] text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs hover:shadow active:scale-95"
-                                        >
-                                          <RotateCcw className="w-3.5 h-3.5 text-sky-300" />
-                                          <span>Return Product</span>
-                                        </button>
-                                        <span className="text-[10px] text-slate-400 font-medium">
-                                          Window ends: {returnDeadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    {/* Product Details */}
+                                    <div className="space-y-1.5 min-w-0">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <span className="inline-block bg-sky-50 text-sky-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border border-sky-200/70 uppercase tracking-wider">
+                                          BrandDNA Original
                                         </span>
-                                        {alreadyReturnedQty > 0 && (
-                                          <span className="text-[10px] text-amber-700 font-medium">
-                                            ({alreadyReturnedQty} returned, {remainingReturnable} remaining)
-                                          </span>
+                                        {(() => {
+                                          const pId = (item.product?._id || item.product || item.productId || item._id)?.toString() || '';
+                                          const oId = (order._id || order.id)?.toString() || '';
+                                          const returnsForProd = customerReturns.filter((r) => {
+                                            const rOrderId = (r.order?._id || r.order)?.toString() || '';
+                                            const rProdId = (r.product?._id || r.product)?.toString() || '';
+                                            return rOrderId && oId && rOrderId === oId && rProdId && pId && rProdId === pId;
+                                          });
+                                          if (returnsForProd.some((r) => ['Processed', 'Refunded'].includes(r.refundStatus))) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-emerald-300">
+                                                <ShieldCheck className="w-3 h-3 text-emerald-600" /> Razorpay Refunded
+                                              </span>
+                                            );
+                                          }
+                                          if (returnsForProd.length > 0) {
+                                            return (
+                                              <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-amber-300">
+                                                <RotateCcw className="w-3 h-3 text-amber-600" /> Return Active
+                                              </span>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+                                      </div>
+                                      <p className="font-serif font-extrabold text-slate-900 text-base sm:text-lg leading-snug capitalize truncate">
+                                        {item.productName || item.product?.name || 'Store Product'}
+                                      </p>
+                                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-medium">
+                                        <span>Quantity: <strong className="text-slate-900 font-extrabold">{item.quantity}</strong></span>
+                                        <span>•</span>
+                                        <span>Price: <strong className="text-slate-800 font-bold">₹{itemPrice.toLocaleString('en-IN')}</strong></span>
+                                        {item.size && (
+                                          <>
+                                            <span>•</span>
+                                            <span>Size: <strong className="text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200 font-mono font-bold text-xs">{item.size}</strong></span>
+                                          </>
                                         )}
                                       </div>
-                                    );
-                                  })()}
+                                    </div>
+                                  </div>
+
+                                  {/* Line Total & Return Product Button */}
+                                  <div className="flex flex-col sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-stone-100 pt-3 sm:pt-0 gap-2 shrink-0">
+                                    <div className="flex sm:flex-col items-baseline sm:items-end justify-between sm:justify-center">
+                                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Price</span>
+                                      <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                                        ₹{totalItemPrice?.toLocaleString('en-IN')}
+                                      </span>
+                                    </div>
+
+                                    {/* Return Action / Status */}
+                                    {(() => {
+                                      const isDelivered =
+                                        order.status === 'Delivered' ||
+                                        order.status === 'DELIVERED' ||
+                                        order.shipmentStatusText?.toUpperCase() === 'DELIVERED' ||
+                                        order.shipmentStatus?.toUpperCase() === 'DELIVERED';
+
+                                      if (!isDelivered || order.paymentStatus !== 'Paid') {
+                                        return null;
+                                      }
+
+                                      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+                                      const deliveryTimestamp = order.deliveredAt ? new Date(order.deliveredAt).getTime() : null;
+                                      const returnDeadline = deliveryTimestamp ? new Date(deliveryTimestamp + SEVEN_DAYS_MS) : null;
+                                      const now = Date.now();
+                                      const isExpired = !deliveryTimestamp || now > (deliveryTimestamp + SEVEN_DAYS_MS);
+
+                                      const prodId = (item.product?._id || item.product || item.productId || item._id)?.toString() || '';
+                                      const oId = (order._id || order.id)?.toString() || '';
+                                      const nonRejectedReturns = customerReturns.filter((r) => {
+                                        const rOrderId = (r.order?._id || r.order)?.toString() || '';
+                                        const rProdId = (r.product?._id || r.product)?.toString() || '';
+                                        return (
+                                          rOrderId &&
+                                          oId &&
+                                          rOrderId === oId &&
+                                          rProdId &&
+                                          prodId &&
+                                          rProdId === prodId &&
+                                          !['REJECTED', 'Rejected'].includes(r.status)
+                                        );
+                                      });
+
+                                      const alreadyReturnedQty = nonRejectedReturns.reduce((sum, r) => sum + (r.quantity || 0), 0);
+                                      const remainingReturnable = Math.max(0, item.quantity - alreadyReturnedQty);
+
+                                      if (isExpired) {
+                                        return (
+                                          <span className="text-[10px] text-stone-500 font-semibold bg-stone-100 px-2.5 py-1 rounded-lg border border-stone-200">
+                                            Return period expired (7 days)
+                                          </span>
+                                        );
+                                      }
+
+                                      if (remainingReturnable <= 0) {
+                                        return (
+                                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-1">
+                                            <RotateCcw className="w-3 h-3 text-amber-600" />
+                                            <span>All {item.quantity} unit{item.quantity > 1 ? 's' : ''} returned</span>
+                                          </span>
+                                        );
+                                      }
+
+                                      return (
+                                        <div className="flex flex-col sm:items-end gap-1">
+                                          <button
+                                            onClick={() => {
+                                              setSelectedProductForReturn({
+                                                order,
+                                                item,
+                                                remainingReturnable,
+                                                deliveredAt: order.deliveredAt,
+                                                returnDeadline,
+                                              });
+                                              setReturnQuantity(1);
+                                            }}
+                                            className="px-3.5 py-2 bg-[#0B192C] hover:bg-[#1E3E62] text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs hover:shadow active:scale-95"
+                                          >
+                                            <RotateCcw className="w-3.5 h-3.5 text-sky-300" />
+                                            <span>Return Product {alreadyReturnedQty > 0 ? `(${remainingReturnable} remaining)` : ''}</span>
+                                          </button>
+                                          <span className="text-[10px] text-slate-400 font-medium">
+                                            Window ends: {returnDeadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
                                 </div>
+
+                                {/* DIRECT PRODUCT RETURN & RAZORPAY REFUND DETAILS */}
+                                {(() => {
+                                  const prodId = (item.product?._id || item.product || item.productId || item._id)?.toString() || '';
+                                  const oId = (order._id || order.id)?.toString() || '';
+                                  const itemReturns = customerReturns.filter((r) => {
+                                    const rOrderId = (r.order?._id || r.order)?.toString() || '';
+                                    const rProdId = (r.product?._id || r.product)?.toString() || '';
+                                    return rOrderId && oId && rOrderId === oId && rProdId && prodId && rProdId === prodId;
+                                  });
+
+                                  if (itemReturns.length === 0) return null;
+
+                                  const getReturnStatusMeta = (ret) => {
+                                    switch (ret.status) {
+                                      case 'RETURN_REQUESTED':
+                                        return { label: 'Return Requested (Under Review)', color: 'bg-amber-50 text-amber-900 border-amber-300', step: 0 };
+                                      case 'UNDER_REVIEW':
+                                        return { label: 'Under Review by Warehouse Staff', color: 'bg-amber-50 text-amber-900 border-amber-300', step: 0 };
+                                      case 'APPROVED':
+                                        return { label: 'Return Approved (Assigning Pickup)', color: 'bg-blue-50 text-blue-900 border-blue-300', step: 1 };
+                                      case 'PICKUP_ASSIGNED':
+                                        return { label: 'Pickup Assigned to Delivery Agent', color: 'bg-sky-50 text-sky-900 border-sky-300', step: 1 };
+                                      case 'OUT_FOR_PICKUP':
+                                        return { label: 'Agent En Route for Doorstep Pickup', color: 'bg-purple-50 text-purple-900 border-purple-300', step: 1 };
+                                      case 'PICKED_UP':
+                                        return { label: 'Item Picked Up (In Transit to Warehouse)', color: 'bg-indigo-50 text-indigo-900 border-indigo-300', step: 2 };
+                                      case 'RETURN_RECEIVED':
+                                        return { label: 'Package Received at Warehouse Hub', color: 'bg-teal-50 text-teal-900 border-teal-300', step: 2 };
+                                      case 'INSPECTED':
+                                        return ret.inspectStatus === 'Resellable'
+                                          ? { label: 'Inspection Passed (Resellable Condition)', color: 'bg-emerald-50 text-emerald-900 border-emerald-300', step: 3 }
+                                          : { label: 'Inspection Verified (Damaged Defect)', color: 'bg-purple-50 text-purple-900 border-purple-300', step: 3 };
+                                      case 'REJECTED':
+                                      case 'Rejected':
+                                        return { label: 'Return Request Rejected', color: 'bg-rose-50 text-rose-900 border-rose-300', step: -1 };
+                                      default:
+                                        return { label: (ret.status || '').replace('_', ' '), color: 'bg-slate-100 text-slate-800 border-slate-300', step: 0 };
+                                    }
+                                  };
+
+                                  return (
+                                    <div className="pt-4 border-t border-stone-200/90 space-y-3">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                          <RotateCcw className="w-3.5 h-3.5 text-sky-600" /> Return & Razorpay Refund on this Product
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-medium">
+                                          {itemReturns.length} return record{itemReturns.length > 1 ? 's' : ''}
+                                        </span>
+                                      </div>
+
+                                      <div className="space-y-3">
+                                        {itemReturns.map((ret, rIdx) => {
+                                          const meta = getReturnStatusMeta(ret);
+                                          const isRefunded = ['Processed', 'Refunded'].includes(ret.refundStatus);
+                                          const refundAmt = ret.refundDetails?.amount || ret.refundAmount || (ret.quantity * itemPrice);
+
+                                          // Stepper milestones
+                                          const steps = [
+                                            { label: 'Requested' },
+                                            { label: 'Doorstep Pickup' },
+                                            { label: 'Warehouse Intake' },
+                                            { label: 'QA Inspection' },
+                                            { label: 'Razorpay Refund' },
+                                          ];
+
+                                          const currentStep = isRefunded
+                                            ? 4
+                                            : ret.status === 'INSPECTED'
+                                            ? 3
+                                            : ['RETURN_RECEIVED', 'PICKED_UP'].includes(ret.status)
+                                            ? 2
+                                            : ['APPROVED', 'PICKUP_ASSIGNED', 'OUT_FOR_PICKUP'].includes(ret.status)
+                                            ? 1
+                                            : 0;
+
+                                          return (
+                                            <div
+                                              key={ret._id || rIdx}
+                                              className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200 space-y-3.5 text-left"
+                                            >
+                                              {/* Return Header */}
+                                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                  <span className="font-mono text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-md border border-stone-200 shadow-2xs">
+                                                    #{ret.returnNumber || ret._id?.slice(-8)}
+                                                  </span>
+                                                  <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold border ${meta.color}`}>
+                                                    {meta.label}
+                                                  </span>
+                                                  <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                                                    Reason: {ret.reason || 'Damaged'}
+                                                  </span>
+                                                  <span className="text-xs text-slate-500 font-medium">
+                                                    Qty: <strong className="text-slate-800">{ret.quantity || 1} unit(s)</strong>
+                                                  </span>
+                                                </div>
+
+                                                <span className="text-[10px] text-slate-400 font-mono">
+                                                  Logged: {new Date(ret.createdAt).toLocaleDateString()}
+                                                </span>
+                                              </div>
+
+                                              {/* Customer Description / Notes */}
+                                              {ret.comment && (
+                                                <p className="text-xs text-slate-600 bg-white p-2.5 rounded-xl border border-stone-200/80 italic">
+                                                  "{ret.comment}"
+                                                </p>
+                                              )}
+
+                                              {/* Visual 5-Step Stepper */}
+                                              {!['REJECTED', 'Rejected'].includes(ret.status) && (
+                                                <div className="p-3 bg-white rounded-xl border border-stone-200/80 space-y-2">
+                                                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                                                    <span>Return Progress</span>
+                                                    <span>Step {currentStep + 1} of 5</span>
+                                                  </div>
+                                                  <div className="grid grid-cols-5 gap-1.5 text-center">
+                                                    {steps.map((st, sIdx) => {
+                                                      const isDone = sIdx <= currentStep;
+                                                      const isCurrent = sIdx === currentStep;
+                                                      return (
+                                                        <div key={st.label} className="flex flex-col items-center">
+                                                          <div
+                                                            className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                                                              isDone
+                                                                ? 'bg-emerald-600 text-white shadow-2xs'
+                                                                : 'bg-stone-100 text-slate-400 border border-stone-200'
+                                                            } ${isCurrent ? 'ring-2 ring-sky-400 scale-105' : ''}`}
+                                                          >
+                                                            {isDone ? '✓' : sIdx + 1}
+                                                          </div>
+                                                          <span
+                                                            className={`text-[9px] mt-1 font-bold truncate max-w-full ${
+                                                              isCurrent
+                                                                ? 'text-slate-900 font-extrabold'
+                                                                : isDone
+                                                                ? 'text-emerald-700'
+                                                                : 'text-slate-400'
+                                                            }`}
+                                                          >
+                                                            {st.label}
+                                                          </span>
+                                                        </div>
+                                                      );
+                                                    })}
+                                                  </div>
+                                                </div>
+                                              )}
+
+                                              {/* Delivery Agent Reverse Pickup Tracking */}
+                                              {ret.assignedAgent && (
+                                                <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-blue-50/80 rounded-xl border border-blue-200 text-xs">
+                                                  <div className="flex items-center gap-2">
+                                                    <Truck className="w-4 h-4 text-blue-700 shrink-0" />
+                                                    <span className="font-bold text-slate-900">
+                                                      Reverse Pickup Agent: <strong className="text-blue-900">{ret.assignedAgent.name}</strong>
+                                                    </span>
+                                                    {ret.assignedAgent.phone && (
+                                                      <span className="font-mono text-slate-600">({ret.assignedAgent.phone})</span>
+                                                    )}
+                                                  </div>
+                                                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                                                    {ret.status === 'OUT_FOR_PICKUP'
+                                                      ? 'Agent En Route to Doorstep'
+                                                      : ret.status === 'PICKED_UP'
+                                                      ? 'Collected from Customer Doorstep'
+                                                      : 'Assigned for Reverse Pickup'}
+                                                  </span>
+                                                </div>
+                                              )}
+
+                                              {/* Uploaded Evidence Photo */}
+                                              {ret.evidenceImage && (
+                                                <div className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-xl border border-stone-200">
+                                                  <div className="flex items-center gap-2.5 min-w-0">
+                                                    <img
+                                                      src={ret.evidenceImage}
+                                                      alt="Defect evidence"
+                                                      className="w-10 h-10 object-cover rounded-lg border border-stone-200 shrink-0"
+                                                    />
+                                                    <div className="min-w-0">
+                                                      <span className="text-[11px] font-bold text-slate-800 block truncate">
+                                                        Defect Evidence Photo
+                                                      </span>
+                                                      <span className="text-[10px] text-slate-400 block">
+                                                        Uploaded from customer device
+                                                      </span>
+                                                    </div>
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      setEvidenceModal({
+                                                        isOpen: true,
+                                                        imageUrl: ret.evidenceImage,
+                                                        returnDoc: ret,
+                                                      })
+                                                    }
+                                                    className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold rounded-lg text-xs border border-sky-200 flex items-center gap-1 cursor-pointer transition-colors"
+                                                  >
+                                                    <Eye className="w-3.5 h-3.5" /> View Photo
+                                                  </button>
+                                                </div>
+                                              )}
+
+                                              {/* Warehouse QA Inspection Verdict */}
+                                              {(ret.status === 'INSPECTED' || ret.inspectStatus) && (
+                                                <div
+                                                  className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 ${
+                                                    ret.inspectStatus === 'Resellable'
+                                                      ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                                                      : 'bg-purple-50/80 border-purple-200 text-purple-950'
+                                                  }`}
+                                                >
+                                                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+                                                  <div className="space-y-0.5">
+                                                    <strong className="block font-bold">
+                                                      Warehouse Inspection: {ret.inspectStatus === 'Resellable' ? 'Passed (Resellable Condition)' : 'Verified (Defect Quarantined)'}
+                                                    </strong>
+                                                    <p className="text-[11px] text-slate-600">
+                                                      {ret.inspectStatus === 'Resellable'
+                                                        ? 'Item was inspected by warehouse staff and restocked to inventory.'
+                                                        : 'Product defect confirmed damaged. Quarantined and not restocked.'}
+                                                    </p>
+                                                    {ret.inspectNotes && (
+                                                      <span className="text-[10px] font-mono text-slate-500 block">
+                                                        Staff inspection notes: {ret.inspectNotes}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              )}
+
+                                              {/* Razorpay Gateway Direct Refund Receipt */}
+                                              {isRefunded ? (
+                                                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-300 shadow-xs space-y-2.5">
+                                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                      <div className="p-1.5 bg-emerald-600 text-white rounded-lg shadow-2xs">
+                                                        <ShieldCheck className="w-4 h-4" />
+                                                      </div>
+                                                      <div>
+                                                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 block">
+                                                          Razorpay Direct Gateway Settlement
+                                                        </span>
+                                                        <h5 className="font-serif text-base font-black text-emerald-950">
+                                                          ₹{refundAmt} Refunded to Original Payment Method
+                                                        </h5>
+                                                      </div>
+                                                    </div>
+                                                    <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                                                      <CreditCard className="w-3 h-3" /> Disbursed
+                                                    </span>
+                                                  </div>
+
+                                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-emerald-200/80 text-xs font-mono">
+                                                    {ret.refundDetails?.razorpayRefundId && (
+                                                      <div className="bg-white/80 p-2 rounded-lg border border-emerald-200">
+                                                        <span className="text-[9px] text-slate-500 uppercase block font-sans">Razorpay Refund ID</span>
+                                                        <strong className="text-emerald-900 text-[11px] select-all">{ret.refundDetails.razorpayRefundId}</strong>
+                                                      </div>
+                                                    )}
+                                                    {(order.razorpayPaymentId || ret.order?.razorpayPaymentId) && (
+                                                      <div className="bg-white/80 p-2 rounded-lg border border-emerald-200">
+                                                        <span className="text-[9px] text-slate-500 uppercase block font-sans">Original Payment ID</span>
+                                                        <span className="text-slate-700 text-[11px] select-all">{order.razorpayPaymentId || ret.order?.razorpayPaymentId}</span>
+                                                      </div>
+                                                    )}
+                                                  </div>
+
+                                                  <p className="text-[11px] text-emerald-800 leading-tight">
+                                                    100% money credited directly back to your source bank account / card via Razorpay payment gateway.
+                                                    {ret.refundDetails?.refundedAt && ` (Settled on ${new Date(ret.refundDetails.refundedAt).toLocaleDateString()})`}
+                                                  </p>
+                                                </div>
+                                              ) : ret.status === 'INSPECTED' ? (
+                                                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
+                                                  <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                                                  <span>Inspection passed. Razorpay gateway refund of ₹{refundAmt} is being processed for automated disbursement.</span>
+                                                </div>
+                                              ) : null}
+
+                                              {/* Rejection Notice */}
+                                              {['REJECTED', 'Rejected'].includes(ret.status) && (
+                                                <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-900 flex items-start gap-2">
+                                                  <div className="p-1 bg-rose-600 text-white rounded-md shrink-0 mt-0.5">
+                                                    <RotateCcw className="w-3.5 h-3.5" />
+                                                  </div>
+                                                  <div>
+                                                    <strong className="block font-bold">Return Request Rejected</strong>
+                                                    <p className="text-[11px] mt-0.5 text-rose-800">
+                                                      {ret.rejectionReason || 'Item does not meet return eligibility criteria under our 7-day policy.'}
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             );
                           })}
@@ -2025,6 +2400,7 @@ export const CustomerDashboardPage = () => {
             })()}
           </section>
         )}
+
 
       </main>
 
@@ -2703,12 +3079,9 @@ export const CustomerDashboardPage = () => {
                     onChange={(e) => setReturnReason(e.target.value)}
                     className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-bold text-slate-900 focus:border-[#0B192C]"
                   >
-                    <option value="Wrong product">Wrong product</option>
-                    <option value="Damaged product">Damaged product</option>
-                    <option value="Defective product">Defective product</option>
-                    <option value="Incorrect size">Incorrect size</option>
-                    <option value="Product not as expected">Product not as expected</option>
-                    <option value="Other">Other</option>
+                    <option value="Damaged">Damaged</option>
+                    <option value="Mismatch size">Mismatch size</option>
+                    <option value="Not as expected quality">Not as expected quality</option>
                   </select>
                 </div>
 
@@ -2726,18 +3099,109 @@ export const CustomerDashboardPage = () => {
                   />
                 </div>
 
-                {/* Optional Evidence Image / Photo URL */}
+                {/* Evidence Image - Upload from Device or URL */}
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    Product Image / Evidence URL <span className="text-slate-400 font-normal">(Optional)</span>
-                  </label>
-                  <input
-                    type="url"
-                    value={returnEvidenceImage}
-                    onChange={(e) => setReturnEvidenceImage(e.target.value)}
-                    placeholder="https://... photo link of product or defect"
-                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-medium text-slate-800 focus:border-[#0B192C]"
-                  />
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-bold text-slate-700">
+                      Product Photo / Defect Evidence <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <div className="flex items-center gap-1 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setImageInputMode('file')}
+                        className={`px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer ${
+                          imageInputMode === 'file'
+                            ? 'bg-[#0B192C] text-white shadow-2xs'
+                            : 'bg-stone-100 text-slate-600 hover:bg-stone-200'
+                        }`}
+                      >
+                        From Device
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setImageInputMode('url')}
+                        className={`px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer ${
+                          imageInputMode === 'url'
+                            ? 'bg-[#0B192C] text-white shadow-2xs'
+                            : 'bg-stone-100 text-slate-600 hover:bg-stone-200'
+                        }`}
+                      >
+                        Paste URL
+                      </button>
+                    </div>
+                  </div>
+
+                  {imageInputMode === 'file' ? (
+                    <div className="space-y-2">
+                      {evidencePreview ? (
+                        <div className="relative border border-emerald-300 rounded-2xl p-2.5 bg-emerald-50/50 flex items-center gap-3">
+                          <img
+                            src={evidencePreview}
+                            alt="Evidence Preview"
+                            className="w-16 h-16 object-cover rounded-xl border border-stone-200 shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-800 truncate">
+                              {evidenceFile?.name || 'Selected Device Photo'}
+                            </p>
+                            <p className="text-[10px] text-slate-500">
+                              {evidenceFile ? `${(evidenceFile.size / 1024).toFixed(1)} KB` : 'Ready to submit'}
+                            </p>
+                            <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
+                              <Check className="w-3 h-3" /> Attached from device
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEvidenceFile(null);
+                              setEvidencePreview('');
+                              setReturnEvidenceImage('');
+                            }}
+                            className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-xl transition-all cursor-pointer"
+                            title="Remove image"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="border-2 border-dashed border-stone-300 hover:border-[#0B192C] bg-stone-50/80 hover:bg-stone-100/80 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all group">
+                          <div className="w-10 h-10 rounded-full bg-stone-200/80 group-hover:bg-[#0B192C] group-hover:text-white text-slate-600 flex items-center justify-center mb-2 transition-all">
+                            <Upload className="w-5 h-5" />
+                          </div>
+                          <span className="text-xs font-bold text-slate-800 group-hover:text-[#0B192C]">
+                            Choose photo from your phone or computer
+                          </span>
+                          <span className="text-[10px] text-slate-400 mt-0.5">
+                            PNG, JPG, WEBP up to 10MB • Direct device file picker or camera
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleEvidenceFileChange}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                      {isUploadingEvidence && (
+                        <span className="text-[10px] text-sky-600 font-bold block animate-pulse">
+                          Uploading image to server...
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <input
+                      type="url"
+                      value={returnEvidenceImage}
+                      onChange={(e) => {
+                        setReturnEvidenceImage(e.target.value);
+                        setEvidencePreview(e.target.value);
+                      }}
+                      placeholder="https://... photo link of product or defect"
+                      className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 outline-none font-medium text-slate-800 focus:border-[#0B192C]"
+                    />
+                  )}
                 </div>
 
                 {/* Submit Button */}
@@ -2951,6 +3415,14 @@ export const CustomerDashboardPage = () => {
         )}
       </AnimatePresence>
 
+
+      {/* EVIDENCE PHOTO LIGHTBOX MODAL */}
+      <EvidencePhotoModal
+        isOpen={evidenceModal.isOpen}
+        onClose={() => setEvidenceModal({ isOpen: false, imageUrl: '', returnDoc: null })}
+        imageUrl={evidenceModal.imageUrl}
+        returnDoc={evidenceModal.returnDoc}
+      />
 
       {/* ─────────────────────────────────────────────────────────────
           12. FOOTER

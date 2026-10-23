@@ -269,12 +269,20 @@ export const saveProductStrategyController = async (req, res) => {
       productId,
       productIdea,
       productName,
+      tagline,
+      shortDescription,
+      detailedDescription,
       productNamesSuggestions,
       usps,
       USP,
       pricingSuggestion,
       positioning,
+      positioningStatement,
+      targetSegment,
+      keyBenefit,
+      competitiveMoat,
       packaging,
+      adPosterData,
     } = req.body;
 
     if (!productIdea || !productIdea.trim()) {
@@ -289,31 +297,61 @@ export const saveProductStrategyController = async (req, res) => {
     }
 
     if (!productDoc) {
-      // Find latest or create new
-      productDoc = await MarketingProduct.findOne({ createdBy: userId }).sort({ updatedAt: -1 });
+      // Find matching product by name or idea for this user to avoid duplicates on repeat saves
+      productDoc = await MarketingProduct.findOne({
+        createdBy: userId,
+        $or: [
+          { productName: selectedName },
+          { productIdea: productIdea.trim() },
+        ],
+      });
     }
+
+    const posData = positioning || {};
+    if (positioningStatement) posData.positioningStatement = positioningStatement;
+    if (targetSegment) posData.targetMarket = targetSegment;
+    if (competitiveMoat) posData.competitiveAdvantage = competitiveMoat;
+    if (keyBenefit) posData.customerNeed = keyBenefit;
 
     if (productDoc) {
       productDoc.productIdea = productIdea.trim();
       productDoc.productName = selectedName;
+      if (tagline !== undefined) productDoc.tagline = tagline;
+      if (shortDescription || detailedDescription) {
+        productDoc.description = {
+          shortDescription: shortDescription || productDoc.description?.shortDescription || '',
+          detailedDescription: detailedDescription || productDoc.description?.detailedDescription || '',
+        };
+      }
       if (productNamesSuggestions) productDoc.productNamesSuggestions = productNamesSuggestions;
       if (usps) productDoc.usps = usps;
       if (USP) productDoc.USP = USP;
       if (pricingSuggestion) productDoc.pricingSuggestion = pricingSuggestion;
-      if (positioning) productDoc.positioning = positioning;
+      productDoc.positioning = { ...productDoc.positioning, ...posData };
       if (packaging) productDoc.packaging = packaging;
+      if (adPosterData) {
+        productDoc.adPosterData = { ...productDoc.adPosterData, ...adPosterData };
+        productDoc.adPosterStatus = 'Saved';
+      }
       await productDoc.save();
     } else {
       productDoc = await MarketingProduct.create({
         createdBy: userId,
         productName: selectedName,
         productIdea: productIdea.trim(),
+        tagline: tagline || '',
+        description: {
+          shortDescription: shortDescription || '',
+          detailedDescription: detailedDescription || '',
+        },
         productNamesSuggestions: productNamesSuggestions || [],
         usps: usps || [],
         USP: USP || usps || [],
         pricingSuggestion: pricingSuggestion || {},
-        positioning: positioning || {},
+        positioning: posData,
         packaging: packaging || {},
+        adPosterData: adPosterData || {},
+        adPosterStatus: adPosterData?.headline ? 'Saved' : 'Not Generated',
         status: 'Active',
       });
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Truck,
@@ -108,57 +108,68 @@ export const DeliveryManagementTab = ({ onOrderUpdated }) => {
   }, []);
 
   // Filtered Orders for Assignment (Packed, Ready for Pickup, Placed, Confirmed, Delivery Failed)
-  const assignableOrders = orders.filter((o) => {
-    const q = searchTerm.toLowerCase();
-    const matchQuery =
-      o.orderNumber?.toLowerCase().includes(q) ||
-      o.customer?.fullName?.toLowerCase().includes(q) ||
-      o.shippingAddress?.fullName?.toLowerCase().includes(q) ||
-      o.shippingAddress?.city?.toLowerCase().includes(q);
-    const isUnassignedOrFailed =
-      !o.deliveryAgent ||
-      ['Placed', 'Confirmed', 'Packed', 'Ready for Pickup', 'Delivery Failed', 'DELIVERY_FAILED'].includes(
-        o.status
-      );
-    const notCompleted = !['Delivered', 'Cancelled', 'DELIVERED'].includes(o.status);
-    return matchQuery && isUnassignedOrFailed && notCompleted;
-  });
+  const assignableOrders = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return orders.filter((o) => {
+      const matchQuery =
+        !q ||
+        o.orderNumber?.toLowerCase().includes(q) ||
+        o.customer?.fullName?.toLowerCase().includes(q) ||
+        o.shippingAddress?.fullName?.toLowerCase().includes(q) ||
+        o.shippingAddress?.city?.toLowerCase().includes(q);
+      const isUnassignedOrFailed =
+        !o.deliveryAgent ||
+        ['Placed', 'Confirmed', 'Packed', 'Ready for Pickup', 'Delivery Failed', 'DELIVERY_FAILED'].includes(
+          o.status
+        );
+      const notCompleted = !['Delivered', 'Cancelled', 'DELIVERED'].includes(o.status);
+      return matchQuery && isUnassignedOrFailed && notCompleted;
+    });
+  }, [orders, searchTerm]);
 
   // Active Deliveries (Assigned to Agent, Accepted, Picked Up, Out for Delivery)
-  const activeDeliveries = orders.filter((o) => {
-    const q = searchTerm.toLowerCase();
-    const matchQuery =
-      o.orderNumber?.toLowerCase().includes(q) ||
-      o.customer?.fullName?.toLowerCase().includes(q) ||
-      o.shippingAddress?.fullName?.toLowerCase().includes(q) ||
-      o.deliveryAgent?.fullName?.toLowerCase().includes(q);
-    const isActive = [
-      'Assigned to Agent',
-      'Accepted',
-      'ACCEPTED',
-      'Picked Up',
-      'Out for Delivery',
-      'ASSIGNED_TO_AGENT',
-      'PICKED_UP',
-      'OUT_FOR_DELIVERY',
-    ].includes(o.status);
-    return matchQuery && isActive;
-  });
+  const activeDeliveries = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return orders.filter((o) => {
+      const matchQuery =
+        !q ||
+        o.orderNumber?.toLowerCase().includes(q) ||
+        o.customer?.fullName?.toLowerCase().includes(q) ||
+        o.shippingAddress?.fullName?.toLowerCase().includes(q) ||
+        o.deliveryAgent?.fullName?.toLowerCase().includes(q);
+      const isActive = [
+        'Assigned to Agent',
+        'Accepted',
+        'ACCEPTED',
+        'Picked Up',
+        'Out for Delivery',
+        'ASSIGNED_TO_AGENT',
+        'PICKED_UP',
+        'OUT_FOR_DELIVERY',
+      ].includes(o.status);
+      return matchQuery && isActive;
+    });
+  }, [orders, searchTerm]);
 
   // Delivery History (Delivered & Delivery Failed & Cancelled)
-  const historyDeliveries = orders.filter((o) => {
-    const q = searchTerm.toLowerCase();
-    const matchQuery =
-      o.orderNumber?.toLowerCase().includes(q) ||
-      o.customer?.fullName?.toLowerCase().includes(q) ||
-      o.shippingAddress?.fullName?.toLowerCase().includes(q) ||
-      o.deliveryAgent?.fullName?.toLowerCase().includes(q);
-    const isHistory = ['Delivered', 'Delivery Failed', 'DELIVERED', 'DELIVERY_FAILED', 'Cancelled'].includes(o.status);
-    return matchQuery && isHistory;
-  });
+  const historyDeliveries = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return orders.filter((o) => {
+      const matchQuery =
+        !q ||
+        o.orderNumber?.toLowerCase().includes(q) ||
+        o.customer?.fullName?.toLowerCase().includes(q) ||
+        o.shippingAddress?.fullName?.toLowerCase().includes(q) ||
+        o.deliveryAgent?.fullName?.toLowerCase().includes(q);
+      const isHistory = ['Delivered', 'Delivery Failed', 'DELIVERED', 'DELIVERY_FAILED', 'Cancelled'].includes(o.status);
+      return matchQuery && isHistory;
+    });
+  }, [orders, searchTerm]);
 
   // Active agents only for selection
-  const activeAgentsList = agents.filter((a) => a.status === 'Active');
+  const activeAgentsList = useMemo(() => {
+    return agents.filter((a) => a.status === 'Active');
+  }, [agents]);
 
   // Handle Assigning an Agent to an Order
   const handleAssignAgent = async (orderId) => {

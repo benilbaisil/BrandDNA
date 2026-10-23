@@ -7,7 +7,7 @@ export const INITIAL_PRODUCTS = [
     "discountPrice": 1400,
     "categoryName": "Bags & Backpacks",
     "brand": "BrandDNA",
-    "stock": 10,
+    "stock": 21,
     "cost": 0,
     "reorderLevel": 10,
     "images": [
@@ -28,38 +28,6 @@ export const INITIAL_PRODUCTS = [
     "reorderLevel": 10,
     "images": [
       "https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=600&auto=format&fit=crop"
-    ],
-    "status": "Active"
-  },
-  {
-    "_id": "6abdf27290e5f98e41cc6427",
-    "name": "Premium Leather Bag",
-    "sku": "SKU-MUP3VZZ6",
-    "price": 1200,
-    "discountPrice": 1400,
-    "categoryName": "Bags & Backpacks",
-    "brand": "BrandDNA",
-    "stock": 8,
-    "cost": 0,
-    "reorderLevel": 10,
-    "images": [
-      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?q=80&w=600&auto=format&fit=crop"
-    ],
-    "status": "Active"
-  },
-  {
-    "_id": "6abdf20790e5f98e41cc6289",
-    "name": "Premium Leather Bag",
-    "sku": "SKU-MUP3TPU0",
-    "price": 1200,
-    "discountPrice": 1400,
-    "categoryName": "Bags & Backpacks",
-    "brand": "BrandDNA",
-    "stock": 9,
-    "cost": 0,
-    "reorderLevel": 10,
-    "images": [
-      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?q=80&w=600&auto=format&fit=crop"
     ],
     "status": "Active"
   },

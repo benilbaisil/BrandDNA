@@ -18,7 +18,6 @@ export const getRazorpayInstance = () => {
  * @param {Object} param0 - { amount: Number (in paise), currency: String, receipt: String, notes: Object }
  */
 export const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes = {} }) => {
-  const instance = getRazorpayInstance();
   const options = {
     amount: Math.round(amount), // Amount in smallest currency unit (paise)
     currency,
@@ -27,6 +26,11 @@ export const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, n
   };
 
   try {
+    const key_id = process.env.RAZORPAY_KEY_ID || '';
+    if (!key_id) {
+      throw new Error('RAZORPAY_KEY_ID is missing');
+    }
+    const instance = getRazorpayInstance();
     const razorpayOrder = await instance.orders.create(options);
     return razorpayOrder;
   } catch (error) {
@@ -110,11 +114,13 @@ export const createRazorpayRefund = async ({ paymentId, amount, notes = {}, rece
     // If it's a mock payment ID or development test mode without live capture
     if (
       paymentId.startsWith('pay_test_sim_') ||
+      paymentId.startsWith('pay_test_') ||
+      paymentId.startsWith('pay_sim_') ||
       paymentId.startsWith('pay_mock_') ||
       !process.env.RAZORPAY_KEY_ID
     ) {
       return {
-        id: `rfnd_test_${Date.now()}`,
+        id: `rfnd_${Date.now().toString().slice(-8)}_${Math.random().toString(36).substring(2, 7)}`,
         entity: 'refund',
         amount: options.amount || (amount ? Math.round(amount * 100) : 0),
         currency: 'INR',

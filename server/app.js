@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import mongoose from 'mongoose';
+import { connectDB } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import startupRoutes from './routes/startupRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -79,10 +81,45 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'AI-Powered Business & Inventory Management API is running cleanly',
+  const isConnected = mongoose.connection.readyState === 1;
+  const stateNames = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+  const state = stateNames[mongoose.connection.readyState] || 'unknown';
+
+  res.status(isConnected ? 200 : 503).json({
+    success: isConnected,
+    database: state,
+    readyState: mongoose.connection.readyState,
+    message: isConnected
+      ? 'AI-Powered Business & Inventory Management API is running cleanly'
+      : `Database is currently ${state}. Reconnecting in background...`,
     timestamp: new Date().toISOString(),
+  });
+});
+
+// Database connection readiness guard: prevents 10-second buffer timeouts if disconnected
+app.use('/api', async (req, res, next) => {
+  if (req.path === '/health') return next();
+
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+
+  // If currently connecting, give it a brief grace period (up to 3s)
+  if (mongoose.connection.readyState === 2) {
+    for (let i = 0; i < 15; i++) {
+      await new Promise((r) => setTimeout(r, 200));
+      if (mongoose.connection.readyState === 1) {
+        return next();
+      }
+    }
+  }
+
+  // If disconnected (readyState === 0), trigger background reconnection immediately
+  connectDB().catch(() => {});
+
+  return res.status(503).json({
+    success: false,
+    message: 'Database is connecting. Please retry in a few moments.',
   });
 });
 

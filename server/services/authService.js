@@ -27,8 +27,6 @@ export const seedDefaultRoles = async () => {
   }
 };
 
-seedDefaultRoles();
-
 export const googleAuthService = async (idToken) => {
   let googleData = null;
 

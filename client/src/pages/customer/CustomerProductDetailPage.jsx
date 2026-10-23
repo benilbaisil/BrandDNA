@@ -74,6 +74,7 @@ export const CustomerProductDetailPage = () => {
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [wishlist, setWishlist] = useState([]);
+  const [productReturns, setProductReturns] = useState([]);
   const [selectedSize, setSelectedSize] = useState('');
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -179,6 +180,17 @@ export const CustomerProductDetailPage = () => {
           }
         } catch (e) {
           console.warn('Failed to fetch wishlist', e);
+        }
+
+        try {
+          const retRes = await businessService.getCustomerReturns();
+          const allRets = retRes?.data?.returns || retRes?.returns || [];
+          const thisProdRets = allRets.filter(
+            (r) => (r.product?._id || r.product)?.toString() === id.toString()
+          );
+          setProductReturns(thisProdRets);
+        } catch (e) {
+          console.warn('Failed to fetch product returns', e);
         }
       }
 
@@ -839,8 +851,8 @@ export const CustomerProductDetailPage = () => {
               </div>
               <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200/80 text-center space-y-1">
                 <RotateCcw className="w-5 h-5 text-sky-600 mx-auto" />
-                <p className="text-[11px] font-bold text-slate-900">30-Day Returns</p>
-                <p className="text-[9px] text-slate-400">Hassle-Free Policy</p>
+                <p className="text-[11px] font-bold text-slate-900">7-Day Returns</p>
+                <p className="text-[9px] text-slate-400">Razorpay Refund</p>
               </div>
             </div>
 
@@ -1037,6 +1049,82 @@ export const CustomerProductDetailPage = () => {
               <div className="flex items-center justify-center gap-4 text-[10px] text-slate-400 font-mono border-t border-slate-800/80 pt-3">
                 <span className="flex items-center gap-1"><Lock className="w-3 h-3 text-sky-400" /> Razorpay SSL 256-bit Encrypted Checkout</span>
               </div>
+            </div>
+
+            {/* PRODUCT-LEVEL RETURN & RAZORPAY GATEWAY REFUND PROTECTION */}
+            <div className="p-6 bg-gradient-to-br from-stone-50 via-slate-50 to-stone-50 rounded-3xl border border-stone-200/90 shadow-sm space-y-4 text-left">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#0B192C] text-white flex items-center justify-center shrink-0">
+                    <RotateCcw className="w-4 h-4 text-sky-300" />
+                  </div>
+                  <div>
+                    <h4 className="font-serif text-sm font-bold text-slate-900">7-Day Return & Razorpay Refund</h4>
+                    <p className="text-[10px] text-slate-500 font-medium">Included with every purchase of this product</p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                  Guaranteed
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                If your item arrives with any issues, initiate a return within 7 calendar days of delivery.
+                A delivery agent will pick it up from your doorstep, and upon warehouse inspection, your refund is credited directly to your bank account via Razorpay.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="p-3 bg-white rounded-2xl border border-stone-200 space-y-1">
+                  <span className="text-[10px] font-mono text-sky-700 uppercase tracking-wider block font-bold flex items-center gap-1">
+                    <Truck className="w-3 h-3 text-sky-600" /> Doorstep Pickup
+                  </span>
+                  <p className="text-[11px] text-slate-600">Assigned delivery agent reverse pickup at no extra charge.</p>
+                </div>
+
+                <div className="p-3 bg-white rounded-2xl border border-stone-200 space-y-1">
+                  <span className="text-[10px] font-mono text-amber-700 uppercase tracking-wider block font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-amber-600" /> 3 Accepted Reasons
+                  </span>
+                  <p className="text-[11px] text-slate-600">Damaged, Mismatch size, or Not as expected quality.</p>
+                </div>
+
+                <div className="p-3 bg-white rounded-2xl border border-stone-200 space-y-1">
+                  <span className="text-[10px] font-mono text-emerald-700 uppercase tracking-wider block font-bold flex items-center gap-1">
+                    <CreditCard className="w-3 h-3 text-emerald-600" /> Direct Refund
+                  </span>
+                  <p className="text-[11px] text-slate-600">Automated Razorpay gateway refund to original payment source.</p>
+                </div>
+              </div>
+
+              {/* If customer has previous/active returns on this product */}
+              {productReturns.length > 0 && (
+                <div className="pt-3 border-t border-stone-200 space-y-2">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-600 block">
+                    Your Return Status for this Product
+                  </span>
+                  <div className="space-y-2">
+                    {productReturns.map((ret, idx) => (
+                      <div key={ret._id || idx} className="p-3 bg-white rounded-xl border border-stone-200 text-xs flex flex-wrap items-center justify-between gap-2">
+                        <div className="space-y-0.5">
+                          <span className="font-mono font-bold text-slate-800 block">#{ret.returnNumber || ret._id?.slice(-8)}</span>
+                          <span className="text-slate-500 text-[11px]">Reason: {ret.reason} • Qty: {ret.quantity}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            ['Processed', 'Refunded'].includes(ret.refundStatus)
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+                              : 'bg-amber-50 text-amber-800 border border-amber-300'
+                          }`}>
+                            {['Processed', 'Refunded'].includes(ret.refundStatus)
+                              ? `Refunded ₹${ret.refundDetails?.amount || ret.refundAmount} via Razorpay`
+                              : ret.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>

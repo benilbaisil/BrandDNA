@@ -96,7 +96,11 @@ export const generateNames = async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     const { profile, brand, strategy } = await getUserContext(userId);
-    const userHint = req.body?.userHint || '';
+    const userHint = (req.body?.userHint || req.body?.productIdea || '').trim();
+
+    if (!userHint) {
+      return sendResponse(res, 400, false, 'Please type a product idea first to use AI features.');
+    }
 
     const suggestions = await generateProductNamesAI(profile, brand, userHint);
     strategy.productNameSuggestions = suggestions;
@@ -115,8 +119,12 @@ export const generateDescription = async (req, res) => {
     const userId = req.user._id || req.user.id;
     const { profile, brand, strategy } = await getUserContext(userId);
 
-    const productName = req.body?.productName || strategy.productName || brand.brandName || profile?.companyName;
-    const userHint = req.body?.userHint || '';
+    const userHint = (req.body?.userHint || req.body?.productIdea || '').trim();
+    if (!userHint) {
+      return sendResponse(res, 400, false, 'Please type a product idea first to use AI features.');
+    }
+
+    const productName = req.body?.productName || strategy.productName || userHint;
 
     const result = await generateProductDescriptionAI(profile, brand, productName, userHint);
     strategy.descriptionSuggestions = [result];
@@ -140,9 +148,13 @@ export const generateUSP = async (req, res) => {
     const userId = req.user._id || req.user.id;
     const { profile, brand, strategy } = await getUserContext(userId);
 
-    const productName = req.body?.productName || strategy.productName;
-    const description = req.body?.description || strategy.shortDescription || strategy.detailedDescription;
-    const userHint = req.body?.userHint || '';
+    const userHint = (req.body?.userHint || req.body?.productIdea || '').trim();
+    if (!userHint) {
+      return sendResponse(res, 400, false, 'Please type a product idea first to use AI features.');
+    }
+
+    const productName = req.body?.productName || strategy.productName || userHint;
+    const description = req.body?.description || strategy.shortDescription || strategy.detailedDescription || userHint;
 
     const usps = await generateProductUSPAI(profile, brand, productName, description, userHint);
     strategy.uspSuggestions = usps;
@@ -164,10 +176,14 @@ export const generatePositioning = async (req, res) => {
     const userId = req.user._id || req.user.id;
     const { profile, brand, strategy } = await getUserContext(userId);
 
-    const productName = req.body?.productName || strategy.productName;
-    const description = req.body?.description || strategy.shortDescription;
+    const userHint = (req.body?.userHint || req.body?.productIdea || '').trim();
+    if (!userHint) {
+      return sendResponse(res, 400, false, 'Please type a product idea first to use AI features.');
+    }
+
+    const productName = req.body?.productName || strategy.productName || userHint;
+    const description = req.body?.description || strategy.shortDescription || userHint;
     const usps = req.body?.usps || strategy.usps;
-    const userHint = req.body?.userHint || '';
 
     const positioning = await generateProductPositioningAI(profile, brand, productName, description, usps, userHint);
     strategy.positioningSuggestions = [positioning];
@@ -193,7 +209,11 @@ export const generateAllChained = async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     const { profile, brand, strategy } = await getUserContext(userId);
-    const userHint = req.body?.productIdea || req.body?.userHint || '';
+    const userHint = (req.body?.productIdea || req.body?.userHint || '').trim();
+
+    if (!userHint) {
+      return sendResponse(res, 400, false, 'Please type a product idea first to use AI features.');
+    }
 
     const chainedResult = await generateFullProductStrategyChainAI(profile, brand, userHint);
 

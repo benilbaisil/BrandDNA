@@ -170,14 +170,6 @@ export default function BrandDetailsPage() {
             >
               <Trash2 className="w-4 h-4" />
             </button>
-
-            <Link
-              to={`/marketing/products/create?brandId=${brand._id}`}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors inline-flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Product under Brand</span>
-            </Link>
           </div>
         </div>
 

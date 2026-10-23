@@ -39,6 +39,10 @@ class MemoryCache {
   flush() {
     this.store.clear();
   }
+
+  flushAll() {
+    this.store.clear();
+  }
 }
 
 export const cache = new MemoryCache();

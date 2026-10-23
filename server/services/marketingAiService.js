@@ -30,36 +30,38 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const generateWithFallback = async (prompt) => {
   const ai = getAIClient();
   const candidateModels = [
-    'gemini-3.6-flash',
-    'gemini-flash-latest',
     'gemini-flash-lite-latest',
-    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
     'gemini-3.1-flash-lite',
   ];
 
   let lastError = null;
 
   for (const model of candidateModels) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-        });
-        if (response && response.text) {
-          return response.text;
-        }
-      } catch (err) {
-        lastError = err;
-        const errMsg = err.message || String(err);
-        console.warn(`Model ${model} (attempt ${attempt + 1}) failed:`, errMsg);
-        if (errMsg.includes('404') || errMsg.includes('no longer available') || errMsg.includes('not found')) {
-          break;
-        }
-        if (attempt < 1) {
-          await delay(600);
-        }
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+      });
+      if (response && response.text) {
+        return response.text;
       }
+    } catch (err) {
+      lastError = err;
+      const errMsg = err.message || String(err);
+      console.warn(`Model ${model} failed:`, errMsg.slice(0, 100));
+      if (
+        errMsg.includes('404') ||
+        errMsg.includes('429') ||
+        errMsg.includes('quota') ||
+        errMsg.includes('503') ||
+        errMsg.includes('high demand') ||
+        errMsg.includes('no longer available') ||
+        errMsg.includes('not found')
+      ) {
+        continue;
+      }
+      await delay(200);
     }
   }
 

@@ -35,6 +35,7 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('ALL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [orderReturns, setOrderReturns] = useState([]);
 
   // Selected Order for Details Modal
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -47,6 +48,10 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
       if (paymentStatusFilter !== 'ALL') params.paymentStatus = paymentStatusFilter;
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
+
+      businessService.getReturns().then(retRes => {
+        if (retRes?.data?.returns) setOrderReturns(retRes.data.returns);
+      }).catch(() => {});
 
       const res = await businessService.getOrders(params);
       if (res?.success && res?.data?.orders) {
@@ -453,6 +458,52 @@ export const OrderManagementView = ({ allowStatusUpdates = true }) => {
                     <span>₹{selectedOrder.totalAmount?.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Returns & Razorpay Gateway Refunds Section */}
+              <div>
+                <span className="font-bold text-slate-700 block mb-1">Returns & Razorpay Gateway Refunds</span>
+                {(() => {
+                  const matchingReturns = orderReturns.filter(
+                    r => (r.order?._id || r.order)?.toString() === selectedOrder._id?.toString()
+                  );
+
+                  if (matchingReturns.length === 0) {
+                    return (
+                      <div className="bg-[#FAF8F5] p-3 rounded-2xl border border-[#E5E0D8] text-[11px] text-slate-500">
+                        No returns or refunds requested for this order.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="bg-[#FAF8F5] p-3 rounded-2xl border border-[#E5E0D8] space-y-2">
+                      {matchingReturns.map(r => (
+                        <div key={r._id} className="p-3 bg-white rounded-xl border border-stone-200 text-[11px] space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono font-bold text-slate-900">{r.returnNumber}</span>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                              {r.status?.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <div className="text-slate-600">
+                            Item: <strong>{r.productName || r.product?.name}</strong> • Reason: {r.reason}
+                          </div>
+                          {['Processed', 'Refunded'].includes(r.refundStatus) ? (
+                            <div className="pt-1.5 border-t border-stone-100 flex items-center justify-between text-emerald-800 font-mono text-[10px]">
+                              <span>Razorpay Refund ID: <strong>{r.refundDetails?.razorpayRefundId || 'Processed'}</strong></span>
+                              <strong className="text-emerald-700 text-xs">₹{r.refundDetails?.amount || r.refundAmount} Refunded</strong>
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-slate-400">
+                              Refund Status: {r.refundStatus || 'Pending QA'}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="pt-2 flex justify-between">

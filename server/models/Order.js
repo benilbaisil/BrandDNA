@@ -173,4 +173,7 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+orderSchema.index({ deliveryAgent: 1, status: 1 });
+orderSchema.index({ customer: 1, createdAt: -1 });
+
 export const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);

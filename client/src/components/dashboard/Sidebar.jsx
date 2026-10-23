@@ -28,7 +28,8 @@ import {
   ShieldAlert,
   BarChart3,
   Rocket,
-  Megaphone
+  Megaphone,
+  Layers
 } from 'lucide-react';
 
 export const Sidebar = ({ isCollapsed, toggleSidebar, mobileOpen, closeMobile }) => {
@@ -38,11 +39,12 @@ export const Sidebar = ({ isCollapsed, toggleSidebar, mobileOpen, closeMobile })
   const isInventoryStaff = user?.role === 'inventory_staff';
   const isMarketingStaff = user?.role === 'marketing_staff';
 
-  // Clean two-tool nav for marketing staff
+  // Clean navigation for marketing staff
   const marketingNavItems = [
     { name: 'Dashboard', path: '/marketing/dashboard', icon: LayoutDashboard },
     { name: 'New Product', path: '/marketing/product-strategy', icon: Rocket },
     { name: 'Create Ad Poster', path: '/marketing/ad-poster', icon: Megaphone },
+    { name: 'Saved Strategies & Ads', path: '/marketing/saved-strategies', icon: BookmarkCheck },
     { name: 'Profile', path: '/profile', icon: User },
   ];
 
@@ -50,9 +52,10 @@ export const Sidebar = ({ isCollapsed, toggleSidebar, mobileOpen, closeMobile })
     { name: 'Business Details', path: '/dashboard', icon: Building2 },
     { name: 'Brand Analysis', path: '/brand-analysis', icon: Sparkles },
     { name: 'Product Strategy', path: '/product-strategy', icon: Target },
+    { name: 'Saved Strategies & Ads', path: '/marketing/saved-strategies', icon: BookmarkCheck },
     { name: 'Customer Persona', path: '/customer-persona', icon: Users },
     { name: 'Ad Poster Studio', path: '/ad-poster-studio', icon: ImageIcon },
-    { name: 'Saved Brand DNA', path: '/brand-summary', icon: BookmarkCheck },
+    { name: 'Saved Brand DNA', path: '/brand-summary', icon: Layers },
     { name: 'Account Profile', path: '/profile', icon: User },
   ];
 
